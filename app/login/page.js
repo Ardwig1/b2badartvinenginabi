@@ -89,12 +89,7 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                <p className={styles.authLink}>
-                    Hesabınız yok mu?{' '}
-                    <a href="/register" style={{ color: 'var(--primary)', fontWeight: 600 }}>
-                        Firma Kaydı
-                    </a>
-                </p>
+
             </div>
         </div>
     );

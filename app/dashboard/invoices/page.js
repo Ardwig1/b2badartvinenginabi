@@ -7,12 +7,19 @@ export default function DealerInvoices() {
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
     const [totalUnpaid, setTotalUnpaid] = useState(0);
+    const [balance, setBalance] = useState(0);
+    const [creditLimit, setCreditLimit] = useState(0);
     const supabase = createClient();
 
     const fetchInvoices = useCallback(async () => {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
-        const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
+        const { data: profile } = await supabase.from('profiles')
+            .select('company_id, company:companies(current_balance, credit_limit)')
+            .eq('id', user.id).single();
+
+        setBalance(profile?.company?.current_balance || 0);
+        setCreditLimit(profile?.company?.credit_limit || 0);
         const { data } = await supabase.from('invoices')
             .select('*, items:invoice_items(*, product:products(name))')
             .eq('company_id', profile.company_id)
@@ -38,17 +45,33 @@ export default function DealerInvoices() {
             </div>
 
             {/* Cari Özet */}
-            {totalUnpaid > 0 && (
-                <div style={{ background: 'rgba(220,38,38,0.08)', border: '1px solid rgba(220,38,38,0.2)', borderRadius: 'var(--radius-lg)', padding: '16px 20px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                        <div style={{ fontWeight: 600, color: 'var(--danger)', fontSize: 14 }}>⚠️ Bekleyen Ödeme</div>
-                        <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Ödenmemiş fatura tutarı</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Güncel Bakiye</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: balance < 0 ? 'var(--danger)' : 'var(--success)', fontFamily: 'Outfit, sans-serif' }}>
+                        ₺{Math.abs(balance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {balance < 0 ? '(Borç)' : '(Alacak)'}
                     </div>
-                    <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: 26, fontWeight: 800, color: 'var(--danger)' }}>
+                    <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 'auto' }} onClick={() => alert('Sanal POS entegrasyonu (Faz 4)')}>💳 Bakiye Yükle</button>
+                </div>
+
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>Kredi Limiti (Risk)</div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif' }}>
+                        ₺{Number(creditLimit).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 'auto' }}>Tanımlı risk limitiniz</div>
+                </div>
+
+                <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12, border: totalUnpaid > 0 ? '1px solid rgba(220,38,38,0.3)' : '1px solid var(--border)' }}>
+                    <div style={{ color: totalUnpaid > 0 ? 'var(--danger)' : 'var(--text-secondary)', fontSize: 13, fontWeight: 600, textTransform: 'uppercase' }}>
+                        Açık Faturalar
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: totalUnpaid > 0 ? 'var(--danger)' : 'var(--text-primary)', fontFamily: 'Outfit, sans-serif' }}>
                         ₺{totalUnpaid.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                     </div>
+                    <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 'auto' }}>Ödenmemiş fatura toplamı</div>
                 </div>
-            )}
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 380px' : '1fr', gap: 20 }}>
                 <div className="table-wrapper">
@@ -115,6 +138,12 @@ export default function DealerInvoices() {
                             </div>
                         </div>
                         {selected.note && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>📝 {selected.note}</div>}
+
+                        {selected.status !== 'paid' && (
+                            <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: 16 }} onClick={() => alert('Sanal POS ödeme ekranı (Faz 4)')}>
+                                💳 Hemen Öde (₺{Number(selected.total_amount - selected.paid_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

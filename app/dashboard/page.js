@@ -6,11 +6,19 @@ export default async function DealerDashboard() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('company_id, company:companies(name, current_balance, credit_limit, price_group:price_groups(name, discount_percent))')
+        .select('full_name, company_id, company:companies(name, current_balance, credit_limit, price_group:price_groups(name, discount_percent))')
         .eq('id', user.id)
         .single();
 
     const companyId = profile?.company_id;
+
+    let rates = { USD: null, EUR: null };
+    try {
+        const resUsd = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY', { cache: 'no-store' });
+        if (resUsd.ok) { const d = await resUsd.json(); rates.USD = d.rates.TRY.toFixed(2); }
+        const resEur = await fetch('https://api.frankfurter.app/latest?from=EUR&to=TRY', { cache: 'no-store' });
+        if (resEur.ok) { const d = await resEur.json(); rates.EUR = d.rates.TRY.toFixed(2); }
+    } catch (e) { console.error("Kur yüklenemedi", e); }
 
     const [
         { count: pendingOrders },
@@ -23,8 +31,10 @@ export default async function DealerDashboard() {
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
         supabase.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
         supabase.from('quotes').select('id, status, total_amount, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
-        supabase.from('invoices').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'unpaid'),
+        supabase.from('invoices').select('total_amount').eq('company_id', companyId).neq('status', 'paid'),
     ]);
+
+    const totalUnpaidAmount = unpaidInvoices?.reduce((acc, inv) => acc + Number(inv.total_amount), 0) || 0;
 
     const company = profile?.company;
     const pg = company?.price_group;
@@ -34,32 +44,61 @@ export default async function DealerDashboard() {
 
     return (
         <div className="page-wrapper">
-            <div className="page-header">
+            <div className="page-header" style={{ alignItems: 'flex-start' }}>
                 <div>
                     <h1 className="page-title">Hoş Geldiniz, {company?.name} 👋</h1>
-                    <p className="page-subtitle">Bayi panelinize genel bakış</p>
+                    <div className="page-subtitle" style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 16 }}>👤</span> Yetkili: {profile?.full_name || 'Standart Kullanıcı'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 16 }}>🎧</span> M. Temsilcisi: B2B Destek Ekibi</span>
+                    </div>
                 </div>
-                <a href="/dashboard/catalog" className="btn btn-primary" id="go-catalog">📦 Kataloga Git</a>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <div style={{ background: 'var(--bg-surface)', padding: '8px 16px', borderRadius: 'var(--radius)', border: '1px solid var(--border)', display: 'flex', gap: 16, fontSize: 13, fontWeight: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#16a34a' }}>USD</span>
+                            <span>{rates.USD ? `₺${rates.USD}` : '-'}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{ color: '#2563eb' }}>EUR</span>
+                            <span>{rates.EUR ? `₺${rates.EUR}` : '-'}</span>
+                        </div>
+                    </div>
+                    <a href="/dashboard/catalog" className="btn btn-primary" id="go-catalog">📦 Yeni Sipariş</a>
+                </div>
             </div>
 
-            <div className="stats-grid">
+            {/* Announcements */}
+            <div className="card" style={{ marginBottom: 24, background: 'linear-gradient(135deg, #1e293b, #0f172a)', color: 'white', border: 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontSize: 24 }}>📢</span>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white' }}>Önemli Duyurular</h2>
+                </div>
+                <p style={{ color: '#cbd5e1', margin: 0, lineHeight: 1.5, fontSize: 14 }}>
+                    Değerli iş ortaklarımız, <strong>Yaz Kampanyası</strong> kapsamında tüm filtre gruplarında ekstra %5 iskonto tanımlanmıştır. Detaylı bilgiyi müşteri temsilcinizden alabilirsiniz.
+                </p>
+            </div>
+
+            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}>⏳</div>
-                    <div className="stat-label">Bekleyen Sipariş</div>
-                    <div className="stat-value">{pendingOrders ?? 0}</div>
+                    <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>💰</div>
+                    <div className="stat-label">Güncel Bakiye</div>
+                    <div className="stat-value" style={{ color: company?.current_balance < 0 ? 'var(--danger)' : 'var(--success)' }}>
+                        ₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        <span style={{ fontSize: 13, marginLeft: 4 }}>{company?.current_balance < 0 ? '(B)' : '(A)'}</span>
+                    </div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>📋</div>
-                    <div className="stat-label">Toplam Sipariş</div>
-                    <div className="stat-value">{totalOrders ?? 0}</div>
+                    <div className="stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>📉</div>
+                    <div className="stat-label">Açık Faturalar (Borç)</div>
+                    <div className="stat-value">₺{totalUnpaidAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>🧾</div>
-                    <div className="stat-label">Ödenmemiş Fatura</div>
-                    <div className="stat-value">{unpaidInvoices ?? 0}</div>
+                    <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}>🛡️</div>
+                    <div className="stat-label">Risk Limiti</div>
+                    <div className="stat-value">₺{Number(company?.credit_limit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>🏷️</div>
+                    <div className="stat-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>🏷️</div>
                     <div className="stat-label">Fiyat Grubunuz</div>
                     <div className="stat-value" style={{ fontSize: 20 }}>{pg?.name || '-'}</div>
                     {pg && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%{pg.discount_percent} iskonto</div>}

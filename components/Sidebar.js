@@ -15,11 +15,11 @@ const adminNav = [
 
 const dealerNav = [
     { label: 'Ana Sayfa', href: '/dashboard', icon: '🏠' },
-    { label: 'Ürün Kataloğu', href: '/dashboard/catalog', icon: '📦' },
+    { label: 'Ürün Arama', href: '/dashboard/catalog', icon: '🔍' },
     { label: 'Sepetim', href: '/dashboard/cart', icon: '🛒' },
     { label: 'Siparişlerim', href: '/dashboard/orders', icon: '📋' },
     { label: 'Tekliflerim', href: '/dashboard/quotes', icon: '💬' },
-    { label: 'Faturalarım', href: '/dashboard/invoices', icon: '🧾' },
+    { label: 'Faturalarım / Ödemelerim', href: '/dashboard/invoices', icon: '🧾' },
 ];
 
 export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '' }) {

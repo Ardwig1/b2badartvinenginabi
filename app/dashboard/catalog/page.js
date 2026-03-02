@@ -204,6 +204,8 @@ export default function DealerCatalog() {
                                 <th>Araç</th>
                                 <th>Ürün Adı</th>
                                 <th>Birim</th>
+                                <th>Merkez</th>
+                                <th>Depo</th>
                                 <th style={{ textAlign: 'right' }}>Liste Fiyatı</th>
                                 {discountPercent > 0 && <th style={{ textAlign: 'right' }}>Satış Fiyatı</th>}
                                 <th style={{ width: 120 }}>Miktar</th>
@@ -229,7 +231,23 @@ export default function DealerCatalog() {
                                             {[p.car_brand, p.car_model].filter(Boolean).join(' ') || '-'}
                                         </td>
                                         <td style={{ fontWeight: 500, maxWidth: 220 }}>{p.name}</td>
-                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
+                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                {p.unit || 'AD'}
+                                                {p.image_url && (
+                                                    <div className="product-image-hover" style={{ position: 'relative', cursor: 'grab' }}>
+                                                        <span style={{ fontSize: 16 }}>📷</span>
+                                                        <img src={p.image_url} alt={p.name} className="hover-img" style={{
+                                                            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
+                                                            width: 150, height: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)',
+                                                            background: 'white', zIndex: 50, display: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
+                                                        }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td style={{ fontWeight: 600, color: 'var(--success)', textAlign: 'center' }}>{p.stock_merkez || 0}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)', textAlign: 'center' }}>{p.stock_depo || 0}</td>
                                         <td style={{ textAlign: 'right', color: discountPercent > 0 ? 'var(--text-muted)' : 'var(--primary)', textDecoration: discountPercent > 0 ? 'line-through' : 'none', fontFamily: 'monospace' }}>
                                             ₺{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                                         </td>

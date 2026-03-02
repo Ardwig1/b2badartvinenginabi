@@ -750,6 +750,11 @@ tbody tr:last-child td {
   }
 }
 
+/* Hover Image Support for Catalog */
+.product-image-hover:hover .hover-img {
+  display: block !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .main-content {

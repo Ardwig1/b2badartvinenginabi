@@ -20,6 +20,10 @@ const dealerNav = [
     { label: 'Siparişlerim', href: '/dashboard/orders', icon: '📋' },
     { label: 'Tekliflerim', href: '/dashboard/quotes', icon: '💬' },
     { label: 'Faturalarım / Ödemelerim', href: '/dashboard/invoices', icon: '🧾' },
+    { label: 'Online Ödeme', href: '/dashboard/payment', icon: '💳' },
+    { label: 'Dosyalar', href: '/dashboard/files', icon: '📁' },
+    { label: 'Banka Bilgileri', href: '/dashboard/bank-accounts', icon: '🏦' },
+    { label: 'İletişim', href: '/dashboard/contact', icon: '📞' },
 ];
 
 export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '' }) {

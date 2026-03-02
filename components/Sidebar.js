@@ -1,6 +1,8 @@
 'use client';
+import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { useTheme } from '@/components/ThemeProvider';
 import styles from './Sidebar.module.css';
 
 const adminNav = [
@@ -27,6 +29,8 @@ const dealerNav = [
 ];
 
 export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '' }) {
+    const [isOpen, setIsOpen] = useState(true);
+    const { theme, toggleTheme, mounted } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
     const navItems = isAdmin ? adminNav : dealerNav;
@@ -39,14 +43,19 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
     };
 
     return (
-        <aside className={styles.sidebar}>
+        <aside className={`${styles.sidebar} ${!isOpen ? styles.collapsed : ''}`}>
             {/* Logo */}
             <div className={styles.logo}>
                 <span className={styles.logoIcon}>⚙️</span>
-                <div>
-                    <div className={styles.logoText}>B2B Parça</div>
-                    <div className={styles.logoSub}>{isAdmin ? 'Admin Paneli' : 'Bayi Paneli'}</div>
-                </div>
+                {isOpen && (
+                    <div>
+                        <div className={styles.logoText}>B2B Parça</div>
+                        <div className={styles.logoSub}>{isAdmin ? 'Admin Paneli' : 'Bayi Paneli'}</div>
+                    </div>
+                )}
+                <button className={styles.collapseBtn} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Menüyü Daralt" : "Menüyü Genişlet"}>
+                    {isOpen ? '◀' : '▶'}
+                </button>
             </div>
 
             {/* Navigation */}
@@ -62,25 +71,32 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                         >
                             <span className={styles.navIcon}>{item.icon}</span>
-                            <span>{item.label}</span>
+                            {isOpen && <span>{item.label}</span>}
                         </a>
                     );
                 })}
             </nav>
 
-            {/* User Info */}
+            {/* Theme & User Info */}
             <div className={styles.userSection}>
+                {mounted && (
+                    <button className={styles.themeToggle} onClick={toggleTheme} title="Görünümü Değiştir">
+                        {theme === 'dark' ? '☀️ Aydınlık Mod' : '🌙 Karanlık Mod'}
+                    </button>
+                )}
                 <div className={styles.userInfo}>
                     <div className={styles.userAvatar}>
                         {(companyName || userEmail || '?')[0].toUpperCase()}
                     </div>
-                    <div className={styles.userDetails}>
-                        <div className={styles.userName}>{companyName || 'Admin'}</div>
-                        <div className={styles.userEmail}>{userEmail}</div>
-                    </div>
+                    {isOpen && (
+                        <div className={styles.userDetails}>
+                            <div className={styles.userName}>{companyName || 'Admin'}</div>
+                            <div className={styles.userEmail}>{userEmail}</div>
+                        </div>
+                    )}
                 </div>
-                <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout">
-                    🚪 Çıkış
+                <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
+                    🚪 {isOpen && 'Çıkış'}
                 </button>
             </div>
         </aside>

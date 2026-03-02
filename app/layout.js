@@ -8,11 +8,15 @@ export const metadata = {
   description: 'Bayi yönetim sistemi ve B2B satış platformu',
 };
 
+import { ThemeProvider } from '@/components/ThemeProvider';
+
 export default function RootLayout({ children }) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <body className={outfit.variable}>
-        {children}
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

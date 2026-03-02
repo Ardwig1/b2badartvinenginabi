@@ -13,7 +13,7 @@ export default function AdminProducts() {
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');
     const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '' });
+    const [form, setForm] = useState({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '', image_url: '' });
     const [saving, setSaving] = useState(false);
     const supabase = createClient();
 
@@ -28,13 +28,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '0', unit: 'adet', description: '' });
+        setForm({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '0', unit: 'adet', description: '', image_url: '' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, product_number: p.product_number || '', name: p.name, brand: p.brand || '', category: p.category || '', list_price: p.list_price, stock_quantity: p.stock_quantity, unit: p.unit || 'adet', description: p.description || '' });
+        setForm({ code: p.code, product_number: p.product_number || '', name: p.name, brand: p.brand || '', category: p.category || '', list_price: p.list_price, stock_quantity: p.stock_quantity, unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '' });
         setShowModal(true);
     };
 
@@ -109,13 +109,20 @@ export default function AdminProducts() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Stok Kodu</th><th>Ürün Numarası</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
+                                <th>Görsel</th><th>Stok Kodu</th><th>Ürün Numarası</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
                                 <th>Liste Fiyatı</th><th>Stok</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.map(p => (
                                 <tr key={p.id}>
+                                    <td>
+                                        {p.image_url ? (
+                                            <img src={p.image_url} alt="img" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
+                                        ) : (
+                                            <div style={{ width: 36, height: 36, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
+                                        )}
+                                    </td>
                                     <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{p.code}</td>
                                     <td style={{ fontFamily: 'monospace', color: 'var(--info)', fontWeight: 600 }}>{p.product_number || '-'}</td>
                                     <td style={{ fontWeight: 600 }}>{p.name}</td>
@@ -166,6 +173,7 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div className="form-group"><label className="form-label">Başlangıç Stok</label><input className="form-input" type="number" min="0" value={form.stock_quantity} onChange={up('stock_quantity')} id="prod-stock" /></div>
+                                <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Görseli URL</label><input className="form-input" value={form.image_url} onChange={up('image_url')} placeholder="https://..." id="prod-image" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Açıklama</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.description} onChange={up('description')} id="prod-desc" /></div>
                             </div>
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>

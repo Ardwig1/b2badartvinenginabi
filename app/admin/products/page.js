@@ -15,6 +15,8 @@ export default function AdminProducts() {
     const [stockType, setStockType] = useState('in');
     const [form, setForm] = useState({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '', image_url: '' });
     const [saving, setSaving] = useState(false);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
     const supabase = createClient();
 
     const fetchProducts = useCallback(async () => {
@@ -58,6 +60,36 @@ export default function AdminProducts() {
         setSaving(false);
         setShowModal(false);
         fetchProducts();
+    };
+
+    const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+    const handleDragLeave = (e) => { e.preventDefault(); setIsDragging(false); };
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        setIsDragging(false);
+        const file = e.dataTransfer.files[0];
+        if (!file || !file.type.startsWith('image/')) return alert('Lütfen geçerli bir resim dosyası bırakın.');
+        await uploadImage(file);
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        await uploadImage(file);
+    };
+
+    const uploadImage = async (file) => {
+        setUploadingImage(true);
+        const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
+        const { data, error } = await supabase.storage.from('products').upload(fileName, file);
+        if (error) {
+            alert('Resim yüklenemedi: Lütfen Supabase SQL editöründen ürünler için Storage tablosunu aktif ettiğinizden emin olun. \n' + error.message);
+            setUploadingImage(false);
+            return;
+        }
+        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName);
+        setForm(prev => ({ ...prev, image_url: publicUrl }));
+        setUploadingImage(false);
     };
 
     const toggleActive = async (p) => {
@@ -173,7 +205,44 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div className="form-group"><label className="form-label">Başlangıç Stok</label><input className="form-input" type="number" min="0" value={form.stock_quantity} onChange={up('stock_quantity')} id="prod-stock" /></div>
-                                <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Görseli URL</label><input className="form-input" value={form.image_url} onChange={up('image_url')} placeholder="https://..." id="prod-image" /></div>
+                                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                    <label className="form-label">Ürün Görseli</label>
+                                    <div
+                                        onDragOver={handleDragOver}
+                                        onDragLeave={handleDragLeave}
+                                        onDrop={handleDrop}
+                                        style={{
+                                            border: `2px dashed ${isDragging ? 'var(--primary)' : 'var(--border)'}`,
+                                            padding: 24,
+                                            textAlign: 'center',
+                                            borderRadius: 8,
+                                            background: isDragging ? 'rgba(79, 70, 229, 0.05)' : 'transparent',
+                                            cursor: 'pointer',
+                                            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8
+                                        }}
+                                        onClick={() => document.getElementById('file-upload').click()}
+                                    >
+                                        <input type="file" id="file-upload" hidden accept="image/*" onChange={handleFileSelect} />
+                                        {uploadingImage ? (
+                                            <div className="loading-spinner" style={{ width: 24, height: 24, margin: '8px auto' }} />
+                                        ) : form.image_url ? (
+                                            <div style={{ position: 'relative' }}>
+                                                <img src={form.image_url} alt="preview" style={{ maxHeight: 120, borderRadius: 8 }} />
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, image_url: '' })) }} style={{ position: 'absolute', top: -10, right: -10, background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span style={{ fontSize: 32 }}>📸</span>
+                                                <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                                                    Resmi buraya sürükleyin veya <span style={{ color: 'var(--primary)', fontWeight: 500 }}>tıklayıp seçin</span>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                    <div style={{ marginTop: 8 }}>
+                                        <input className="form-input" value={form.image_url} onChange={up('image_url')} placeholder="Veya internetten bir görsel URL'sini buraya yapıştırıp ekleyebilirsiniz (https://...)" id="prod-image-url" style={{ fontSize: 13 }} />
+                                    </div>
+                                </div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Açıklama</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.description} onChange={up('description')} id="prod-desc" /></div>
                             </div>
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>

@@ -8,6 +8,7 @@ export default function AdminProducts() {
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
+    const [editing, setEditing] = useState(null);
     const [stockTarget, setStockTarget] = useState(null);
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');

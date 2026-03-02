@@ -78,6 +78,7 @@ export default function DealerCatalog() {
         if (filterText) {
             const q = filterText.toLowerCase();
             if (!p.name?.toLowerCase().includes(q) && !p.code?.toLowerCase().includes(q) &&
+                !p.product_number?.toLowerCase().includes(q) &&
                 !p.oem_no?.toLowerCase().includes(q) && !p.brand?.toLowerCase().includes(q)) return false;
         }
         const st = getStockStatus(p.stock_quantity);
@@ -199,7 +200,8 @@ export default function DealerCatalog() {
                             <tr>
                                 <th>Stok</th>
                                 <th>Marka</th>
-                                <th>Kod</th>
+                                <th>Stok Kodu</th>
+                                <th>Ürün Num.</th>
                                 <th>OEM No</th>
                                 <th>Araç</th>
                                 <th>Ürün Adı</th>
@@ -226,6 +228,7 @@ export default function DealerCatalog() {
                                         </td>
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
+                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--info)', fontWeight: 600 }}>{p.product_number || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
                                         <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
                                             {[p.car_brand, p.car_model].filter(Boolean).join(' ') || '-'}

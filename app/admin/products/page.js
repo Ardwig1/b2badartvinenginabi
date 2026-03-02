@@ -8,12 +8,11 @@ export default function AdminProducts() {
     const [search, setSearch] = useState('');
     const [showModal, setShowModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
-    const [editing, setEditing] = useState(null);
     const [stockTarget, setStockTarget] = useState(null);
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');
     const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '' });
+    const [form, setForm] = useState({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '' });
     const [saving, setSaving] = useState(false);
     const supabase = createClient();
 
@@ -28,13 +27,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '0', unit: 'adet', description: '' });
+        setForm({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '0', unit: 'adet', description: '' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, name: p.name, brand: p.brand || '', category: p.category || '', list_price: p.list_price, stock_quantity: p.stock_quantity, unit: p.unit || 'adet', description: p.description || '' });
+        setForm({ code: p.code, product_number: p.product_number || '', name: p.name, brand: p.brand || '', category: p.category || '', list_price: p.list_price, stock_quantity: p.stock_quantity, unit: p.unit || 'adet', description: p.description || '' });
         setShowModal(true);
     };
 
@@ -79,6 +78,7 @@ export default function AdminProducts() {
     const filtered = products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.code.toLowerCase().includes(search.toLowerCase()) ||
+        p.product_number?.toLowerCase().includes(search.toLowerCase()) ||
         p.brand?.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -108,7 +108,7 @@ export default function AdminProducts() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Kod</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
+                                <th>Stok Kodu</th><th>Ürün Numarası</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
                                 <th>Liste Fiyatı</th><th>Stok</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
@@ -116,6 +116,7 @@ export default function AdminProducts() {
                             {filtered.map(p => (
                                 <tr key={p.id}>
                                     <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{p.code}</td>
+                                    <td style={{ fontFamily: 'monospace', color: 'var(--info)', fontWeight: 600 }}>{p.product_number || '-'}</td>
                                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                                     <td>{p.brand || '-'}</td>
                                     <td>{p.category || '-'}</td>
@@ -152,16 +153,17 @@ export default function AdminProducts() {
                         </div>
                         <form onSubmit={saveProduct}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-                                <div className="form-group"><label className="form-label">Ürün Kodu *</label><input className="form-input" value={form.code} onChange={up('code')} required id="prod-code" /></div>
+                                <div className="form-group"><label className="form-label">Stok Kodu *</label><input className="form-input" value={form.code} onChange={up('code')} required id="prod-code" /></div>
+                                <div className="form-group"><label className="form-label">Ürün Numarası</label><input className="form-input" value={form.product_number} onChange={up('product_number')} id="prod-number" placeholder="Örn: 12345-ABC" /></div>
+                                <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Adı *</label><input className="form-input" value={form.name} onChange={up('name')} required id="prod-name" /></div>
+                                <div className="form-group"><label className="form-label">Marka</label><input className="form-input" value={form.brand} onChange={up('brand')} id="prod-brand" /></div>
+                                <div className="form-group"><label className="form-label">Kategori</label><input className="form-input" value={form.category} onChange={up('category')} id="prod-category" /></div>
+                                <div className="form-group"><label className="form-label">Liste Fiyatı (₺) *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
                                 <div className="form-group"><label className="form-label">Birim</label>
                                     <select className="form-select" value={form.unit} onChange={up('unit')} id="prod-unit">
                                         <option value="adet">Adet</option><option value="kg">Kg</option><option value="litre">Litre</option><option value="metre">Metre</option>
                                     </select>
                                 </div>
-                                <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Adı *</label><input className="form-input" value={form.name} onChange={up('name')} required id="prod-name" /></div>
-                                <div className="form-group"><label className="form-label">Marka</label><input className="form-input" value={form.brand} onChange={up('brand')} id="prod-brand" /></div>
-                                <div className="form-group"><label className="form-label">Kategori</label><input className="form-input" value={form.category} onChange={up('category')} id="prod-category" /></div>
-                                <div className="form-group"><label className="form-label">Liste Fiyatı (₺) *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
                                 <div className="form-group"><label className="form-label">Başlangıç Stok</label><input className="form-input" type="number" min="0" value={form.stock_quantity} onChange={up('stock_quantity')} id="prod-stock" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Açıklama</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.description} onChange={up('description')} id="prod-desc" /></div>
                             </div>

@@ -55,7 +55,10 @@ export async function POST(request) {
     if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const body = await request.json();
-    const { companyName, taxNumber, contactPerson, phone, address, email, password } = body;
+    const {
+        companyName, taxNumber, contactPerson, phone, address, email, password,
+        taxOffice, city, district, branch, dealerCode, userCode
+    } = body;
 
     const adminSupabase = await getAdminClient();
 
@@ -67,7 +70,11 @@ export async function POST(request) {
 
     const { data: company, error: companyErr } = await adminSupabase
         .from('companies')
-        .insert({ name: companyName, tax_number: taxNumber, contact_person: contactPerson, phone, address, email, status: 'approved' })
+        .insert({
+            name: companyName, tax_number: taxNumber, contact_person: contactPerson,
+            phone, address, email, status: 'approved',
+            tax_office: taxOffice, city, district, branch, dealer_code: dealerCode, user_code: userCode
+        })
         .select().single();
 
     if (companyErr) {

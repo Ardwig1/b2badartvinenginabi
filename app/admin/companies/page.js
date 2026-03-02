@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
 const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
 const EMPTY_FORM = {
-    companyName: '', taxNumber: '', contactPerson: '',
-    phone: '', address: '', email: '', password: '', confirmPassword: ''
+    companyName: '', taxNumber: '', taxOffice: '', contactPerson: '',
+    phone: '', address: '', city: '', district: '', branch: '',
+    dealerCode: '', userCode: 'ADMIN', email: '', password: '', confirmPassword: ''
 };
 
 export default function AdminCompanies() {
@@ -221,21 +222,52 @@ export default function AdminCompanies() {
                                     <input className="form-input" type="text" placeholder="1234567890" value={formData.taxNumber} onChange={update('taxNumber')} required id="modal-tax-number" autoComplete="off" />
                                 </div>
                                 <div className="form-group">
+                                    <label className="form-label">Vergi Dairesi</label>
+                                    <input className="form-input" type="text" placeholder="Örn: Beyoğlu VD" value={formData.taxOffice} onChange={update('taxOffice')} id="modal-tax-office" autoComplete="off" />
+                                </div>
+                                <div className="form-group">
                                     <label className="form-label">Yetkili Kişi *</label>
                                     <input className="form-input" type="text" placeholder="Ad Soyad" value={formData.contactPerson} onChange={update('contactPerson')} required id="modal-contact" autoComplete="off" />
                                 </div>
                                 <div className="form-group">
-                                    <label className="form-label">E-posta *</label>
+                                    <label className="form-label">E-posta (Arka Plan İçin) *</label>
                                     <input className="form-input" type="email" placeholder="firma@email.com" value={formData.email} onChange={update('email')} required id="modal-email" autoComplete="off" />
                                 </div>
                                 <div className="form-group">
                                     <label className="form-label">Telefon</label>
                                     <input className="form-input" type="tel" placeholder="0532 000 00 00" value={formData.phone} onChange={update('phone')} id="modal-phone" autoComplete="off" />
                                 </div>
+                                <div className="form-group">
+                                    <label className="form-label">İl</label>
+                                    <input className="form-input" type="text" placeholder="Örn: İstanbul" value={formData.city} onChange={update('city')} id="modal-city" autoComplete="off" />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">İlçe</label>
+                                    <input className="form-input" type="text" placeholder="Örn: Kadıköy" value={formData.district} onChange={update('district')} id="modal-district" autoComplete="off" />
+                                </div>
                                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                                     <label className="form-label">Adres</label>
                                     <input className="form-input" type="text" placeholder="Firma adresi" value={formData.address} onChange={update('address')} id="modal-address" autoComplete="off" />
                                 </div>
+                                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                                    <label className="form-label">Branş / Tip</label>
+                                    <input className="form-input" type="text" placeholder="Toptancı, Perakendeci, Servis vb." value={formData.branch} onChange={update('branch')} id="modal-branch" autoComplete="off" />
+                                </div>
+
+                                {/* Giriş Bilgileri */}
+                                <div style={{ gridColumn: '1 / -1', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                                    <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Sisteme Giriş Bilgileri (Login)</h3>
+                                </div>
+
+                                <div className="form-group">
+                                    <label className="form-label">Bayi Kodu *</label>
+                                    <input className="form-input" type="text" placeholder="Örn: B-1001" value={formData.dealerCode} onChange={update('dealerCode')} required id="modal-dealer-code" autoComplete="off" style={{ textTransform: 'uppercase' }} />
+                                </div>
+                                <div className="form-group">
+                                    <label className="form-label">Kullanıcı Kodu *</label>
+                                    <input className="form-input" type="text" placeholder="Örn: ADMIN" value={formData.userCode} onChange={update('userCode')} required id="modal-user-code" autoComplete="off" style={{ textTransform: 'uppercase' }} />
+                                </div>
+
                                 <div className="form-group">
                                     <label className="form-label">Şifre *</label>
                                     <input className="form-input" type="password" placeholder="En az 6 karakter" value={formData.password} onChange={update('password')} required id="modal-password" autoComplete="new-password" />

@@ -73,24 +73,9 @@ export default async function DealerDashboard() {
                 <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minHeight: 120, background: 'var(--bg-surface)' }}>
                     <img
                         src="/banner.jpg"
-                        alt="Güncel Kampanyalar"
+                        alt="Güncel Kampanyalar. Not: public klasörüne banner.jpg eklendiğinde burada görünecektir."
                         style={{ width: '100%', display: 'block', objectFit: 'cover', minHeight: 120 }}
-                        onError={(e) => {
-                            e.target.style.display = 'none';
-                            if (document.getElementById('fallback-announcement')) {
-                                document.getElementById('fallback-announcement').style.display = 'block';
-                            }
-                        }}
                     />
-                    <div id="fallback-announcement" className="card" style={{ display: 'none', background: 'linear-gradient(135deg, #1e293b, #0f172a)', color: 'white', border: 'none', margin: 0, height: '100%' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <span style={{ fontSize: 24 }}>📢</span>
-                            <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'white' }}>Önemli Duyurular</h2>
-                        </div>
-                        <p style={{ color: '#cbd5e1', margin: 0, lineHeight: 1.5, fontSize: 14 }}>
-                            Değerli iş ortaklarımız, <strong>Yaz Kampanyası</strong> kapsamında tüm filtre gruplarında ekstra %5 iskonto tanımlanmıştır. (Not: /public/banner.jpg eklendiğinde görsel çıkacaktır.)
-                        </p>
-                    </div>
                 </div>
             </div>
 

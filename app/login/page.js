@@ -131,6 +131,35 @@ export default function LoginPage() {
 
 
             </div>
+
+            {/* PayTR Required Footer */}
+            <div style={{
+                position: 'absolute',
+                bottom: 0,
+                width: '100%',
+                padding: '1rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '12px',
+                color: '#888',
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+            }}>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                    <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</a>
+                    <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>İptal ve İade Koşulları</a>
+                    <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Gizlilik ve Güvenlik Politikası</a>
+                </div>
+                <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
+                    <strong>OMIGROUPS</strong><br />
+                    B2B Yedek Parça Satış Portalı<br />
+                    Adres: Örnek Mah. Test Cad. No:1 Ankara/Türkiye<br />
+                    Tel: +90 312 000 00 00 | E-posta: info@omigroups.com
+                </div>
+            </div>
         </div>
     );
 }

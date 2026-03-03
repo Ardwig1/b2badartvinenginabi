@@ -9,7 +9,7 @@ export default function IptalIadeKosullari() {
 
             <h3 style={{ marginTop: '20px' }}>1. Sipariş İptali</h3>
             <p>
-                Verilen siparişler, ürün kargoya teslim edilmeden önce firmamız destek hatları (info@omigroups.com) üzerinden
+                Verilen siparişler, ürün kargoya teslim edilmeden önce firmamız destek hatları (muratkaan@omigroups.com) üzerinden
                 iptal edilebilir. Kargoya verilmiş olan siparişlerin iptali mümkün olmayıp, ancak teslim alındıktan sonra iade
                 sürecine tabi tutulabilir.
             </p>

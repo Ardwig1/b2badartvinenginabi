@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import TopHeader from '@/components/TopHeader';
 
 export default async function DashboardLayout({ children }) {
     const supabase = await createClient();
@@ -21,7 +22,10 @@ export default async function DashboardLayout({ children }) {
         <div className="app-layout">
             <Sidebar isAdmin={false} userEmail={user.email} companyName={profile?.company?.name || ''} />
             <main className="main-content">
-                {children}
+                <TopHeader />
+                <div style={{ padding: '0 24px' }}>
+                    {children}
+                </div>
             </main>
         </div>
     );

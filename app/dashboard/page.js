@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getExchangeRates } from '@/lib/tcmb';
 import {
     UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
     ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
@@ -16,16 +17,7 @@ export default async function DealerDashboard() {
 
     const companyId = profile?.company_id;
 
-    let rates = { USD: null, EUR: null };
-    try {
-        const hostname = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-        const res = await fetch(`${hostname}/api/rates`, { cache: 'no-store' });
-        if (res.ok) {
-            const d = await res.json();
-            rates.USD = d.USD;
-            rates.EUR = d.EUR;
-        }
-    } catch (e) { console.error("TCMB Kur yüklenemedi", e); }
+    let rates = await getExchangeRates();
 
     const [
         { count: pendingOrders },

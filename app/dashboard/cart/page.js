@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 export default function DealerCart() {
     const [products, setProducts] = useState([]);
@@ -14,6 +15,7 @@ export default function DealerCart() {
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const supabase = createClient();
 
     const fetchUser = useCallback(async () => {
@@ -26,12 +28,27 @@ export default function DealerCart() {
             .single();
         setCompanyId(profile?.company_id || '');
         setDiscountPercent(profile?.company?.price_group?.discount_percent || 0);
+
+        try {
+            const res = await fetch('/api/rates');
+            const data = await res.json();
+            if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
+        } catch (e) {
+            console.error('Rates fetch error:', e);
+        }
+
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
-    const getPrice = (listPrice) => listPrice * (1 - discountPercent / 100);
+    const getBaseTryPrice = (p) => {
+        let price = Number(p.list_price) || 0;
+        if (p.currency === 'USD') price = price * rates.USD;
+        else if (p.currency === 'EUR') price = price * rates.EUR;
+        return price;
+    };
+    const getDiscountedPrice = (p) => getBaseTryPrice(p) * (1 - discountPercent / 100);
 
     const addProduct = async (productId) => {
         if (!productId) return;
@@ -59,8 +76,8 @@ export default function DealerCart() {
     };
     const removeItem = (id) => setCartItems(prev => prev.filter(i => i.product.id !== id));
 
-    const subtotal = cartItems.reduce((acc, i) => acc + (i.product.list_price * i.qty), 0);
-    const totalDiscount = cartItems.reduce((acc, i) => acc + (i.product.list_price * (discountPercent / 100) * i.qty), 0);
+    const subtotal = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
+    const totalDiscount = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * (discountPercent / 100) * i.qty), 0);
     const totalAfterDiscount = subtotal - totalDiscount;
     const vat = totalAfterDiscount * 0.20;
     const grandTotal = totalAfterDiscount + vat;
@@ -84,8 +101,8 @@ export default function DealerCart() {
                 order_id: order.id,
                 product_id: i.product.id,
                 quantity: i.qty,
-                unit_price: getPrice(i.product.list_price),
-                total_price: getPrice(i.product.list_price) * i.qty,
+                unit_price: getDiscountedPrice(i.product),
+                total_price: getDiscountedPrice(i.product) * i.qty,
             })));
             // Reduce stock
             for (const item of cartItems) {
@@ -104,7 +121,7 @@ export default function DealerCart() {
     if (success) {
         return (
             <div className="page-wrapper" style={{ textAlign: 'center', paddingTop: 80 }}>
-                <div style={{ fontSize: 72, marginBottom: 20 }}>✅</div>
+                <div style={{ color: '#16a34a', marginBottom: 20, display: 'flex', justifyContent: 'center' }}><CheckCircleIcon style={{ width: 72, height: 72 }} /></div>
                 <h2 style={{ fontFamily: 'Outfit, sans-serif', fontSize: 28, fontWeight: 700, marginBottom: 12 }}>Sipariş Alındı!</h2>
                 <p style={{ color: 'var(--text-secondary)', marginBottom: 28 }}>Siparişiniz oluşturuldu. Siparişlerim sayfasından takip edebilirsiniz.</p>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
@@ -132,7 +149,7 @@ export default function DealerCart() {
                         <div className="card-title" style={{ marginBottom: 12 }}>Katalogdan Ekle</div>
                         <div style={{ position: 'relative' }}>
                             <div className="search-bar" style={{ width: '100%' }}>
-                                <span className="search-icon">🔍</span>
+                                <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
                                 <input placeholder="Ürün adı veya kodunu yazın..." value={productSearch} onChange={e => searchProds(e.target.value)} id="cart-product-search" />
                             </div>
                             {searchProducts.length > 0 && (
@@ -144,7 +161,7 @@ export default function DealerCart() {
                                                 <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>
                                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
                                             </div>
-                                            <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getPrice(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -154,7 +171,7 @@ export default function DealerCart() {
 
                     {/* Cart items */}
                     {cartItems.length === 0 ? (
-                        <div className="card"><div className="empty-state"><div className="empty-state-icon">🛒</div><div className="empty-state-title">Sepetiniz boş</div><div className="empty-state-text">Katalogdan ürün ekleyin</div></div></div>
+                        <div className="card"><div className="empty-state"><div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Sepetiniz boş</div><div className="empty-state-text">Katalogdan ürün ekleyin</div></div></div>
                     ) : (
                         <div className="table-wrapper">
                             <table>
@@ -166,7 +183,7 @@ export default function DealerCart() {
                                                 <div style={{ fontWeight: 600 }}>{p.name}</div>
                                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
                                             </td>
-                                            <td>₺{getPrice(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                            <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                     <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p.id, -1)} id={`minus-${p.id}`}>−</button>
@@ -174,7 +191,7 @@ export default function DealerCart() {
                                                     <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p.id, 1)} id={`plus-${p.id}`}>+</button>
                                                 </div>
                                             </td>
-                                            <td style={{ fontWeight: 600 }}>₺{(getPrice(p.list_price) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                            <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                             <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p.id)} id={`remove-${p.id}`}>✕</button></td>
                                         </tr>
                                     ))}

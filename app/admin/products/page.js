@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { MagnifyingGlassIcon, CubeIcon, ArchiveBoxIcon, PencilSquareIcon, CameraIcon } from '@heroicons/react/24/outline';
 
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
@@ -12,8 +13,8 @@ export default function AdminProducts() {
     const [stockTarget, setStockTarget] = useState(null);
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');
-    const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '', unit: 'adet', description: '', image_url: '' });
+    const [stockLocation, setStockLocation] = useState('merkez');
+    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '' });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -30,13 +31,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', product_number: '', name: '', brand: '', category: '', list_price: '', stock_quantity: '0', unit: 'adet', description: '', image_url: '' });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, product_number: p.product_number || '', name: p.name, brand: p.brand || '', category: p.category || '', list_price: p.list_price, stock_quantity: p.stock_quantity, unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '' });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '' });
         setShowModal(true);
     };
 
@@ -51,7 +52,9 @@ export default function AdminProducts() {
     const saveProduct = async (e) => {
         e.preventDefault();
         setSaving(true);
-        const payload = { ...form, list_price: Number(form.list_price), stock_quantity: Number(form.stock_quantity) };
+        const merkez = Number(form.stock_merkez);
+        const depo = Number(form.stock_depo);
+        const payload = { ...form, list_price: Number(form.list_price), stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
         } else {
@@ -101,9 +104,20 @@ export default function AdminProducts() {
         e.preventDefault();
         const qty = parseInt(stockQty);
         if (!qty || qty <= 0) return;
+
         const change = stockType === 'in' ? qty : stockType === 'out' ? -qty : qty;
         await supabase.from('stock_movements').insert({ product_id: stockTarget.id, type: stockType, quantity: stockType === 'out' ? -qty : qty, note: stockNote });
-        await supabase.from('products').update({ stock_quantity: Math.max(0, Number(stockTarget.stock_quantity) + change) }).eq('id', stockTarget.id);
+
+        const fieldToUpdate = stockLocation === 'merkez' ? 'stock_merkez' : 'stock_depo';
+        const currentValue = Number(stockTarget[fieldToUpdate] || 0);
+        const newValue = Math.max(0, currentValue + change);
+
+        const updatePayload = { [fieldToUpdate]: newValue };
+        // also update total stock_quantity just in case
+        const otherValue = Number(stockTarget[stockLocation === 'merkez' ? 'stock_depo' : 'stock_merkez'] || 0);
+        updatePayload.stock_quantity = newValue + otherValue;
+
+        await supabase.from('products').update(updatePayload).eq('id', stockTarget.id);
         setShowStockModal(false);
         fetchProducts();
     };
@@ -111,7 +125,7 @@ export default function AdminProducts() {
     const filtered = products.filter(p =>
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.code.toLowerCase().includes(search.toLowerCase()) ||
-        p.product_number?.toLowerCase().includes(search.toLowerCase()) ||
+        p.oem_no?.toLowerCase().includes(search.toLowerCase()) ||
         p.brand?.toLowerCase().includes(search.toLowerCase())
     );
 
@@ -129,7 +143,7 @@ export default function AdminProducts() {
 
             <div style={{ marginBottom: 20 }}>
                 <div className="search-bar">
-                    <span className="search-icon">🔍</span>
+                    <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
                     <input placeholder="Ürün adı, kod, marka..." value={search} onChange={e => setSearch(e.target.value)} id="product-search" />
                 </div>
             </div>
@@ -141,8 +155,8 @@ export default function AdminProducts() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Görsel</th><th>Stok Kodu</th><th>Ürün Numarası</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
-                                <th>Liste Fiyatı</th><th>Stok</th><th>Durum</th><th>İşlemler</th>
+                                <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
+                                <th>Liste Fiyatı</th><th style={{ textAlign: 'center' }}>Merkez</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -152,25 +166,22 @@ export default function AdminProducts() {
                                         {p.image_url ? (
                                             <img src={p.image_url} alt="img" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
                                         ) : (
-                                            <div style={{ width: 36, height: 36, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>📦</div>
+                                            <div style={{ width: 36, height: 36, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><CubeIcon style={{ width: 20, height: 20 }} /></div>
                                         )}
                                     </td>
                                     <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{p.code}</td>
-                                    <td style={{ fontFamily: 'monospace', color: 'var(--info)', fontWeight: 600 }}>{p.product_number || '-'}</td>
+                                    <td style={{ fontFamily: 'monospace', color: 'var(--info)', fontWeight: 600 }}>{p.oem_no || '-'}</td>
                                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                                     <td>{p.brand || '-'}</td>
                                     <td>{p.category || '-'}</td>
-                                    <td>₺{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                    <td>
-                                        <span style={{ color: p.stock_quantity <= 5 ? 'var(--danger)' : p.stock_quantity <= 20 ? 'var(--warning)' : 'var(--success)', fontWeight: 600 }}>
-                                            {p.stock_quantity} {p.unit}
-                                        </span>
-                                    </td>
+                                    <td>{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}</td>
+                                    <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--success)' }}>{p.stock_merkez || 0}</td>
+                                    <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--primary)' }}>{p.stock_depo || 0}</td>
                                     <td><span className={`badge ${p.is_active ? 'badge-approved' : 'badge-rejected'}`}>{p.is_active ? 'Aktif' : 'Pasif'}</span></td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn btn-ghost btn-sm" onClick={() => openStock(p)} id={`stock-btn-${p.id}`}>📦 Stok</button>
-                                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} id={`edit-btn-${p.id}`}>✏️ Düzenle</button>
+                                            <button className="btn btn-ghost btn-sm" onClick={() => openStock(p)} id={`stock-btn-${p.id}`}><ArchiveBoxIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Stok</button>
+                                            <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} id={`edit-btn-${p.id}`}><PencilSquareIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Düzenle</button>
                                             <button className={`btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleActive(p)} id={`toggle-btn-${p.id}`}>
                                                 {p.is_active ? 'Pasif' : 'Aktif'}
                                             </button>
@@ -194,17 +205,25 @@ export default function AdminProducts() {
                         <form onSubmit={saveProduct}>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
                                 <div className="form-group"><label className="form-label">Stok Kodu *</label><input className="form-input" value={form.code} onChange={up('code')} required id="prod-code" /></div>
-                                <div className="form-group"><label className="form-label">Ürün Numarası</label><input className="form-input" value={form.product_number} onChange={up('product_number')} id="prod-number" placeholder="Örn: 12345-ABC" /></div>
+                                <div className="form-group"><label className="form-label">OEM No</label><input className="form-input" value={form.oem_no} onChange={up('oem_no')} id="prod-oem" placeholder="Örn: 12345-ABC" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Adı *</label><input className="form-input" value={form.name} onChange={up('name')} required id="prod-name" /></div>
                                 <div className="form-group"><label className="form-label">Marka</label><input className="form-input" value={form.brand} onChange={up('brand')} id="prod-brand" /></div>
+                                <div className="form-group"><label className="form-label">Araç Markası</label><input className="form-input" value={form.car_brand} onChange={up('car_brand')} id="prod-car-brand" placeholder="Örn: RENAULT" /></div>
+                                <div className="form-group"><label className="form-label">Araç Modeli</label><input className="form-input" value={form.car_model} onChange={up('car_model')} id="prod-car-model" placeholder="Örn: CLIO 5" /></div>
                                 <div className="form-group"><label className="form-label">Kategori</label><input className="form-input" value={form.category} onChange={up('category')} id="prod-category" /></div>
-                                <div className="form-group"><label className="form-label">Liste Fiyatı (₺) *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
+                                <div className="form-group"><label className="form-label">Para Birimi</label>
+                                    <select className="form-select" value={form.currency} onChange={up('currency')} id="prod-currency">
+                                        <option value="TRY">TRY (₺)</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option>
+                                    </select>
+                                </div>
+                                <div className="form-group"><label className="form-label">Liste Fiyatı *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
                                 <div className="form-group"><label className="form-label">Birim</label>
                                     <select className="form-select" value={form.unit} onChange={up('unit')} id="prod-unit">
                                         <option value="adet">Adet</option><option value="kg">Kg</option><option value="litre">Litre</option><option value="metre">Metre</option>
                                     </select>
                                 </div>
-                                <div className="form-group"><label className="form-label">Başlangıç Stok</label><input className="form-input" type="number" min="0" value={form.stock_quantity} onChange={up('stock_quantity')} id="prod-stock" /></div>
+                                <div className="form-group"><label className="form-label">Merkez Stok</label><input className="form-input" type="number" min="0" value={form.stock_merkez} onChange={up('stock_merkez')} id="prod-merkez" /></div>
+                                <div className="form-group"><label className="form-label">Depo Stok</label><input className="form-input" type="number" min="0" value={form.stock_depo} onChange={up('stock_depo')} id="prod-depo" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}>
                                     <label className="form-label">Ürün Görseli</label>
                                     <div
@@ -232,7 +251,7 @@ export default function AdminProducts() {
                                             </div>
                                         ) : (
                                             <>
-                                                <span style={{ fontSize: 32 }}>📸</span>
+                                                <CameraIcon style={{ width: 32, height: 32, color: 'var(--text-muted)' }} />
                                                 <div style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
                                                     Resmi buraya sürükleyin veya <span style={{ color: 'var(--primary)', fontWeight: 500 }}>tıklayıp seçin</span>
                                                 </div>
@@ -266,13 +285,22 @@ export default function AdminProducts() {
                             <strong style={{ color: 'var(--text-primary)' }}>{stockTarget.name}</strong> — Mevcut stok: <strong style={{ color: 'var(--primary)' }}>{stockTarget.stock_quantity}</strong>
                         </p>
                         <form onSubmit={saveStock}>
-                            <div className="form-group">
-                                <label className="form-label">İşlem Türü</label>
-                                <select className="form-select" value={stockType} onChange={e => setStockType(e.target.value)} id="stock-type">
-                                    <option value="in">Stok Girişi (+)</option>
-                                    <option value="out">Stok Çıkışı (-)</option>
-                                    <option value="adjustment">Sayım Düzeltmesi</option>
-                                </select>
+                            <div className="form-group" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                <div>
+                                    <label className="form-label">Konum</label>
+                                    <select className="form-select" value={stockLocation} onChange={e => setStockLocation(e.target.value)} id="stock-location">
+                                        <option value="merkez">Merkez Depo</option>
+                                        <option value="depo">Şube Depo</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="form-label">İşlem Türü</label>
+                                    <select className="form-select" value={stockType} onChange={e => setStockType(e.target.value)} id="stock-type">
+                                        <option value="in">Stok Girişi (+)</option>
+                                        <option value="out">Stok Çıkışı (-)</option>
+                                        <option value="adjustment">Sayım Düzeltmesi</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="form-group">
                                 <label className="form-label">Miktar *</label>

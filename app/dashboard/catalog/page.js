@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ShoppingCartIcon, PhotoIcon, CubeIcon } from '@heroicons/react/24/outline';
 
 const STOCK_STATUS = {
     'in_stock': { label: 'Var', color: '#16a34a', bg: '#dcfce7', dot: '🟢' },
@@ -20,6 +21,7 @@ export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [discountPercent, setDiscount] = useState(0);
+    const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const [cartQtys, setCartQtys] = useState({}); // { productId: qty }
 
@@ -56,6 +58,15 @@ export default function DealerCatalog() {
         setProducts(list);
         setBrands([...new Set(list.map(p => p.brand).filter(Boolean))]);
         setCarBrands([...new Set(list.map(p => p.car_brand).filter(Boolean))]);
+
+        try {
+            const res = await fetch('/api/rates');
+            const data = await res.json();
+            if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
+        } catch (e) {
+            console.error('Rates fetch error:', e);
+        }
+
         setLoading(false);
     }, []);
 
@@ -69,7 +80,16 @@ export default function DealerCatalog() {
         setFilterCarModel('');
     }, [filterCarBrand, products]);
 
-    const getPrice = (lp) => lp * (1 - discountPercent / 100);
+    const getBaseTryPrice = (p) => {
+        let price = Number(p.list_price) || 0;
+        if (p.currency === 'USD') price = price * rates.USD;
+        else if (p.currency === 'EUR') price = price * rates.EUR;
+        return price;
+    };
+
+    const getDiscountedPrice = (p) => {
+        return getBaseTryPrice(p) * (1 - discountPercent / 100);
+    };
 
     const filtered = products.filter(p => {
         if (filterBrand && p.brand !== filterBrand) return false;
@@ -112,8 +132,8 @@ export default function DealerCatalog() {
                     <h1 className="page-title">Ürün Arama</h1>
                     <p className="page-subtitle">{filtered.length} ürün bulundu • %{discountPercent} iskonto</p>
                 </div>
-                <a href="/dashboard/cart" className="btn btn-primary" id="go-cart">
-                    🛒 Sepet {totalCartItems > 0 && <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 999, padding: '1px 8px', fontSize: 12 }}>{totalCartItems}</span>}
+                <a href="/dashboard/cart" className="btn btn-primary" id="go-cart" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <ShoppingCartIcon style={{ width: 18, height: 18 }} /> Sepet {totalCartItems > 0 && <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 999, padding: '1px 8px', fontSize: 12 }}>{totalCartItems}</span>}
                 </a>
             </div>
 
@@ -192,24 +212,20 @@ export default function DealerCatalog() {
             {loading ? (
                 <div className="loading-center"><div className="loading-spinner" /></div>
             ) : filtered.length === 0 ? (
-                <div className="card"><div className="empty-state"><div className="empty-state-icon">📦</div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
+                <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
             ) : (
                 <div className="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                <th>Stok</th>
                                 <th>Marka</th>
                                 <th>Stok Kodu</th>
-                                <th>Ürün Num.</th>
                                 <th>OEM No</th>
-                                <th>Araç</th>
                                 <th>Ürün Adı</th>
                                 <th>Birim</th>
-                                <th>Merkez</th>
-                                <th>Depo</th>
-                                <th style={{ textAlign: 'right' }}>Liste Fiyatı</th>
-                                {discountPercent > 0 && <th style={{ textAlign: 'right' }}>Satış Fiyatı</th>}
+                                <th style={{ textAlign: 'center' }}>Merkez</th>
+                                <th style={{ textAlign: 'center' }}>Depo</th>
+                                <th style={{ textAlign: 'right' }}>Fiyat</th>
                                 <th style={{ width: 120 }}>Miktar</th>
                                 <th></th>
                             </tr>
@@ -219,46 +235,56 @@ export default function DealerCatalog() {
                                 const stKey = p.stock_status && STOCK_STATUS[p.stock_status] ? p.stock_status : getStockStatus(p.stock_quantity);
                                 const st = STOCK_STATUS[stKey];
                                 const qty = cartQtys[p.id] || 0;
+                                const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                                 return (
                                     <tr key={p.id}>
-                                        <td>
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, fontWeight: 600, color: st.color, background: st.bg, padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap' }}>
-                                                {st.dot} {st.label}
-                                            </span>
-                                        </td>
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--info)', fontWeight: 600 }}>{p.product_number || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
-                                        <td style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                                            {[p.car_brand, p.car_model].filter(Boolean).join(' ') || '-'}
-                                        </td>
                                         <td style={{ fontWeight: 500, maxWidth: 220 }}>{p.name}</td>
                                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                                 {p.unit || 'AD'}
                                                 {p.image_url && (
-                                                    <div className="product-image-hover" style={{ position: 'relative', cursor: 'grab' }}>
-                                                        <span style={{ fontSize: 16 }}>📷</span>
-                                                        <img src={p.image_url} alt={p.name} className="hover-img" style={{
-                                                            position: 'absolute', top: '100%', left: '50%', transform: 'translateX(-50%)',
-                                                            width: 150, height: 150, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)',
-                                                            background: 'white', zIndex: 50, display: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)'
-                                                        }} />
+                                                    <div className="tooltip-container" style={{ position: 'relative', cursor: 'help' }}>
+                                                        <PhotoIcon style={{ width: 18, height: 18, color: 'var(--primary)' }} />
+                                                        <div className="tooltip-content img-tooltip">
+                                                            <img src={p.image_url} alt={p.name} style={{ width: 250, height: 250, objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
                                         </td>
-                                        <td style={{ fontWeight: 600, color: 'var(--success)', textAlign: 'center' }}>{p.stock_merkez || 0}</td>
-                                        <td style={{ fontWeight: 600, color: 'var(--primary)', textAlign: 'center' }}>{p.stock_depo || 0}</td>
-                                        <td style={{ textAlign: 'right', color: discountPercent > 0 ? 'var(--text-muted)' : 'var(--primary)', textDecoration: discountPercent > 0 ? 'line-through' : 'none', fontFamily: 'monospace' }}>
-                                            ₺{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_merkez > 0 ? '#16a34a' : '#dc2626', margin: '0 auto', boxShadow: '0 0 8px rgba(0,0,0,0.2)' }} title={p.stock_merkez > 0 ? 'Merkez: Var' : 'Merkez: Yok'} />
                                         </td>
-                                        {discountPercent > 0 && (
-                                            <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--primary)', fontFamily: 'monospace' }}>
-                                                ₺{getPrice(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                            </td>
-                                        )}
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_depo > 0 ? '#16a34a' : '#dc2626', margin: '0 auto', boxShadow: '0 0 8px rgba(0,0,0,0.2)' }} title={p.stock_depo > 0 ? 'Depo: Var' : 'Depo: Yok'} />
+                                        </td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                            <div className="tooltip-container" style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}>
+                                                ₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                                <div className="tooltip-content price-tooltip">
+                                                    <div style={{ textAlign: 'left', minWidth: 220, padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Liste Fiyatı:</span>
+                                                            <span style={{ fontSize: 12 }}>
+                                                                {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                                                {p.currency && p.currency !== 'TRY' && <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>(₺{getBaseTryPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})</span>}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>İskontolu ({discountPercent}%):</span>
+                                                            <span style={{ fontWeight: 600, fontSize: 13 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>KDV'li Net:</span>
+                                                            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 13 }}>₺{(getDiscountedPrice(p) * 1.2).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td>
                                             <input
                                                 type="number" min="0"
@@ -272,10 +298,11 @@ export default function DealerCatalog() {
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => { if ((cartQtys[p.id] || 0) === 0) setQty(p.id, 1); addToCart(p); }}
-                                                disabled={stKey === 'out_of_stock'}
+                                                disabled={isOutOfStock}
+                                                style={{ opacity: isOutOfStock ? 0.4 : 1 }}
                                                 id={`add-cart-${p.id}`}
                                             >
-                                                {stKey === 'out_of_stock' ? 'Stok Yok' : '+ Ekle'}
+                                                {isOutOfStock ? 'Stok Yok' : '+ Ekle'}
                                             </button>
                                         </td>
                                     </tr>

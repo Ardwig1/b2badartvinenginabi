@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import styles from './auth.module.css';
@@ -9,8 +9,19 @@ export default function LoginPage() {
     const [dealerCode, setDealerCode] = useState('');
     const [userCode, setUserCode] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        const savedDealer = localStorage.getItem('b2b_dealer_code');
+        const savedUser = localStorage.getItem('b2b_user_code');
+        if (savedDealer && savedUser) {
+            setDealerCode(savedDealer);
+            setUserCode(savedUser);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -46,6 +57,14 @@ export default function LoginPage() {
                 return;
             }
 
+            if (rememberMe) {
+                localStorage.setItem('b2b_dealer_code', dealerCode);
+                localStorage.setItem('b2b_user_code', userCode);
+            } else {
+                localStorage.removeItem('b2b_dealer_code');
+                localStorage.removeItem('b2b_user_code');
+            }
+
             // Check if admin
             const { data: { user } } = await supabase.auth.getUser();
             const { data: profile } = await supabase
@@ -65,9 +84,8 @@ export default function LoginPage() {
     return (
         <div className={styles.authBg}>
             <div className={styles.authCard}>
-                <div className={styles.authLogo}>
-                    <span className={styles.logoIcon}>⚙️</span>
-                    <h1 className={styles.logoText}>B2B Parça</h1>
+                <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <img src="/omi-logo.png" alt="OMI GROUP'S Logo" style={{ width: '180px', height: 'auto', objectFit: 'contain' }} />
                 </div>
                 <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
                 <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
@@ -116,6 +134,17 @@ export default function LoginPage() {
                             required
                             id="login-password"
                         />
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                        <input
+                            type="checkbox"
+                            id="remember-me"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                        <label htmlFor="remember-me" style={{ cursor: 'pointer', userSelect: 'none' }}>Beni Hatırla</label>
                     </div>
 
                     <button

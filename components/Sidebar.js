@@ -3,29 +3,37 @@ import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/ThemeProvider';
+import {
+    ChartBarIcon, BuildingOfficeIcon, CubeIcon, CurrencyDollarIcon, ShoppingCartIcon,
+    ClipboardDocumentListIcon, DocumentTextIcon, HomeIcon, MagnifyingGlassIcon,
+    ChatBubbleLeftEllipsisIcon, CreditCardIcon, FolderOpenIcon, BuildingLibraryIcon,
+    EnvelopeIcon, PhoneIcon, SunIcon, MoonIcon, ArrowRightOnRectangleIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon,
+    Cog6ToothIcon
+} from '@heroicons/react/24/outline';
 import styles from './Sidebar.module.css';
 
 const adminNav = [
-    { label: 'Dashboard', href: '/admin', icon: '📊' },
-    { label: 'Firmalar', href: '/admin/companies', icon: '🏢' },
-    { label: 'Ürünler & Stok', href: '/admin/products', icon: '📦' },
-    { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: '🏷️' },
-    { label: 'Siparişler', href: '/admin/orders', icon: '🛒' },
-    { label: 'Teklifler', href: '/admin/quotes', icon: '📋' },
-    { label: 'Faturalar', href: '/admin/invoices', icon: '🧾' },
+    { label: 'Dashboard', href: '/admin', icon: <ChartBarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Firmalar', href: '/admin/companies', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Teklifler', href: '/admin/quotes', icon: <ClipboardDocumentListIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Faturalar', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 const dealerNav = [
-    { label: 'Ana Sayfa', href: '/dashboard', icon: '🏠' },
-    { label: 'Ürün Arama', href: '/dashboard/catalog', icon: '🔍' },
-    { label: 'Sepetim', href: '/dashboard/cart', icon: '🛒' },
-    { label: 'Siparişlerim', href: '/dashboard/orders', icon: '📋' },
-    { label: 'Tekliflerim', href: '/dashboard/quotes', icon: '💬' },
-    { label: 'Faturalarım / Ödemelerim', href: '/dashboard/invoices', icon: '🧾' },
-    { label: 'Online Ödeme', href: '/dashboard/payment', icon: '💳' },
-    { label: 'Dosyalar', href: '/dashboard/files', icon: '📁' },
-    { label: 'Banka Bilgileri', href: '/dashboard/bank-accounts', icon: '🏦' },
-    { label: 'İletişim', href: '/dashboard/contact', icon: '📞' },
+    { label: 'Ana Sayfa', href: '/dashboard', icon: <HomeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Ürün Arama', href: '/dashboard/catalog', icon: <MagnifyingGlassIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Sepetim', href: '/dashboard/cart', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Siparişlerim', href: '/dashboard/orders', icon: <ClipboardDocumentListIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Tekliflerim', href: '/dashboard/quotes', icon: <ChatBubbleLeftEllipsisIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Faturalarım / Ödemelerim', href: '/dashboard/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Online Ödeme', href: '/dashboard/payment', icon: <CreditCardIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Dosyalar', href: '/dashboard/files', icon: <FolderOpenIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Banka Bilgileri', href: '/dashboard/bank-accounts', icon: <BuildingLibraryIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Öneri ve Şikayet', href: '/dashboard/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'İletişim', href: '/dashboard/contact', icon: <PhoneIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '' }) {
@@ -46,15 +54,18 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
         <aside className={`${styles.sidebar} ${!isOpen ? styles.collapsed : ''}`}>
             {/* Logo */}
             <div className={styles.logo}>
-                <span className={styles.logoIcon}>⚙️</span>
+                <div className={styles.logoImageContainer}>
+                    <img src="/omi-logo-sidebar.png" alt="B2B Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                    <span className={styles.logoIcon} style={{ display: 'none' }}><Cog6ToothIcon style={{ width: 24, height: 24 }} /></span>
+                </div>
                 {isOpen && (
                     <div>
-                        <div className={styles.logoText}>B2B Parça</div>
-                        <div className={styles.logoSub}>{isAdmin ? 'Admin Paneli' : 'Bayi Paneli'}</div>
+                        <div className={styles.logoText}>OMİ GROUP'S</div>
+                        <div className={styles.logoSub}>{isAdmin ? 'Admin Paneli' : 'B2B Bayi Paneli'}</div>
                     </div>
                 )}
                 <button className={styles.collapseBtn} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Menüyü Daralt" : "Menüyü Genişlet"}>
-                    {isOpen ? '◀' : '▶'}
+                    {isOpen ? <ChevronDoubleLeftIcon style={{ width: 14, height: 14 }} /> : <ChevronDoubleRightIcon style={{ width: 14, height: 14 }} />}
                 </button>
             </div>
 
@@ -81,7 +92,7 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
             <div className={styles.userSection}>
                 {mounted && (
                     <button className={styles.themeToggle} onClick={toggleTheme} title="Görünümü Değiştir">
-                        {theme === 'dark' ? '☀️ Aydınlık Mod' : '🌙 Karanlık Mod'}
+                        {theme === 'dark' ? <><SunIcon style={{ width: 16, height: 16, marginRight: 6 }} /> Aydınlık Mod</> : <><MoonIcon style={{ width: 16, height: 16, marginRight: 6 }} /> Karanlık Mod</>}
                     </button>
                 )}
                 <div className={styles.userInfo}>
@@ -96,7 +107,8 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                     )}
                 </div>
                 <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
-                    🚪 {isOpen && 'Çıkış'}
+                    <ArrowRightOnRectangleIcon style={{ width: 20, height: 20, marginRight: isOpen ? 6 : 0, transition: 'all 0.2s' }} />
+                    {isOpen && 'Çıkış'}
                 </button>
             </div>
         </aside>

@@ -19,17 +19,19 @@ export async function POST(request) {
         const { data, error } = await adminSupabase
             .from('companies')
             .select('email')
-            .eq('dealer_code', dealerCode.trim())
-            .eq('user_code', userCode.trim())
+            .ilike('dealer_code', dealerCode.trim())
+            .ilike('user_code', userCode.trim())
             .single();
 
         if (error || !data) {
+            console.error("Supabase Error / No Data:", error);
             return NextResponse.json({ error: 'Kullanıcı bulunamadı. Girdiğiniz bilgileri kontrol edin.' }, { status: 404 });
         }
 
         return NextResponse.json({ email: data.email });
 
     } catch (err) {
+        console.error("API Error in /api/auth/lookup:", err);
         return NextResponse.json({ error: 'Sunucu hatası: ' + err.message }, { status: 500 });
     }
 }

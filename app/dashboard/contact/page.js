@@ -15,9 +15,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Genel Merkez & Depo</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                Yedek Parça Organize Sanayi Bölgesi<br />
-                                1. Cadde, No: 15<br />
-                                Başakşehir / İstanbul
+                                Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
+                                Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL
                             </div>
                         </div>
                     </div>
@@ -27,8 +26,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Telefon Numaralarımız</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                Müşteri Hizmetleri: 0850 000 00 00<br />
-                                Satış Destek: 0212 000 00 01
+                                0532 597 0 664<br />
+                                0532 597 0 OMİ
                             </div>
                         </div>
                     </div>
@@ -38,8 +37,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>E-Posta Adreslerimiz</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                b2b@b2byedekparca.com<br />
-                                destek@b2byedekparca.com
+                                omigroups@hotmail.com<br />
+                                b2b@omigroups.com
                             </div>
                         </div>
                     </div>

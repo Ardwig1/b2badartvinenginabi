@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { CreditCardIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 export default function PaymentPage() {
     const [amount, setAmount] = useState('');
@@ -32,8 +33,8 @@ export default function PaymentPage() {
                             scrolling="no"
                             style={{ width: '100%', height: '100%' }}
                         />
-                        <button className="btn btn-secondary" style={{ width: '100%', marginTop: 20, justifyContent: 'center' }} onClick={() => setToken(null)}>
-                            İptal Et ve Geri Dön
+                        <button className="btn btn-secondary" style={{ width: '100%', marginTop: 20, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => setToken(null)}>
+                            <ArrowLeftIcon style={{ width: 14, height: 14 }} /> İptal Et ve Geri Dön
                         </button>
                     </div>
                 ) : (
@@ -53,15 +54,21 @@ export default function PaymentPage() {
                                     required
                                 />
                             </div>
-                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={loading}>
-                                {loading ? 'İşleminiz Hazırlanıyor...' : '💳 Güvenli Ödeme Yap (PayTR)'}
+                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} disabled={loading}>
+                                {loading ? 'İşleminiz Hazırlanıyor...' : <><CreditCardIcon style={{ width: 18, height: 18 }} /> Güvenli Ödeme Yap (PayTR)</>}
                             </button>
                         </form>
 
-                        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: 'var(--text-muted)' }}>
-                            <p>Ödemeleriniz <strong style={{ color: '#1e293b' }}>PayTR</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 10 }}>
+                        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                            <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>PayTR</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+                                <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</a>
+                                <span style={{ color: 'var(--border)' }}>|</span>
+                                <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İptal ve İade Koşulları</a>
+                                <span style={{ color: 'var(--border)' }}>|</span>
+                                <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik Politikası</a>
                             </div>
+                            <p style={{ marginTop: 16, fontSize: 12 }}>Ödeme yaparak yukarıdaki sözleşme ve koşulları kabul etmiş sayılırsınız.</p>
                         </div>
                     </>
                 )}

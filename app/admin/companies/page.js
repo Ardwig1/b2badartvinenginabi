@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { BuildingOfficeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
 const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
@@ -126,7 +127,7 @@ export default function AdminCompanies() {
                     ))}
                 </div>
                 <div className="search-bar">
-                    <span className="search-icon">🔍</span>
+                    <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
                     <input placeholder="Firma adı, vergi no, e-posta..." value={search} onChange={e => setSearch(e.target.value)} id="companies-search" />
                 </div>
             </div>
@@ -134,7 +135,7 @@ export default function AdminCompanies() {
             {loading ? (
                 <div className="loading-center"><div className="loading-spinner" /></div>
             ) : filtered.length === 0 ? (
-                <div className="card"><div className="empty-state"><div className="empty-state-icon">🏢</div><div className="empty-state-title">Firma bulunamadı</div></div></div>
+                <div className="card"><div className="empty-state"><div className="empty-state-icon"><BuildingOfficeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Firma bulunamadı</div></div></div>
             ) : (
                 <div className="table-wrapper">
                     <table>

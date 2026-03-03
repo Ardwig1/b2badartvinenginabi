@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { BuildingOfficeIcon, ClockIcon, CubeIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 
 export default async function AdminDashboard() {
     const supabase = await createClient();
@@ -21,10 +22,10 @@ export default async function AdminDashboard() {
     ]);
 
     const stats = [
-        { label: 'Toplam Firma', value: totalCompanies ?? 0, icon: '🏢', color: '#2563eb' },
-        { label: 'Onay Bekleyen', value: pendingCompanies ?? 0, icon: '⏳', color: '#d97706' },
-        { label: 'Aktif Ürün', value: totalProducts ?? 0, icon: '📦', color: '#16a34a' },
-        { label: 'Toplam Sipariş', value: totalOrders ?? 0, icon: '🛒', color: '#7c3aed' },
+        { label: 'Toplam Firma', value: totalCompanies ?? 0, icon: <BuildingOfficeIcon style={{ width: 24, height: 24 }} />, color: '#2563eb' },
+        { label: 'Onay Bekleyen', value: pendingCompanies ?? 0, icon: <ClockIcon style={{ width: 24, height: 24 }} />, color: '#d97706' },
+        { label: 'Aktif Ürün', value: totalProducts ?? 0, icon: <CubeIcon style={{ width: 24, height: 24 }} />, color: '#16a34a' },
+        { label: 'Toplam Sipariş', value: totalOrders ?? 0, icon: <ShoppingCartIcon style={{ width: 24, height: 24 }} />, color: '#7c3aed' },
     ];
 
     const statusMap = {
@@ -83,7 +84,7 @@ export default async function AdminDashboard() {
                     </div>
                 ) : (
                     <div className="empty-state">
-                        <div className="empty-state-icon">🛒</div>
+                        <div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div>
                         <div className="empty-state-title">Henüz sipariş yok</div>
                     </div>
                 )}

@@ -784,9 +784,38 @@ tbody tr:last-child td {
   }
 }
 
-/* Hover Image Support for Catalog */
-.product-image-hover:hover .hover-img {
-  display: block !important;
+/* ===== CUSTOM TOOLTIPS ===== */
+.tooltip-container .tooltip-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 1000;
+  box-shadow: var(--shadow-xl);
+  border-radius: var(--radius);
+  transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
+  pointer-events: none;
+}
+
+.tooltip-container:hover .tooltip-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+.img-tooltip {
+  left: 100%;
+  margin-left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+}
+
+.price-tooltip {
+  right: 100%;
+  margin-right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 /* Responsive */

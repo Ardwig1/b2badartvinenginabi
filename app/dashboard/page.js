@@ -1,4 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
+import {
+    UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
+    ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
+} from '@heroicons/react/24/outline';
 
 export default async function DealerDashboard() {
     const supabase = await createClient();
@@ -14,11 +18,14 @@ export default async function DealerDashboard() {
 
     let rates = { USD: null, EUR: null };
     try {
-        const resUsd = await fetch('https://api.frankfurter.app/latest?from=USD&to=TRY', { cache: 'no-store' });
-        if (resUsd.ok) { const d = await resUsd.json(); rates.USD = d.rates.TRY.toFixed(2); }
-        const resEur = await fetch('https://api.frankfurter.app/latest?from=EUR&to=TRY', { cache: 'no-store' });
-        if (resEur.ok) { const d = await resEur.json(); rates.EUR = d.rates.TRY.toFixed(2); }
-    } catch (e) { console.error("Kur yüklenemedi", e); }
+        const hostname = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+        const res = await fetch(`${hostname}/api/rates`, { cache: 'no-store' });
+        if (res.ok) {
+            const d = await res.json();
+            rates.USD = d.USD;
+            rates.EUR = d.EUR;
+        }
+    } catch (e) { console.error("TCMB Kur yüklenemedi", e); }
 
     const [
         { count: pendingOrders },
@@ -48,8 +55,8 @@ export default async function DealerDashboard() {
                 <div>
                     <h1 className="page-title">Hoş Geldiniz, {company?.name} 👋</h1>
                     <div className="page-subtitle" style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 16 }}>👤</span> Yetkili: {profile?.full_name || 'Standart Kullanıcı'}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ fontSize: 16 }}>🎧</span> M. Temsilcisi: B2B Destek Ekibi</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserIcon style={{ width: 16, height: 16 }} /> Yetkili: {profile?.full_name || 'Standart Kullanıcı'}</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> M. Temsilcisi: B2B Destek Ekibi</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
@@ -63,7 +70,7 @@ export default async function DealerDashboard() {
                             <span>{rates.EUR ? `₺${rates.EUR}` : '-'}</span>
                         </div>
                     </div>
-                    <a href="/dashboard/catalog" className="btn btn-primary" id="go-catalog">📦 Yeni Sipariş</a>
+                    <a href="/dashboard/catalog" className="btn btn-primary" id="go-catalog" style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ShoppingCartIcon style={{ width: 16, height: 16 }} /> Yeni Sipariş</a>
                 </div>
             </div>
 
@@ -101,7 +108,7 @@ export default async function DealerDashboard() {
 
             <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>💰</div>
+                    <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}><CurrencyDollarIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Güncel Bakiye</div>
                     <div className="stat-value" style={{ color: company?.current_balance < 0 ? 'var(--danger)' : 'var(--success)' }}>
                         ₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
@@ -109,17 +116,17 @@ export default async function DealerDashboard() {
                     </div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}>📉</div>
+                    <div className="stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}><PresentationChartLineIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Açık Faturalar (Borç)</div>
                     <div className="stat-value">₺{totalUnpaidAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}>🛡️</div>
+                    <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}><ShieldCheckIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Risk Limiti</div>
                     <div className="stat-value">₺{Number(company?.credit_limit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                 </div>
                 <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>🏷️</div>
+                    <div className="stat-icon" style={{ background: '#dbeafe', color: '#2563eb' }}><TagIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Fiyat Grubunuz</div>
                     <div className="stat-value" style={{ fontSize: 20 }}>{pg?.name || '-'}</div>
                     {pg && <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%{pg.discount_percent} iskonto</div>}
@@ -145,7 +152,7 @@ export default async function DealerDashboard() {
                         ))
                     ) : (
                         <div className="empty-state" style={{ padding: '30px 0' }}>
-                            <div className="empty-state-icon">🛒</div>
+                            <div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div>
                             <div className="empty-state-title">Henüz sipariş yok</div>
                         </div>
                     )}
@@ -169,7 +176,7 @@ export default async function DealerDashboard() {
                         ))
                     ) : (
                         <div className="empty-state" style={{ padding: '30px 0' }}>
-                            <div className="empty-state-icon">💬</div>
+                            <div className="empty-state-icon"><ChatBubbleLeftEllipsisIcon style={{ width: 32, height: 32 }} /></div>
                             <div className="empty-state-title">Teklif bulunamadı</div>
                         </div>
                     )}

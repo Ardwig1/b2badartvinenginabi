@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ChatBubbleLeftEllipsisIcon, DocumentTextIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 const statusLabels = { pending: 'Değerlendiriliyor', sent: 'Teklif Geldi', accepted: 'Kabul Edildi', rejected: 'Reddedildi' };
 
@@ -74,7 +75,7 @@ export default function DealerQuotes() {
                         <div className="loading-center"><div className="loading-spinner" /></div>
                     ) : quotes.length === 0 ? (
                         <div style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 16 }}><ChatBubbleLeftEllipsisIcon style={{ width: 48, height: 48 }} /></div>
                             <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Teklif talebi yok</div>
                             <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={() => setShowModal(true)} id="new-quote-empty">Teklif Talep Et</button>
                         </div>
@@ -104,7 +105,7 @@ export default function DealerQuotes() {
                         <div style={{ marginBottom: 4 }}>
                             <span className={`badge badge-${selected.status}`}>{statusLabels[selected.status]}</span>
                         </div>
-                        {selected.note && <div style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '10px 0' }}>📝 {selected.note}</div>}
+                        {selected.note && <div style={{ color: 'var(--text-secondary)', fontSize: 13, margin: '10px 0', display: 'flex', alignItems: 'center', gap: 4 }}><DocumentTextIcon style={{ width: 14, height: 14 }} /> {selected.note}</div>}
                         <hr className="divider" />
                         {selected.items?.map(item => (
                             <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
@@ -124,13 +125,13 @@ export default function DealerQuotes() {
                                     <span>₺{Number(selected.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 {selected.admin_note && (
-                                    <div style={{ padding: 10, background: 'rgba(37,99,235,0.08)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>
-                                        💬 Admin: {selected.admin_note}
+                                    <div style={{ padding: 10, background: 'rgba(37,99,235,0.08)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        <ChatBubbleLeftEllipsisIcon style={{ width: 14, height: 14 }} /> Admin: {selected.admin_note}
                                     </div>
                                 )}
                                 {selected.status === 'sent' && (
                                     <button className="btn btn-success" style={{ width: '100%', justifyContent: 'center' }} onClick={() => acceptQuote(selected.id)} id="accept-quote-btn">
-                                        ✓ Teklifi Kabul Et
+                                        <CheckIcon style={{ width: 16, height: 16, marginRight: 6 }} /> Teklifi Kabul Et
                                     </button>
                                 )}
                             </>

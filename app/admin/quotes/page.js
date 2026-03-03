@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { DocumentTextIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
 const statusLabels = { pending: 'Bekliyor', sent: 'Gönderildi', accepted: 'Kabul Edildi', rejected: 'Reddedildi' };
 
@@ -88,7 +89,7 @@ export default function AdminQuotes() {
                         </div>
                         <div style={{ marginBottom: 12, fontSize: 14 }}>
                             <strong style={{ color: 'var(--primary)' }}>{selected.company?.name}</strong>
-                            {selected.note && <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 13 }}>📝 {selected.note}</div>}
+                            {selected.note && <div style={{ color: 'var(--text-secondary)', marginTop: 4, fontSize: 13, display: 'flex', alignItems: 'center', gap: 4 }}><DocumentTextIcon style={{ width: 14, height: 14 }} /> {selected.note}</div>}
                         </div>
                         {pricingItems.map(item => (
                             <div key={item.id} style={{ padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
@@ -107,7 +108,7 @@ export default function AdminQuotes() {
                             <textarea className="form-textarea" style={{ minHeight: 60 }} value={adminNote} onChange={e => setAdminNote(e.target.value)} id="admin-note" />
                         </div>
                         <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={sendQuote} disabled={saving} id="send-quote-btn">
-                            {saving ? 'Gönderiliyor...' : '📤 Teklifi Gönder'}
+                            {saving ? 'Gönderiliyor...' : <><PaperAirplaneIcon style={{ width: 16, height: 16, marginRight: 6 }} /> Teklifi Gönder</>}
                         </button>
                     </div>
                 )}

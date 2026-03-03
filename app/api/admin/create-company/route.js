@@ -62,12 +62,14 @@ export async function POST(request) {
 
     const adminSupabase = await getAdminClient();
 
+    // 1. Create Auth User
     const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
         email, password, email_confirm: true,
         user_metadata: { full_name: contactPerson }
     });
     if (createErr) return NextResponse.json({ error: createErr.message }, { status: 400 });
 
+    // 2. Create Company
     const { data: company, error: companyErr } = await adminSupabase
         .from('companies')
         .insert({
@@ -82,23 +84,13 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Firma oluşturulamadı: ' + companyErr.message }, { status: 400 });
     }
 
-    // 3. Link profile → company
-    // Trigger might not have created the profile yet, so we retry up to 3 times then upsert
-    let profileLinked = false;
-    for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 500));
-        const { count } = await adminSupabase
-            .from('profiles')
-            .update({ company_id: company.id, full_name: contactPerson })
-            .eq('id', newUser.user.id)
-            .select('id', { count: 'exact', head: true });
-        if (count > 0) { profileLinked = true; break; }
-    }
-    if (!profileLinked) {
-        // Profile not created by trigger yet — upsert
-        await adminSupabase
-            .from('profiles')
-            .upsert({ id: newUser.user.id, company_id: company.id, full_name: contactPerson, is_admin: false });
+    // 3. Link profile → company (Upsert immediately since trigger might be slow or missing)
+    const { error: profErr } = await adminSupabase
+        .from('profiles')
+        .upsert({ id: newUser.user.id, company_id: company.id, full_name: contactPerson, is_admin: false });
+
+    if (profErr) {
+        console.error("Profile linking error:", profErr);
     }
 
     return NextResponse.json({ success: true, company });

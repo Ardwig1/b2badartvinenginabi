@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ShoppingCartIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 const statusLabels = { pending: 'Bekliyor', confirmed: 'Onaylandı', preparing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal' };
 
@@ -53,7 +54,7 @@ export default function AdminOrders() {
                         <div className="loading-center"><div className="loading-spinner" /></div>
                     ) : orders.length === 0 ? (
                         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <div style={{ fontSize: 40, marginBottom: 12 }}>🛒</div>
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}><ShoppingCartIcon style={{ width: 48, height: 48 }} /></div>
                             <div>Bu filtrede sipariş bulunamadı</div>
                         </div>
                     ) : (
@@ -102,7 +103,8 @@ export default function AdminOrders() {
                         </div>
                         {selected.note && (
                             <div style={{ marginBottom: 16, padding: 12, background: 'var(--bg-surface)', borderRadius: 'var(--radius)', fontSize: 13, color: 'var(--text-secondary)' }}>
-                                📝 {selected.note}
+                                <DocumentTextIcon style={{ width: 14, height: 14, display: 'inline-block', verticalAlign: 'middle', marginRight: 4 }} />
+                                <span style={{ verticalAlign: 'middle' }}>{selected.note}</span>
                             </div>
                         )}
                         <div>

@@ -1,8 +1,7 @@
 export default function BankAccountsPage() {
     const accounts = [
-        { bank: 'Ziraat Bankası', name: 'B2B YEDEK PARÇA A.Ş.', iban: 'TR12 0001 0000 0000 0000 0000 00', branch: 'Merkez Şube' },
-        { bank: 'Garanti BBVA', name: 'B2B YEDEK PARÇA A.Ş.', iban: 'TR34 0006 2000 0000 0000 0000 00', branch: 'Ticari Şube' },
-        { bank: 'İş Bankası', name: 'B2B YEDEK PARÇA A.Ş.', iban: 'TR56 0006 4000 0000 0000 0000 00', branch: 'Sanayi Şubesi' },
+        { bank: 'Yapı Kredi', name: 'Murat Kaan Şaşmaz', iban: 'TR91 0006 0701 0000 0000 1003 9880 0', branch: 'Merkez Şube' },
+        { bank: 'İş Bankası', name: 'Murat Kaan Şaşmaz', iban: 'TR96 0006 4000 0011 2220 2017 93', branch: 'YEDPA Şube' },
     ];
 
     return (

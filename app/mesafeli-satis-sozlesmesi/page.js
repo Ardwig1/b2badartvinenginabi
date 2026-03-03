@@ -6,11 +6,13 @@ export default function MesafeliSatisSozlesmesi() {
             </h1>
 
             <h3 style={{ marginTop: '20px' }}>MADDE 1 - TARAFLAR</h3>
-            <p><strong>SATICI:</strong></p>
-            <p>Ünvanı: OMIGROUPS</p>
-            <p>Adresi: [Şirket Adresi]</p>
-            <p>Telefon: [Şirket Telefonu]</p>
+            <p><strong>SATICI (FİRMA):</strong></p>
+            <p>Ünvanı: OMİ GROUP'S</p>
+            <p>Ofis Adresi: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL</p>
+            <p>Depo Adresi: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL</p>
+            <p>Telefon: 0532 597 0664</p>
             <p>E-Posta: info@omigroups.com</p>
+            <p>Vergi Dairesi ve No: Sarıgazi VD. / 800081338</p>
 
             <p style={{ marginTop: '10px' }}><strong>ALICI:</strong></p>
             <p>Adı/Soyadı/Ünvanı: B2B Müşterisi</p>

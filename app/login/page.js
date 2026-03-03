@@ -154,10 +154,12 @@ export default function LoginPage() {
                     <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Gizlilik ve Güvenlik Politikası</a>
                 </div>
                 <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
-                    <strong>OMIGROUPS</strong><br />
+                    <strong>OMİ GROUP'S</strong><br />
                     B2B Yedek Parça Satış Portalı<br />
-                    Adres: Örnek Mah. Test Cad. No:1 Ankara/Türkiye<br />
-                    Tel: +90 312 000 00 00 | E-posta: info@omigroups.com
+                    Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
+                    Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL<br />
+                    Tel: 0532 597 0664 | E-posta: info@omigroups.com<br />
+                    Vergi Dairesi: Sarıgazi VD. / 800081338
                 </div>
             </div>
         </div>

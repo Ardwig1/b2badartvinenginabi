@@ -158,7 +158,7 @@ export default function LoginPage() {
                     B2B Yedek Parça Satış Portalı<br />
                     Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
                     Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL<br />
-                    Tel: 0532 597 0664 | E-posta: info@omigroups.com<br />
+                    Tel: 0532 597 0664 | E-posta: muratkaan@omigroups.com<br />
                     Vergi Dairesi: Sarıgazi VD. / 800081338
                 </div>
             </div>

@@ -11,7 +11,7 @@ export default function MesafeliSatisSozlesmesi() {
             <p>Ofis Adresi: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL</p>
             <p>Depo Adresi: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL</p>
             <p>Telefon: 0532 597 0664</p>
-            <p>E-Posta: info@omigroups.com</p>
+            <p>E-Posta: muratkaan@omigroups.com</p>
             <p>Vergi Dairesi ve No: Sarıgazi VD. / 800081338</p>
 
             <p style={{ marginTop: '10px' }}><strong>ALICI:</strong></p>

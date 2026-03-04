@@ -158,6 +158,24 @@ export default function LoginPage() {
                     </button>
                 </form>
 
+                {/* PayTR Test Hesabı */}
+                <div style={{
+                    marginTop: '1.2rem',
+                    padding: '14px 16px',
+                    background: 'rgba(37, 99, 235, 0.08)',
+                    border: '1px solid rgba(37, 99, 235, 0.2)',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    color: 'var(--text-secondary)',
+                    lineHeight: '1.6'
+                }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 PayTR Entegrasyon Test Hesabı</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>PAYTR</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>PAYT</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>123456</span>
+                    </div>
+                </div>
 
             </div>
 
@@ -183,7 +201,7 @@ export default function LoginPage() {
                     <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Gizlilik ve Güvenlik Politikası</a>
                 </div>
                 <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
-                    <strong>OMİ GROUP'S</strong><br />
+                    <strong>Murat Kaan Şaşmaz - OMİ GROUP'S</strong><br />
                     B2B Yedek Parça Satış Portalı<br />
                     Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
                     Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL<br />

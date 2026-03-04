@@ -172,7 +172,7 @@ export default function LoginPage() {
                     <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 PayTR Entegrasyon Test Hesabı</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
                         <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>PAYTR</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>PAYT</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>PAYTR</span>
                         <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>123456</span>
                     </div>
                 </div>

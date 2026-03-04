@@ -14,7 +14,8 @@ export default function AdminProducts() {
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');
     const [stockLocation, setStockLocation] = useState('merkez');
-    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '' });
+    const [stockType, setStockType] = useState('in');
+    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -31,13 +32,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '' });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '' });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1' });
         setShowModal(true);
     };
 
@@ -54,7 +55,7 @@ export default function AdminProducts() {
         setSaving(true);
         const merkez = Number(form.stock_merkez);
         const depo = Number(form.stock_depo);
-        const payload = { ...form, list_price: Number(form.list_price), stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo };
+        const payload = { ...form, list_price: Number(form.list_price), stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo, discount_rate: Number(form.discount_rate), box_quantity: Number(form.box_quantity) };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
         } else {
@@ -156,7 +157,7 @@ export default function AdminProducts() {
                         <thead>
                             <tr>
                                 <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
-                                <th>Liste Fiyatı</th><th style={{ textAlign: 'center' }}>Merkez</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
+                                <th>Liste Fiyatı</th><th>İskonto %</th><th style={{ textAlign: 'center' }}>Koli</th><th style={{ textAlign: 'center' }}>Merkez</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -175,6 +176,8 @@ export default function AdminProducts() {
                                     <td>{p.brand || '-'}</td>
                                     <td>{p.category || '-'}</td>
                                     <td>{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}</td>
+                                    <td style={{ textAlign: 'center', color: Number(p.discount_rate) > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
+                                    <td style={{ textAlign: 'center', fontWeight: 500 }}>{p.box_quantity || 1}</td>
                                     <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--success)' }}>{p.stock_merkez || 0}</td>
                                     <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--primary)' }}>{p.stock_depo || 0}</td>
                                     <td><span className={`badge ${p.is_active ? 'badge-approved' : 'badge-rejected'}`}>{p.is_active ? 'Aktif' : 'Pasif'}</span></td>
@@ -217,11 +220,37 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div className="form-group"><label className="form-label">Liste Fiyatı *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
+                                <div className="form-group"><label className="form-label">İskonto Oranı (%)</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_rate} onChange={up('discount_rate')} id="prod-discount" /></div>
+                                {Number(form.list_price) > 0 && (
+                                    <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius)', border: '1px solid var(--border-light)' }}>
+                                            <div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>İskontolu Fiyat</div>
+                                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>
+                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>KDV (%20)</div>
+                                                <div style={{ fontWeight: 700, color: 'var(--warning)', fontSize: 15 }}>
+                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100) * 0.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>KDV Dahil Fiyat (Müşteri Görecek)</div>
+                                                <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: 16 }}>
+                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100) * 1.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <div className="form-group"><label className="form-label">Birim</label>
                                     <select className="form-select" value={form.unit} onChange={up('unit')} id="prod-unit">
                                         <option value="adet">Adet</option><option value="kg">Kg</option><option value="litre">Litre</option><option value="metre">Metre</option>
                                     </select>
                                 </div>
+                                <div className="form-group"><label className="form-label">Koli Adeti</label><input className="form-input" type="number" min="1" value={form.box_quantity} onChange={up('box_quantity')} id="prod-box-qty" /></div>
                                 <div className="form-group"><label className="form-label">Merkez Stok</label><input className="form-input" type="number" min="0" value={form.stock_merkez} onChange={up('stock_merkez')} id="prod-merkez" /></div>
                                 <div className="form-group"><label className="form-label">Depo Stok</label><input className="form-input" type="number" min="0" value={form.stock_depo} onChange={up('stock_depo')} id="prod-depo" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}>

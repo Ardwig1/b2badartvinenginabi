@@ -1,6 +1,6 @@
 export default function BankAccountsPage() {
     const accounts = [
-        { bank: 'Yapı Kredi', name: 'Murat Kaan Şaşmaz', iban: 'TR91 0006 0701 0000 0000 1003 9880 0', branch: 'Merkez Şube' },
+        { bank: 'Yapı Kredi', name: 'Murat Kaan Şaşmaz', iban: 'TR91 0006 0701 0000 0000 1003 9880 0', branch: 'YEDPA Şube' },
         { bank: 'İş Bankası', name: 'Murat Kaan Şaşmaz', iban: 'TR96 0006 4000 0011 2220 2017 93', branch: 'YEDPA Şube' },
     ];
 

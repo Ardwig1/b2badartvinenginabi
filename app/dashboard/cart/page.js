@@ -1,11 +1,18 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useCart } from '@/components/CartProvider';
 
 export default function DealerCart() {
+    const { cartItems: contextCartItems, setQty: ctxSetQty, addToCart: ctxAddToCart, clearCart } = useCart();
+
+    // Convert cartItems object to array for rendering
+    const cartItems = useMemo(() => {
+        return Object.values(contextCartItems).filter(item => item.qty > 0);
+    }, [contextCartItems]);
+
     const [products, setProducts] = useState([]);
-    const [cartItems, setCartItems] = useState([]); // [{product, qty}]
     const [discountPercent, setDiscountPercent] = useState(0);
     const [companyId, setCompanyId] = useState('');
     const [shipping, setShipping] = useState('');
@@ -52,13 +59,8 @@ export default function DealerCart() {
 
     const addProduct = async (productId) => {
         if (!productId) return;
-        const existing = cartItems.find(i => i.product.id === productId);
-        if (existing) {
-            setCartItems(prev => prev.map(i => i.product.id === productId ? { ...i, qty: i.qty + 1 } : i));
-        } else {
-            const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
-            if (prod) setCartItems(prev => [...prev, { product: prod, qty: 1 }]);
-        }
+        const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
+        if (prod) ctxAddToCart(prod);
     };
 
     const [searchProducts, setSearchProducts] = useState([]);
@@ -71,10 +73,11 @@ export default function DealerCart() {
         setSearchProducts(data || []);
     };
 
-    const updateQty = (id, delta) => {
-        setCartItems(prev => prev.map(i => i.product.id === id ? { ...i, qty: Math.max(1, i.qty + delta) } : i).filter(i => i.qty > 0));
+    const updateQty = (p, delta) => {
+        const currentQty = contextCartItems[p.id]?.qty || 0;
+        ctxSetQty(p.id, p, currentQty + delta);
     };
-    const removeItem = (id) => setCartItems(prev => prev.filter(i => i.product.id !== id));
+    const removeItem = (p) => ctxSetQty(p.id, p, 0);
 
     const subtotal = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
     const totalDiscount = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * (discountPercent / 100) * i.qty), 0);
@@ -113,7 +116,7 @@ export default function DealerCart() {
                 });
             }
         }
-        setCartItems([]);
+        clearCart();
         setSubmitting(false);
         setSuccess(true);
     };
@@ -186,13 +189,13 @@ export default function DealerCart() {
                                             <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                             <td>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p.id, -1)} id={`minus-${p.id}`}>−</button>
+                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)} id={`minus-${p.id}`}>−</button>
                                                     <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
-                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p.id, 1)} id={`plus-${p.id}`}>+</button>
+                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)} id={`plus-${p.id}`}>+</button>
                                                 </div>
                                             </td>
                                             <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                            <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p.id)} id={`remove-${p.id}`}>✕</button></td>
+                                            <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p)} id={`remove-${p.id}`}>✕</button></td>
                                         </tr>
                                     ))}
                                 </tbody>

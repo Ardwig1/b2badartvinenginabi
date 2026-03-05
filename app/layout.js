@@ -9,13 +9,16 @@ export const metadata = {
 };
 
 import { ThemeProvider } from '@/components/ThemeProvider';
+import { CartProvider } from '@/components/CartProvider';
 
 export default function RootLayout({ children }) {
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className={outfit.variable}>
         <ThemeProvider>
-          {children}
+          <CartProvider>
+            {children}
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { useCart } from '@/components/CartProvider';
 
 const STOCK_STATUS = {
     'in_stock': { label: 'Var', color: '#16a34a', bg: '#dcfce7', dot: '🟢' },
@@ -24,7 +25,7 @@ export default function DealerCatalog() {
     const [discountPercent, setDiscount] = useState(0);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
-    const [cartQtys, setCartQtys] = useState({});
+    const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
     const [follows, setFollows] = useState(new Set());
     const [userId, setUserId] = useState(null);
 
@@ -138,14 +139,14 @@ export default function DealerCatalog() {
     });
 
     const addToCart = (p) => {
-        setCartQtys(prev => ({ ...prev, [p.id]: (prev[p.id] || 0) + 1 }));
+        ctxAddToCart(p);
         showToast(`${p.name} sepete eklendi`);
     };
-    const setQty = (id, val) => {
+    const setQty = (p, val) => {
         const n = parseInt(val, 10);
-        setCartQtys(prev => ({ ...prev, [id]: isNaN(n) || n < 0 ? 0 : n }));
+        ctxSetQty(p.id, p, isNaN(n) ? 0 : n);
     };
-    const totalCartItems = Object.values(cartQtys).reduce((a, b) => a + b, 0);
+    const totalCartItems = Object.values(cartQtys).reduce((a, b) => a + b.qty, 0);
 
     const toggleFollow = async (productId) => {
         if (!userId) return;
@@ -396,8 +397,8 @@ export default function DealerCatalog() {
                                         <td>
                                             <input
                                                 type="number" min="0"
-                                                value={qty}
-                                                onChange={e => setQty(p.id, e.target.value)}
+                                                value={cartQtys[p.id]?.qty || ''}
+                                                onChange={e => setQty(p, e.target.value)}
                                                 style={{ width: 60, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
                                                 id={`qty-${p.id}`}
                                             />
@@ -405,7 +406,7 @@ export default function DealerCatalog() {
                                         <td>
                                             <button
                                                 className="btn btn-primary btn-sm"
-                                                onClick={() => { if ((cartQtys[p.id] || 0) === 0) setQty(p.id, 1); addToCart(p); }}
+                                                onClick={() => { if ((cartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
                                                 disabled={isOutOfStock}
                                                 style={{ opacity: isOutOfStock ? 0.4 : 1, whiteSpace: 'nowrap' }}
                                                 id={`add-cart-${p.id}`}

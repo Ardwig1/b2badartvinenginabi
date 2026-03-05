@@ -15,7 +15,7 @@ export default function AdminProducts() {
     const [stockNote, setStockNote] = useState('');
     const [stockLocation, setStockLocation] = useState('merkez');
     const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
+    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -32,13 +32,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1' });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1' });
         setShowModal(true);
     };
 
@@ -55,7 +55,10 @@ export default function AdminProducts() {
         setSaving(true);
         const merkez = Number(form.stock_merkez);
         const depo = Number(form.stock_depo);
-        const payload = { ...form, list_price: Number(form.list_price), stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo, discount_rate: Number(form.discount_rate), box_quantity: Number(form.box_quantity) };
+        const costPrice = Number(form.cost_price) || 0;
+        const profitMargin = Number(form.profit_margin) || 0;
+        const calculatedListPrice = costPrice * (1 + profitMargin / 100);
+        const payload = { ...form, cost_price: costPrice, profit_margin: profitMargin, list_price: calculatedListPrice, stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo, discount_rate: Number(form.discount_rate), box_quantity: Number(form.box_quantity) };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
         } else {
@@ -219,32 +222,44 @@ export default function AdminProducts() {
                                         <option value="TRY">TRY (₺)</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option>
                                     </select>
                                 </div>
-                                <div className="form-group"><label className="form-label">Liste Fiyatı *</label><input className="form-input" type="number" min="0" step="0.01" value={form.list_price} onChange={up('list_price')} required id="prod-price" /></div>
+                                <div className="form-group"><label className="form-label">Geliş Fiyatı *</label><input className="form-input" type="number" min="0" step="0.01" value={form.cost_price} onChange={up('cost_price')} required id="prod-cost-price" placeholder="Ürünün alış fiyatı" /></div>
+                                <div className="form-group"><label className="form-label">Kâr Oranı (%) *</label><input className="form-input" type="number" min="0" step="0.1" value={form.profit_margin} onChange={up('profit_margin')} required id="prod-profit-margin" placeholder="Örn: 30" /></div>
                                 <div className="form-group"><label className="form-label">İskonto Oranı (%)</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_rate} onChange={up('discount_rate')} id="prod-discount" /></div>
-                                {Number(form.list_price) > 0 && (
-                                    <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius)', border: '1px solid var(--border-light)' }}>
-                                            <div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>İskontolu Fiyat</div>
-                                                <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: 15 }}>
-                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100)).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>KDV (%20)</div>
-                                                <div style={{ fontWeight: 700, color: 'var(--warning)', fontSize: 15 }}>
-                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100) * 0.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>KDV Dahil Fiyat (Müşteri Görecek)</div>
-                                                <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: 16 }}>
-                                                    {(Number(form.list_price) * (1 - Number(form.discount_rate) / 100) * 1.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {form.currency}
+                                {Number(form.cost_price) > 0 && (() => {
+                                    const cost = Number(form.cost_price) || 0;
+                                    const margin = Number(form.profit_margin) || 0;
+                                    const discount = Number(form.discount_rate) || 0;
+                                    const listPrice = cost * (1 + margin / 100);
+                                    const discountedPrice = listPrice * (1 - discount / 100);
+                                    const kdvPrice = discountedPrice * 1.20;
+                                    const cur = form.currency;
+                                    const fmt = (v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+                                    return (
+                                        <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                            <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius)', border: '1px solid var(--border-light)' }}>
+                                                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>💰 Fiyat Hesaplama</div>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Geliş Fiyatı</div>
+                                                        <div style={{ fontWeight: 700, color: 'var(--text-secondary)', fontSize: 14 }}>{fmt(cost)} {cur}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Liste Fiyatı (+%{margin})</div>
+                                                        <div style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 15 }}>{fmt(listPrice)} {cur}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>İskontolu {discount > 0 ? `(-%${discount})` : ''}</div>
+                                                        <div style={{ fontWeight: 700, color: 'var(--warning)', fontSize: 15 }}>{fmt(discountedPrice)} {cur}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>KDV Dahil (%20)</div>
+                                                        <div style={{ fontWeight: 700, color: 'var(--success)', fontSize: 16 }}>{fmt(kdvPrice)} {cur}</div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                                 <div className="form-group"><label className="form-label">Birim</label>
                                     <select className="form-select" value={form.unit} onChange={up('unit')} id="prod-unit">
                                         <option value="adet">Adet</option><option value="kg">Kg</option><option value="litre">Litre</option><option value="metre">Metre</option>

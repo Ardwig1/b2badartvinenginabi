@@ -238,13 +238,7 @@ export default function DealerCatalog() {
                                 </div>
                             </div>
                         ))}
-                        {/* Empty rows for visual balance */}
-                        {[1, 2, 3].map(i => (
-                            <div key={i} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid var(--border)' }}>
-                                <div style={{ background: 'var(--primary)', padding: '10px 16px' }} />
-                                <div style={{ padding: '10px 16px' }} />
-                            </div>
-                        ))}
+
                         {/* Genel Arama */}
                         <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr' }}>
                             <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>Genel Arama</div>

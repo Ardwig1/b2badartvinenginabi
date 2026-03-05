@@ -294,7 +294,7 @@ export default function DealerCatalog() {
             ) : filtered.length === 0 ? (
                 <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
             ) : (
-                <div className="table-wrapper">
+                <div className="table-wrapper" style={{ minHeight: 'calc(100vh - 300px)' }}>
                     <table>
                         <thead>
                             <tr>

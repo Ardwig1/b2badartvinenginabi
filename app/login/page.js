@@ -192,7 +192,8 @@ export default function LoginPage() {
                 gap: '10px',
                 fontSize: '12px',
                 color: '#888',
-                backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                backgroundColor: 'rgba(0, 0, 0, 0.4)',// trigger deploy for Ardwig1
+                
                 borderTop: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>

@@ -387,10 +387,10 @@ export default function DealerCatalog() {
                                             </div>
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
-                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_merkez > 0 ? '#16a34a' : '#dc2626', margin: '0 auto', boxShadow: '0 0 8px rgba(0,0,0,0.2)' }} title={p.stock_merkez > 0 ? 'Merkez: Var' : 'Merkez: Yok'} />
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_merkez > 15 ? '#16a34a' : p.stock_merkez > 0 ? '#f59e0b' : '#dc2626', margin: '0 auto', boxShadow: p.stock_merkez > 0 && p.stock_merkez <= 15 ? '0 0 8px #f59e0b' : '0 0 8px rgba(0,0,0,0.2)', animation: p.stock_merkez > 0 && p.stock_merkez <= 15 ? 'pulse 2s infinite' : 'none' }} title={p.stock_merkez > 15 ? 'Merkez: Var' : p.stock_merkez > 0 ? `Merkez: Az Kaldı (${p.stock_merkez})` : 'Merkez: Yok'} />
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
-                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_depo > 0 ? '#16a34a' : '#dc2626', margin: '0 auto', boxShadow: '0 0 8px rgba(0,0,0,0.2)' }} title={p.stock_depo > 0 ? 'Depo: Var' : 'Depo: Yok'} />
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_depo > 15 ? '#16a34a' : p.stock_depo > 0 ? '#f59e0b' : '#dc2626', margin: '0 auto', boxShadow: p.stock_depo > 0 && p.stock_depo <= 15 ? '0 0 8px #f59e0b' : '0 0 8px rgba(0,0,0,0.2)', animation: p.stock_depo > 0 && p.stock_depo <= 15 ? 'pulse 2s infinite' : 'none' }} title={p.stock_depo > 15 ? 'Depo: Var' : p.stock_depo > 0 ? `Depo: Az Kaldı (${p.stock_depo})` : 'Depo: Yok'} />
                                         </td>
                                         <td style={{ textAlign: 'center', fontSize: 13, fontWeight: 500 }}>{p.box_quantity || 1}</td>
                                         <td>

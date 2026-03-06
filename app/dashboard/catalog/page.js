@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { useCart } from '@/components/CartProvider';
+import Image from 'next/image';
 
 const STOCK_STATUS = {
     'in_stock': { label: 'Var', color: '#16a34a', bg: '#dcfce7', dot: '🟢' },
@@ -321,13 +322,15 @@ export default function DealerCatalog() {
                                         <td style={{ width: 50, padding: '6px 8px' }}>
                                             {p.image_url ? (
                                                 <div className="tooltip-container" style={{ position: 'relative' }}>
-                                                    <img
+                                                    <Image
                                                         src={p.image_url}
-                                                        alt={p.name}
-                                                        style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }}
+                                                        alt={p.name || 'Ürün'}
+                                                        width={40}
+                                                        height={40}
+                                                        style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }}
                                                     />
                                                     <div className="tooltip-content img-tooltip">
-                                                        <img src={p.image_url} alt={p.name} style={{ width: 300, height: 300, objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
+                                                        <Image src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
                                                     </div>
                                                 </div>
                                             ) : (

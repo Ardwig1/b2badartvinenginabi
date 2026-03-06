@@ -4,6 +4,7 @@ import {
     UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
     ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 export default async function DealerDashboard() {
     const supabase = await createClient();
@@ -70,10 +71,13 @@ export default async function DealerDashboard() {
             <div style={{ marginBottom: 20 }}>
                 {/* Visual Banner Placeholder */}
                 <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minHeight: 120, background: 'var(--bg-surface)' }}>
-                    <img
+                    <Image
                         src="/banner.jpg"
                         alt="Güncel Kampanyalar. Not: public klasörüne banner.jpg eklendiğinde burada görünecektir."
-                        style={{ width: '100%', display: 'block', objectFit: 'cover', minHeight: 120 }}
+                        width={1200}
+                        height={300}
+                        style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', minHeight: 120 }}
+                        priority
                     />
                 </div>
             </div>

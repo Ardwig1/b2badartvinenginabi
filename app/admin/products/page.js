@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { MagnifyingGlassIcon, CubeIcon, ArchiveBoxIcon, PencilSquareIcon, CameraIcon } from '@heroicons/react/24/outline';
+import Image from 'next/image';
 
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
@@ -87,16 +88,31 @@ export default function AdminProducts() {
 
     const uploadImage = async (file) => {
         setUploadingImage(true);
-        const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '-')}`;
-        const { data, error } = await supabase.storage.from('products').upload(fileName, file);
-        if (error) {
-            alert('Resim yüklenemedi: Lütfen Supabase SQL editöründen ürünler için Storage tablosunu aktif ettiğinizden emin olun. \n' + error.message);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Yükleme başarısız oldu');
+            }
+
+            const data = await response.json();
+            if (data.success && data.url) {
+                setForm(prev => ({ ...prev, image_url: data.url }));
+            } else {
+                throw new Error('Geçerli bir URL alınamadı');
+            }
+        } catch (error) {
+            alert('Resim yüklenemedi: ' + error.message);
+        } finally {
             setUploadingImage(false);
-            return;
         }
-        const { data: { publicUrl } } = supabase.storage.from('products').getPublicUrl(fileName);
-        setForm(prev => ({ ...prev, image_url: publicUrl }));
-        setUploadingImage(false);
     };
 
     const toggleActive = async (p) => {
@@ -168,7 +184,7 @@ export default function AdminProducts() {
                                 <tr key={p.id}>
                                     <td>
                                         {p.image_url ? (
-                                            <img src={p.image_url} alt="img" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
+                                            <Image src={p.image_url} alt="img" width={36} height={36} style={{ objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
                                         ) : (
                                             <div style={{ width: 36, height: 36, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><CubeIcon style={{ width: 20, height: 20 }} /></div>
                                         )}
@@ -290,7 +306,7 @@ export default function AdminProducts() {
                                             <div className="loading-spinner" style={{ width: 24, height: 24, margin: '8px auto' }} />
                                         ) : form.image_url ? (
                                             <div style={{ position: 'relative' }}>
-                                                <img src={form.image_url} alt="preview" style={{ maxHeight: 120, borderRadius: 8 }} />
+                                                <Image src={form.image_url} alt="preview" width={120} height={120} style={{ objectFit: 'contain', maxHeight: 120, borderRadius: 8 }} />
                                                 <button type="button" onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, image_url: '' })) }} style={{ position: 'absolute', top: -10, right: -10, background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                                             </div>
                                         ) : (

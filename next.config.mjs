@@ -1,6 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  images: {
+    unoptimized: true, // Vercel resim optimizasyonunu kapatıyoruz ki kotadan yemesin
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'pub-56f4ab060d934f85a7d1fec80dd03ee2.r2.dev',
+        port: '',
+        pathname: '/**', // R2 bucketindeki tüm klasörlere izin ver
+      },
+      {
+        protocol: 'https',
+        hostname: 'fjkasgelauwnsfoqecov.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
 };
 
 export default nextConfig;

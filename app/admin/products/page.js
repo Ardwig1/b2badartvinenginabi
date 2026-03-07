@@ -2,12 +2,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { MagnifyingGlassIcon, CubeIcon, ArchiveBoxIcon, PencilSquareIcon, CameraIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image';
+import GlobalMarginSettings from '@/components/GlobalMarginSettings';
 
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [globalMargin, setGlobalMargin] = useState(36);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
+    const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
     const [editing, setEditing] = useState(null);
@@ -26,6 +30,17 @@ export default function AdminProducts() {
         setLoading(true);
         const { data } = await supabase.from('products').select('*').order('created_at', { ascending: false });
         setProducts(data || []);
+
+        try {
+            const marginRes = await fetch('/api/admin/margin');
+            const marginData = await marginRes.json();
+            if (marginData?.margin !== undefined) {
+                setGlobalMargin(marginData.margin);
+            }
+        } catch (e) {
+            console.error('Margin fetch error:', e);
+        }
+
         setLoading(false);
     }, []);
 
@@ -149,6 +164,48 @@ export default function AdminProducts() {
         p.brand?.toLowerCase().includes(search.toLowerCase())
     );
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [search]);
+
+    const currentChunk = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
+
+    useEffect(() => {
+        let isCancelled = false;
+        const urls = chunkUrlHash ? chunkUrlHash.split('|') : [];
+        if (urls.length === 0) {
+            setPageImagesLoading(false);
+            return;
+        }
+
+        setPageImagesLoading(true);
+
+        Promise.all(urls.map(url => {
+            return new Promise(resolve => {
+                const loadImg = (attempts) => {
+                    const img = new window.Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => {
+                        if (attempts > 0) {
+                            setTimeout(() => loadImg(attempts - 1), 1000); // retry aggressively
+                        } else {
+                            resolve(false);
+                        }
+                    };
+                    img.src = url;
+                };
+                loadImg(5); // 5 retries per image
+            });
+        })).then(() => {
+            if (!isCancelled) {
+                setPageImagesLoading(false);
+            }
+        });
+
+        return () => { isCancelled = true; };
+    }, [chunkUrlHash]);
+
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
     return (
@@ -161,6 +218,8 @@ export default function AdminProducts() {
                 <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
             </div>
 
+            <GlobalMarginSettings onMarginUpdate={setGlobalMargin} />
+
             <div style={{ marginBottom: 20 }}>
                 <div className="search-bar">
                     <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
@@ -168,8 +227,13 @@ export default function AdminProducts() {
                 </div>
             </div>
 
-            {loading ? (
-                <div className="loading-center"><div className="loading-spinner" /></div>
+            {loading || pageImagesLoading ? (
+                <div className="card" style={{ minHeight: 'calc(100vh - 300px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
+                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>
+                        {pageImagesLoading ? 'Ürün Görselleri Yükleniyor...' : 'Yükleniyor...'}
+                    </div>
+                </div>
             ) : (
                 <div className="table-wrapper">
                     <table>
@@ -180,11 +244,11 @@ export default function AdminProducts() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(p => (
+                            {currentChunk.map(p => (
                                 <tr key={p.id}>
                                     <td>
                                         {p.image_url ? (
-                                            <Image src={p.image_url} alt="img" width={36} height={36} style={{ objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
+                                            <img src={p.image_url} alt="img" width={36} height={36} loading="lazy" style={{ objectFit: 'cover', borderRadius: 4, border: '1px solid var(--border)' }} />
                                         ) : (
                                             <div style={{ width: 36, height: 36, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}><CubeIcon style={{ width: 20, height: 20 }} /></div>
                                         )}
@@ -194,7 +258,16 @@ export default function AdminProducts() {
                                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                                     <td>{p.brand || '-'}</td>
                                     <td>{p.category || '-'}</td>
-                                    <td>{Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}</td>
+                                    <td>
+                                        <div style={{ fontWeight: 600 }}>
+                                            {((Number(p.list_price) / 1.36) * (1 + (globalMargin / 100))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                        </div>
+                                        {globalMargin !== 36 && (
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                                                {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                            </div>
+                                        )}
+                                    </td>
                                     <td style={{ textAlign: 'center', color: Number(p.discount_rate) > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
                                     <td style={{ textAlign: 'center', fontWeight: 500 }}>{p.box_quantity || 1}</td>
                                     <td style={{ textAlign: 'center', fontWeight: 600, color: 'var(--success)' }}>{p.stock_merkez || 0}</td>
@@ -213,6 +286,33 @@ export default function AdminProducts() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && filtered.length > ITEMS_PER_PAGE && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === 1}
+                        onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === 1 ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                        Önceki
+                    </button>
+
+                    <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
+                        Sayfa {currentPage} / {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                    </span>
+
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+                    >
+                        Sonraki
+                    </button>
                 </div>
             )}
 
@@ -305,9 +405,9 @@ export default function AdminProducts() {
                                         {uploadingImage ? (
                                             <div className="loading-spinner" style={{ width: 24, height: 24, margin: '8px auto' }} />
                                         ) : form.image_url ? (
-                                            <div style={{ position: 'relative' }}>
-                                                <Image src={form.image_url} alt="preview" width={120} height={120} style={{ objectFit: 'contain', maxHeight: 120, borderRadius: 8 }} />
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, image_url: '' })) }} style={{ position: 'absolute', top: -10, right: -10, background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                                            <div style={{ position: 'relative', width: 120, height: 120 }}>
+                                                <img src={form.image_url} alt="preview" width={120} height={120} loading="lazy" style={{ objectFit: 'contain', borderRadius: 8 }} />
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); setForm(prev => ({ ...prev, image_url: '' })) }} style={{ position: 'absolute', top: -10, right: -10, background: 'var(--danger)', color: 'white', border: 'none', borderRadius: '50%', width: 24, height: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>✕</button>
                                             </div>
                                         ) : (
                                             <>

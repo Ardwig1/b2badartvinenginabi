@@ -5,7 +5,10 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function POST(request) {
     try {
-        const { productId, imageUrl, migrationKey, serviceRoleKey } = await request.json();
+        const {
+            productId, imageUrl, migrationKey, serviceRoleKey,
+            r2AccountId, r2AccessKeyId, r2SecretAccessKey, r2BucketName, r2PublicUrl
+        } = await request.json();
 
         if (migrationKey !== 'SUPER_SECRET_MIGRATION_KEY') {
             return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
@@ -41,7 +44,15 @@ export async function POST(request) {
         const cleanName = productId.replace(/[^a-zA-Z0-9-]/g, '-').toLowerCase();
         const fileName = `products/migrated-${Date.now()}-${cleanName}.webp`;
 
-        const newUrl = await uploadToR2(optimizedBuffer, fileName, 'image/webp');
+        const r2Config = {
+            accountId: r2AccountId,
+            accessKeyId: r2AccessKeyId,
+            secretAccessKey: r2SecretAccessKey,
+            bucketName: r2BucketName,
+            publicUrl: r2PublicUrl
+        };
+
+        const newUrl = await uploadToR2(optimizedBuffer, fileName, 'image/webp', r2Config);
 
         console.log(`[Vercel Migration] R2'ye Yüklendi: ${newUrl}`);
 
@@ -57,6 +68,10 @@ export async function POST(request) {
 
     } catch (error) {
         console.error('[Vercel Migration] Hata:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({
+            error: error.message,
+            stack: error.stack,
+            cause: error.cause ? String(error.cause) : null
+        }, { status: 500 });
     }
 }

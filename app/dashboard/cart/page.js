@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getUserDiscount } from '../actions';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
 
@@ -14,6 +15,7 @@ export default function DealerCart() {
 
     const [products, setProducts] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
+    const [globalMargin, setGlobalMargin] = useState(36);
     const [companyId, setCompanyId] = useState('');
     const [shipping, setShipping] = useState('');
     const [shippingMethod, setShippingMethod] = useState('Kargo');
@@ -30,11 +32,15 @@ export default function DealerCart() {
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id, company:companies(price_group:price_groups(discount_percent))')
+            .select('company_id')
             .eq('id', user.id)
             .single();
         setCompanyId(profile?.company_id || '');
-        setDiscountPercent(profile?.company?.price_group?.discount_percent || 0);
+
+        if (user?.id) {
+            const disc = await getUserDiscount(user.id);
+            setDiscountPercent(disc || 0);
+        }
 
         try {
             const res = await fetch('/api/rates');
@@ -44,18 +50,38 @@ export default function DealerCart() {
             console.error('Rates fetch error:', e);
         }
 
+        try {
+            const marginRes = await fetch('/api/admin/margin');
+            const marginData = await marginRes.json();
+            if (marginData?.margin !== undefined) {
+                setGlobalMargin(marginData.margin);
+            }
+        } catch (e) {
+            console.error('Margin fetch error:', e);
+        }
         setLoading(false);
     }, []);
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
     const getBaseTryPrice = (p) => {
-        let price = Number(p.list_price) || 0;
+        let initialPrice = Number(p.list_price) || 0;
+        let rawCost = initialPrice / 1.36;
+        let price = rawCost * (1 + (globalMargin / 100));
+
         if (p.currency === 'USD') price = price * rates.USD;
         else if (p.currency === 'EUR') price = price * rates.EUR;
         return price;
     };
-    const getDiscountedPrice = (p) => getBaseTryPrice(p) * (1 - discountPercent / 100);
+    const getDiscountedPrice = (p) => {
+        const base = getBaseTryPrice(p);
+        const prodDiscount = Number(p.discount_rate || 0);
+        const groupDiscount = discountPercent || 0;
+
+        const afterProd = base * (1 - prodDiscount / 100);
+        const afterGroup = afterProd * (1 - groupDiscount / 100);
+        return afterGroup;
+    };
 
     const addProduct = async (productId) => {
         if (!productId) return;

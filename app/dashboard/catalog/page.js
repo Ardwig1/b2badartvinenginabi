@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { getUserDiscount } from '../actions';
 import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { useCart } from '@/components/CartProvider';
-import Image from 'next/image';
 
 const STOCK_STATUS = {
     'in_stock': { label: 'Var', color: '#16a34a', bg: '#dcfce7', dot: '🟢' },
@@ -22,8 +22,12 @@ function getStockStatus(qty) {
 
 export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
     const [loading, setLoading] = useState(true);
+    const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [discountPercent, setDiscount] = useState(0);
+    const [globalMargin, setGlobalMargin] = useState(36);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
@@ -53,11 +57,11 @@ export default function DealerCatalog() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         setUserId(user?.id);
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('company:companies(price_group:price_groups(discount_percent))')
-            .eq('id', user.id).single();
-        setDiscount(profile?.company?.price_group?.discount_percent || 0);
+
+        if (user?.id) {
+            const disc = await getUserDiscount(user.id);
+            setDiscount(disc || 0);
+        }
 
         const { data: prods } = await supabase
             .from('products').select('*').eq('is_active', true).order('brand').order('name');
@@ -85,6 +89,16 @@ export default function DealerCatalog() {
             console.error('Rates fetch error:', e);
         }
 
+        try {
+            const marginRes = await fetch('/api/admin/margin');
+            const marginData = await marginRes.json();
+            if (marginData?.margin !== undefined) {
+                setGlobalMargin(marginData.margin);
+            }
+        } catch (e) {
+            console.error('Margin fetch error:', e);
+        }
+
         setLoading(false);
     }, []);
 
@@ -99,10 +113,15 @@ export default function DealerCatalog() {
     }, [filterCarBrand, products]);
 
     const getBaseTryPrice = (p) => {
-        let price = Number(p.list_price) || 0;
-        if (p.currency === 'USD') price = price * rates.USD;
-        else if (p.currency === 'EUR') price = price * rates.EUR;
-        return price;
+        let initialPrice = Number(p.list_price) || 0;
+        // The list_price natively includes a 36% margin. We reverse it out, and apply the new dynamic margin.
+        let rawCost = initialPrice / 1.36;
+        let currentPrice = rawCost * (1 + (globalMargin / 100));
+
+        if (p.currency === 'USD') currentPrice = currentPrice * rates.USD;
+        else if (p.currency === 'EUR') currentPrice = currentPrice * rates.EUR;
+
+        return currentPrice;
     };
 
     const getDiscountedPrice = (p) => {
@@ -139,6 +158,44 @@ export default function DealerCatalog() {
         return true;
     });
 
+    const currentChunk = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
+
+    useEffect(() => {
+        let isCancelled = false;
+        const urls = chunkUrlHash ? chunkUrlHash.split('|') : [];
+        if (urls.length === 0) {
+            setPageImagesLoading(false);
+            return;
+        }
+
+        setPageImagesLoading(true);
+
+        Promise.all(urls.map(url => {
+            return new Promise(resolve => {
+                const loadImg = (attempts) => {
+                    const img = new window.Image();
+                    img.onload = () => resolve(true);
+                    img.onerror = () => {
+                        if (attempts > 0) {
+                            setTimeout(() => loadImg(attempts - 1), 1000); // retry aggressively
+                        } else {
+                            resolve(false);
+                        }
+                    };
+                    img.src = url;
+                };
+                loadImg(5); // 5 retries per image
+            });
+        })).then(() => {
+            if (!isCancelled) {
+                setPageImagesLoading(false);
+            }
+        });
+
+        return () => { isCancelled = true; };
+    }, [chunkUrlHash]);
+
     const addToCart = (p) => {
         ctxAddToCart(p);
         showToast(`${p.name} sepete eklendi`);
@@ -162,9 +219,14 @@ export default function DealerCatalog() {
         }
     };
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkWay, checkNew, checkCampaign, checkFollowed]);
+
     const clearFilters = () => {
         setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText('');
         setCheckIn(false); setCheckLow(false); setCheckWay(false); setCheckNew(false); setCheckCampaign(false); setCheckFollowed(false);
+        setCurrentPage(1);
     };
 
     const openCatalogPrint = () => {
@@ -285,12 +347,17 @@ export default function DealerCatalog() {
             </div>
 
             {/* Results Table */}
-            {loading ? (
-                <div className="loading-center"><div className="loading-spinner" /></div>
+            {loading || pageImagesLoading ? (
+                <div className="card" style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
+                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>
+                        {pageImagesLoading ? 'Katalog Görselleri Yükleniyor...' : 'Yükleniyor...'}
+                    </div>
+                </div>
             ) : filtered.length === 0 ? (
                 <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
             ) : (
-                <div className="table-wrapper" style={{ minHeight: 'calc(100vh - 300px)' }}>
+                <div className="table-wrapper">
                     <table>
                         <thead>
                             <tr>
@@ -300,6 +367,7 @@ export default function DealerCatalog() {
                                 <th>OEM No</th>
                                 <th>Ürün Adı</th>
                                 <th>Birim</th>
+                                <th style={{ textAlign: 'center' }}>İskonto</th>
                                 <th style={{ textAlign: 'right' }}>Fiyat (KDV Dahil)</th>
                                 <th style={{ textAlign: 'center' }}>Merkez</th>
                                 <th style={{ textAlign: 'center' }}>Depo</th>
@@ -310,7 +378,7 @@ export default function DealerCatalog() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map(p => {
+                            {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
                                 const stKey = p.stock_status && STOCK_STATUS[p.stock_status] ? p.stock_status : getStockStatus(p.stock_quantity);
                                 const st = STOCK_STATUS[stKey];
                                 const qty = cartQtys[p.id] || 0;
@@ -322,15 +390,9 @@ export default function DealerCatalog() {
                                         <td style={{ width: 50, padding: '6px 8px' }}>
                                             {p.image_url ? (
                                                 <div className="tooltip-container" style={{ position: 'relative' }}>
-                                                    <Image
-                                                        src={p.image_url}
-                                                        alt={p.name || 'Ürün'}
-                                                        width={40}
-                                                        height={40}
-                                                        style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }}
-                                                    />
+                                                    <img src={p.image_url} alt={p.name || 'Ürün'} width={40} height={40} loading="lazy" style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }} />
                                                     <div className="tooltip-content img-tooltip">
-                                                        <Image src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
+                                                        <img src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} loading="lazy" style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
                                                     </div>
                                                 </div>
                                             ) : (
@@ -344,6 +406,7 @@ export default function DealerCatalog() {
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
                                         <td style={{ fontWeight: 500, maxWidth: 220 }}>{p.name}</td>
                                         <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
+                                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--danger)' }}>%{discountPercent}</td>
                                         <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                             <div className="tooltip-container" style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}>
                                                 ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
@@ -353,7 +416,7 @@ export default function DealerCatalog() {
                                                             <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Liste Fiyatı:</span>
                                                             <span style={{ fontSize: 12 }}>
                                                                 {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
-                                                                {p.currency && p.currency !== 'TRY' && <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>(₺{getBaseTryPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})</span>}
+                                                                {p.currency && p.currency !== 'TRY' && <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>(₺{((Number(p.list_price) / 1.36) * (1 + (globalMargin / 100)) * rates[p.currency]).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})</span>}
                                                             </span>
                                                         </div>
                                                         {Number(p.discount_rate) > 0 && (
@@ -430,6 +493,33 @@ export default function DealerCatalog() {
                             })}
                         </tbody>
                     </table>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && filtered.length > ITEMS_PER_PAGE && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === 1}
+                        onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === 1 ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                    >
+                        Önceki
+                    </button>
+
+                    <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
+                        Sayfa {currentPage} / {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                    </span>
+
+                    <button
+                        className="btn btn-ghost"
+                        disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+                    >
+                        Sonraki
+                    </button>
                 </div>
             )}
 

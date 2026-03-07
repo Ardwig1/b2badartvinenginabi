@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { savePriceGroup, deletePriceGroup, fetchPriceGroups } from './actions';
 
 export default function AdminPriceGroups() {
     const [groups, setGroups] = useState([]);
@@ -13,8 +14,8 @@ export default function AdminPriceGroups() {
 
     const fetch = useCallback(async () => {
         setLoading(true);
-        const { data } = await supabase.from('price_groups').select('*').order('name');
-        setGroups(data || []);
+        const res = await fetchPriceGroups();
+        setGroups(res.success && res.data ? res.data : []);
         setLoading(false);
     }, []);
 
@@ -27,10 +28,11 @@ export default function AdminPriceGroups() {
         e.preventDefault();
         setSaving(true);
         const payload = { name: form.name, discount_percent: Number(form.discount_percent) };
-        if (editing) {
-            await supabase.from('price_groups').update(payload).eq('id', editing.id);
-        } else {
-            await supabase.from('price_groups').insert(payload);
+
+        const res = await savePriceGroup(payload, editing?.id);
+        if (!res.success) {
+            console.error(res.error);
+            alert('Kaydedilirken hata oluştu!');
         }
         setSaving(false);
         setShowModal(false);
@@ -39,7 +41,9 @@ export default function AdminPriceGroups() {
 
     const remove = async (id) => {
         if (!confirm('Bu fiyat grubunu silmek istediğinizden emin misiniz?')) return;
-        await supabase.from('price_groups').delete().eq('id', id);
+
+        const res = await deletePriceGroup(id);
+        if (!res.success) alert('Silinirken hata oluştu!');
         fetch();
     };
 

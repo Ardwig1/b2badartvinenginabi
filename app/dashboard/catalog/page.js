@@ -28,6 +28,8 @@ export default function DealerCatalog() {
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
+    const [globalUsdRate, setGlobalUsdRate] = useState(0);
+    const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
@@ -90,13 +92,24 @@ export default function DealerCatalog() {
         }
 
         try {
-            const marginRes = await fetch('/api/admin/margin');
+            const [marginRes, usdRes] = await Promise.all([
+                fetch('/api/admin/margin'),
+                fetch('/api/admin/usd-settings')
+            ]);
             const marginData = await marginRes.json();
+            const usdData = await usdRes.json();
+
             if (marginData?.margin !== undefined) {
                 setGlobalMargin(marginData.margin);
             }
+            if (usdData?.usd_rate !== undefined) {
+                setGlobalUsdRate(usdData.usd_rate);
+            }
+            if (usdData?.is_active !== undefined) {
+                setGlobalUsdActive(usdData.is_active);
+            }
         } catch (e) {
-            console.error('Margin fetch error:', e);
+            console.error('Settings fetch error:', e);
         }
 
         setLoading(false);
@@ -118,8 +131,15 @@ export default function DealerCatalog() {
         let rawCost = initialPrice / 1.36;
         let currentPrice = rawCost * (1 + (globalMargin / 100));
 
-        if (p.currency === 'USD') currentPrice = currentPrice * rates.USD;
-        else if (p.currency === 'EUR') currentPrice = currentPrice * rates.EUR;
+        // B2B USD Mantığı:
+        // Eğer global olarak USD Sabitleme açıksa ve geçerli bir kur varsa, 
+        // fiyatı mevcut piyasa USD kuruyla değil, adminin belirlediği kurla TRY olarak renderla.
+        if (globalUsdActive && globalUsdRate !== null && globalUsdRate > 0) {
+            currentPrice = currentPrice * globalUsdRate;
+        } else {
+            if (p.currency === 'USD') currentPrice = currentPrice * rates.USD;
+            else if (p.currency === 'EUR') currentPrice = currentPrice * rates.EUR;
+        }
 
         return currentPrice;
     };

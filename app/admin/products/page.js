@@ -9,6 +9,8 @@ export default function AdminProducts() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [globalMargin, setGlobalMargin] = useState(36);
+    const [globalUsdRate, setGlobalUsdRate] = useState(0);
+    const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
@@ -32,13 +34,24 @@ export default function AdminProducts() {
         setProducts(data || []);
 
         try {
-            const marginRes = await fetch('/api/admin/margin');
+            const [marginRes, usdRes] = await Promise.all([
+                fetch('/api/admin/margin'),
+                fetch('/api/admin/usd-settings')
+            ]);
             const marginData = await marginRes.json();
+            const usdData = await usdRes.json();
+
             if (marginData?.margin !== undefined) {
                 setGlobalMargin(marginData.margin);
             }
+            if (usdData?.usd_rate !== undefined) {
+                setGlobalUsdRate(usdData.usd_rate);
+            }
+            if (usdData?.is_active !== undefined) {
+                setGlobalUsdActive(usdData.is_active);
+            }
         } catch (e) {
-            console.error('Margin fetch error:', e);
+            console.error('Settings fetch error:', e);
         }
 
         setLoading(false);
@@ -73,7 +86,12 @@ export default function AdminProducts() {
         const depo = Number(form.stock_depo);
         const costPrice = Number(form.cost_price) || 0;
         const profitMargin = Number(form.profit_margin) || 0;
-        const calculatedListPrice = costPrice * (1 + profitMargin / 100);
+
+        let calculatedListPrice = costPrice * (1 + profitMargin / 100);
+        if (globalUsdActive && globalUsdRate !== null) {
+            calculatedListPrice = calculatedListPrice * globalUsdRate;
+        }
+
         const payload = { ...form, cost_price: costPrice, profit_margin: profitMargin, list_price: calculatedListPrice, stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo, discount_rate: Number(form.discount_rate), box_quantity: Number(form.box_quantity) };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
@@ -260,7 +278,10 @@ export default function AdminProducts() {
                                     <td>{p.category || '-'}</td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>
-                                            {((Number(p.list_price) / 1.36) * (1 + (globalMargin / 100))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                            {(() => {
+                                                let finalPrice = (Number(p.list_price) / 1.36) * (1 + (globalMargin / 100));
+                                                return finalPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ' + (p.currency || 'TRY');
+                                            })()}
                                         </div>
                                         {globalMargin !== 36 && (
                                             <div style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
@@ -345,7 +366,17 @@ export default function AdminProducts() {
                                     const cost = Number(form.cost_price) || 0;
                                     const margin = Number(form.profit_margin) || 0;
                                     const discount = Number(form.discount_rate) || 0;
-                                    const listPrice = cost * (1 + margin / 100);
+
+                                    // B2B USD Mantığı: Eğer kur seçiliyse, cost TRY olsa bile, USD'li mi çarpacağız?
+                                    // Eğer form.currency !== 'TRY' ise mi geçerli?
+                                    // Veya tüm ürün mü? İstek: "doları 0 tl yaptım mantıken tüm ürünler 0 tl olmalı"
+                                    // O halde: Eğer genel USD sabitleme açıksa ve ürün fiyatı hesabı yapılıyorsa kurla çarpılacak
+                                    let listPrice = cost * (1 + margin / 100);
+                                    if (globalUsdActive && globalUsdRate !== null) {
+                                        // Eğer cost_price dolar bazındaysa TRY'ye çevirmek için çarpılır
+                                        listPrice = listPrice * globalUsdRate;
+                                    }
+
                                     const discountedPrice = listPrice * (1 - discount / 100);
                                     const kdvPrice = discountedPrice * 1.20;
                                     const cur = form.currency;

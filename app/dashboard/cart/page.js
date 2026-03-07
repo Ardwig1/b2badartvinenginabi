@@ -16,6 +16,8 @@ export default function DealerCart() {
     const [products, setProducts] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
+    const [globalUsdRate, setGlobalUsdRate] = useState(0);
+    const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [companyId, setCompanyId] = useState('');
     const [shipping, setShipping] = useState('');
     const [shippingMethod, setShippingMethod] = useState('Kargo');
@@ -51,13 +53,24 @@ export default function DealerCart() {
         }
 
         try {
-            const marginRes = await fetch('/api/admin/margin');
+            const [marginRes, usdRes] = await Promise.all([
+                fetch('/api/admin/margin'),
+                fetch('/api/admin/usd-settings')
+            ]);
             const marginData = await marginRes.json();
+            const usdData = await usdRes.json();
+
             if (marginData?.margin !== undefined) {
                 setGlobalMargin(marginData.margin);
             }
+            if (usdData?.usd_rate !== undefined) {
+                setGlobalUsdRate(usdData.usd_rate);
+            }
+            if (usdData?.is_active !== undefined) {
+                setGlobalUsdActive(usdData.is_active);
+            }
         } catch (e) {
-            console.error('Margin fetch error:', e);
+            console.error('Settings fetch error:', e);
         }
         setLoading(false);
     }, []);
@@ -69,8 +82,12 @@ export default function DealerCart() {
         let rawCost = initialPrice / 1.36;
         let price = rawCost * (1 + (globalMargin / 100));
 
-        if (p.currency === 'USD') price = price * rates.USD;
-        else if (p.currency === 'EUR') price = price * rates.EUR;
+        if (globalUsdActive && globalUsdRate !== null && globalUsdRate > 0) {
+            price = price * globalUsdRate;
+        } else {
+            if (p.currency === 'USD') price = price * rates.USD;
+            else if (p.currency === 'EUR') price = price * rates.EUR;
+        }
         return price;
     };
     const getDiscountedPrice = (p) => {

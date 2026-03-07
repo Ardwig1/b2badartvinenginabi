@@ -88,7 +88,7 @@ export default function AdminProducts() {
         const profitMargin = Number(form.profit_margin) || 0;
 
         let calculatedListPrice = costPrice * (1 + profitMargin / 100);
-        if (globalUsdActive && globalUsdRate !== null) {
+        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0) {
             calculatedListPrice = calculatedListPrice * globalUsdRate;
         }
 
@@ -372,7 +372,7 @@ export default function AdminProducts() {
                                     // Veya tüm ürün mü? İstek: "doları 0 tl yaptım mantıken tüm ürünler 0 tl olmalı"
                                     // O halde: Eğer genel USD sabitleme açıksa ve ürün fiyatı hesabı yapılıyorsa kurla çarpılacak
                                     let listPrice = cost * (1 + margin / 100);
-                                    if (globalUsdActive && globalUsdRate !== null) {
+                                    if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0) {
                                         // Eğer cost_price dolar bazındaysa TRY'ye çevirmek için çarpılır
                                         listPrice = listPrice * globalUsdRate;
                                     }

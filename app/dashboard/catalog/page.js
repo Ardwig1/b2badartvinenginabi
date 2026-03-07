@@ -132,9 +132,9 @@ export default function DealerCatalog() {
         let currentPrice = rawCost * (1 + (globalMargin / 100));
 
         // B2B USD Mantığı:
-        // Eğer global olarak USD Sabitleme açıksa ve geçerli bir kur varsa, 
+        // Eğer global olarak USD Sabitleme açıksa ve geçerli bir kur varsa (sıfır dahil),
         // fiyatı mevcut piyasa USD kuruyla değil, adminin belirlediği kurla TRY olarak renderla.
-        if (globalUsdActive && globalUsdRate !== null && globalUsdRate > 0) {
+        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0) {
             currentPrice = currentPrice * globalUsdRate;
         } else {
             if (p.currency === 'USD') currentPrice = currentPrice * rates.USD;

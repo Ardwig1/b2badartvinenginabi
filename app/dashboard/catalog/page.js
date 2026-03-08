@@ -26,6 +26,7 @@ export default function DealerCatalog() {
     const ITEMS_PER_PAGE = 10;
     const [loading, setLoading] = useState(true);
     const [hasSearched, setHasSearched] = useState(false);
+    const [viewMode, setViewMode] = useState('catalog'); // 'catalog' = görselsiz kompakt, 'list' = görselli
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
@@ -413,7 +414,7 @@ export default function DealerCatalog() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', background: 'var(--bg-secondary)' }}>
                     <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => searchProducts()} id="search-btn">Ara</button>
                     <button className="btn btn-danger" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={clearFilters} id="clear-btn">Temizle</button>
-                    <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={openCatalogPrint} id="catalog-btn">Katalog</button>
+                    <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={() => setViewMode(prev => prev === 'catalog' ? 'list' : 'catalog')} id="catalog-btn">{viewMode === 'catalog' ? 'Liste' : 'Katalog'}</button>
                     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center' }}>
                         <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#16a34a' }} />
                     </div>
@@ -447,7 +448,7 @@ export default function DealerCatalog() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Görsel</th>
+                                {viewMode === 'list' && <th>Görsel</th>}
                                 <th>Marka</th>
                                 <th>Stok Kodu</th>
                                 <th>OEM No</th>
@@ -472,21 +473,23 @@ export default function DealerCatalog() {
                                 const isFollowed = follows.has(p.id);
                                 return (
                                     <tr key={p.id}>
-                                        {/* Görsel - thumbnail with hover tooltip */}
-                                        <td style={{ width: 50, padding: '6px 8px' }}>
-                                            {p.image_url ? (
-                                                <div className="tooltip-container" style={{ position: 'relative' }}>
-                                                    <img src={p.image_url} alt={p.name || 'Ürün'} width={40} height={40} loading="lazy" style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }} />
-                                                    <div className="tooltip-content img-tooltip">
-                                                        <img src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} loading="lazy" style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
+                                        {/* Görsel - sadece Liste modunda */}
+                                        {viewMode === 'list' && (
+                                            <td style={{ width: 50, padding: '6px 8px' }}>
+                                                {p.image_url ? (
+                                                    <div className="tooltip-container" style={{ position: 'relative' }}>
+                                                        <img src={p.image_url} alt={p.name || 'Ürün'} width={40} height={40} loading="lazy" style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }} />
+                                                        <div className="tooltip-content img-tooltip">
+                                                            <img src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} loading="lazy" style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <div style={{ width: 40, height: 40, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                                    <CubeIcon style={{ width: 20, height: 20 }} />
-                                                </div>
-                                            )}
-                                        </td>
+                                                ) : (
+                                                    <div style={{ width: 40, height: 40, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
+                                                        <CubeIcon style={{ width: 20, height: 20 }} />
+                                                    </div>
+                                                )}
+                                            </td>
+                                        )}
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>

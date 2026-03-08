@@ -23,10 +23,10 @@ function getStockStatus(qty) {
 export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const ITEMS_PER_PAGE = 10;
     const [loading, setLoading] = useState(true);
     const [hasSearched, setHasSearched] = useState(false);
     const [viewMode, setViewMode] = useState('catalog'); // 'catalog' = görselsiz kompakt, 'list' = görselli
+    const perPage = viewMode === 'list' ? 15 : 10;
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
@@ -229,7 +229,7 @@ export default function DealerCatalog() {
         return true;
     });
 
-    const currentChunk = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const currentChunk = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
     const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
 
     useEffect(() => {
@@ -414,7 +414,7 @@ export default function DealerCatalog() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', background: 'var(--bg-secondary)' }}>
                     <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => searchProducts()} id="search-btn">Ara</button>
                     <button className="btn btn-danger" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={clearFilters} id="clear-btn">Temizle</button>
-                    <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={() => setViewMode(prev => prev === 'catalog' ? 'list' : 'catalog')} id="catalog-btn">{viewMode === 'catalog' ? 'Liste' : 'Katalog'}</button>
+                    <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={() => { setViewMode(prev => prev === 'catalog' ? 'list' : 'catalog'); setCurrentPage(1); }} id="catalog-btn">{viewMode === 'catalog' ? '🖼️ Liste' : '📊 Katalog'}</button>
                     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center' }}>
                         <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#16a34a' }} />
                     </div>
@@ -443,12 +443,101 @@ export default function DealerCatalog() {
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
+            ) : viewMode === 'list' ? (
+                /* ========== LİSTE MODU: Trendyol-style Card Grid ========== */
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
+                    {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
+                        const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
+                        const isFollowed = follows.has(p.id);
+                        return (
+                            <div key={p.id} style={{
+                                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12,
+                                overflow: 'hidden', display: 'flex', flexDirection: 'column',
+                                transition: 'box-shadow 0.2s, transform 0.2s', cursor: 'default',
+                                position: 'relative'
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+                            >
+                                {/* Takip butonu */}
+                                <button
+                                    onClick={() => toggleFollow(p.id)}
+                                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                                    title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
+                                >
+                                    {isFollowed ? <StarSolidIcon style={{ width: 18, height: 18, color: '#f59e0b' }} /> : <StarIcon style={{ width: 18, height: 18, color: '#fff' }} />}
+                                </button>
+
+                                {/* Ürün Görseli */}
+                                <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
+                                    {p.image_url ? (
+                                        <img src={p.image_url} alt={p.name || 'Ürün'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
+                                    ) : (
+                                        <CubeIcon style={{ width: 48, height: 48, color: '#ccc' }} />
+                                    )}
+                                </div>
+
+                                {/* Stok Kodu */}
+                                <div style={{ padding: '8px 10px 0', fontSize: 11, fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {p.code || '-'}
+                                </div>
+
+                                {/* Ürün Adı */}
+                                <div style={{ padding: '4px 10px 0', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minHeight: 34, lineHeight: '17px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                    {p.name}
+                                </div>
+
+                                {/* Marka + Birim */}
+                                <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{p.brand || '-'}</span>
+                                    <span>{p.unit || 'AD'}</span>
+                                </div>
+
+                                {/* Fiyat */}
+                                <div style={{ padding: '6px 10px 0', fontSize: 16, fontWeight: 800, color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                    ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                </div>
+                                <div style={{ padding: '0 10px', fontSize: 10, color: 'var(--text-muted)' }}>KDV Dahil</div>
+
+                                {/* Stok durumu */}
+                                <div style={{ padding: '6px 10px 0', display: 'flex', gap: 8, fontSize: 11 }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.stock_merkez > 0 ? '#16a34a' : '#dc2626' }} />
+                                        İst.
+                                    </span>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.stock_depo > 0 ? '#16a34a' : '#dc2626' }} />
+                                        Depo
+                                    </span>
+                                </div>
+
+                                {/* Sepet */}
+                                <div style={{ padding: '8px 10px 10px', marginTop: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <input
+                                        type="number" min="0"
+                                        value={safeCartQtys[p.id]?.qty || ''}
+                                        onChange={e => setQty(p, e.target.value)}
+                                        style={{ width: 44, padding: '4px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 12 }}
+                                    />
+                                    <button
+                                        className="btn btn-primary btn-sm"
+                                        onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
+                                        disabled={isOutOfStock}
+                                        style={{ flex: 1, opacity: isOutOfStock ? 0.4 : 1, fontSize: 12, padding: '6px 0' }}
+                                    >
+                                        {isOutOfStock ? 'Yok' : '🛒 Ekle'}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
             ) : (
+                /* ========== KATALOG MODU: Kompakt Tablo (görselsiz) ========== */
                 <div className="table-wrapper">
                     <table>
                         <thead>
                             <tr>
-                                {viewMode === 'list' && <th>Görsel</th>}
                                 <th>Marka</th>
                                 <th>Stok Kodu</th>
                                 <th>OEM No</th>
@@ -465,31 +554,11 @@ export default function DealerCatalog() {
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
-                                const stKey = p.stock_status && STOCK_STATUS[p.stock_status] ? p.stock_status : getStockStatus(p.stock_quantity);
-                                const st = STOCK_STATUS[stKey] || STOCK_STATUS['out_of_stock'];
-                                const qty = safeCartQtys[p.id] || 0;
+                            {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                                 const isFollowed = follows.has(p.id);
                                 return (
                                     <tr key={p.id}>
-                                        {/* Görsel - sadece Liste modunda */}
-                                        {viewMode === 'list' && (
-                                            <td style={{ width: 50, padding: '6px 8px' }}>
-                                                {p.image_url ? (
-                                                    <div className="tooltip-container" style={{ position: 'relative' }}>
-                                                        <img src={p.image_url} alt={p.name || 'Ürün'} width={40} height={40} loading="lazy" style={{ objectFit: 'contain', borderRadius: 4, border: '1px solid var(--border)', backgroundColor: 'white', cursor: 'pointer' }} />
-                                                        <div className="tooltip-content img-tooltip">
-                                                            <img src={p.image_url} alt={p.name || 'Ürün Detay'} width={300} height={300} loading="lazy" style={{ objectFit: 'contain', borderRadius: 8, backgroundColor: 'white' }} />
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ width: 40, height: 40, borderRadius: 4, background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                                        <CubeIcon style={{ width: 20, height: 20 }} />
-                                                    </div>
-                                                )}
-                                            </td>
-                                        )}
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
@@ -549,7 +618,6 @@ export default function DealerCatalog() {
                                                 value={safeCartQtys[p.id]?.qty || ''}
                                                 onChange={e => setQty(p, e.target.value)}
                                                 style={{ width: 60, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
-                                                id={`qty-${p.id}`}
                                             />
                                         </td>
                                         <td>
@@ -558,7 +626,6 @@ export default function DealerCatalog() {
                                                 onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
                                                 disabled={isOutOfStock}
                                                 style={{ opacity: isOutOfStock ? 0.4 : 1, whiteSpace: 'nowrap' }}
-                                                id={`add-cart-${p.id}`}
                                             >
                                                 {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
                                             </button>
@@ -568,7 +635,6 @@ export default function DealerCatalog() {
                                                 onClick={() => toggleFollow(p.id)}
                                                 style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
                                                 title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
-                                                id={`follow-${p.id}`}
                                             >
                                                 {isFollowed ? (
                                                     <StarSolidIcon style={{ width: 20, height: 20, color: '#f59e0b' }} />
@@ -586,7 +652,7 @@ export default function DealerCatalog() {
             )}
 
             {/* Pagination Controls */}
-            {!loading && hasSearched && filtered.length > ITEMS_PER_PAGE && (
+            {!loading && hasSearched && filtered.length > perPage && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button
                         className="btn btn-ghost"
@@ -598,14 +664,14 @@ export default function DealerCatalog() {
                     </button>
 
                     <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
-                        Sayfa {currentPage} / {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        Sayfa {currentPage} / {Math.ceil(filtered.length / perPage)}
                     </span>
 
                     <button
                         className="btn btn-ghost"
-                        disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        disabled={currentPage === Math.ceil(filtered.length / perPage)}
                         onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / perPage) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / perPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / perPage) ? 'not-allowed' : 'pointer' }}
                     >
                         Sonraki
                     </button>

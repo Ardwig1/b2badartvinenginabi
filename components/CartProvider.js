@@ -85,5 +85,17 @@ export function CartProvider({ children }) {
 }
 
 export function useCart() {
-    return useContext(CartContext);
+    const ctx = useContext(CartContext);
+    if (!ctx) {
+        return {
+            cartItems: {},
+            setCartItems: () => { },
+            setQty: () => { },
+            addToCart: () => { },
+            removeItem: () => { },
+            clearCart: () => { },
+            totalItems: 0,
+        };
+    }
+    return ctx;
 }

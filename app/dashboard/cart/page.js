@@ -82,7 +82,7 @@ export default function DealerCart() {
         let rawCost = initialPrice / 1.36;
         let price = rawCost * (1 + (globalMargin / 100));
 
-        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0) {
+        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0 && p.currency === 'USD') {
             price = price * globalUsdRate;
         } else {
             if (p.currency === 'USD') price = price * rates.USD;

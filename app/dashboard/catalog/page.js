@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getUserDiscount } from '../actions';
-import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { useCart } from '@/components/CartProvider';
 

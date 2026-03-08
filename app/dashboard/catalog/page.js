@@ -25,6 +25,7 @@ export default function DealerCatalog() {
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
     const [loading, setLoading] = useState(true);
+    const [hasSearched, setHasSearched] = useState(false);
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
@@ -55,7 +56,7 @@ export default function DealerCatalog() {
 
     const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
-    const fetchData = useCallback(async () => {
+    const fetchSettingsAndFilters = useCallback(async () => {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         setUserId(user?.id);
@@ -65,12 +66,20 @@ export default function DealerCatalog() {
             setDiscount(disc || 0);
         }
 
-        const { data: prods } = await supabase
-            .from('products').select('*').eq('is_active', true).order('brand').order('name');
-        const list = prods || [];
-        setProducts(list);
-        setBrands([...new Set(list.map(p => p.brand).filter(Boolean))]);
-        setCarBrands([...new Set(list.map(p => p.car_brand).filter(Boolean))]);
+        // Fetch just the distinct brands and car_brands/car_models for the dropdowns
+        // Because Supabase 'distinct' isn't natively supported, we'll fetch a lightweight list
+        // of unique brands from a custom RPC or just limit the columns if the table isn't massive.
+        // For now, let's fetch a list of distinct metadata to populate the dropdowns.
+        const { data: metaData } = await supabase
+            .from('products')
+            .select('brand, car_brand, car_model')
+            .eq('is_active', true);
+
+        if (metaData) {
+            setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
+            setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
+            // We'll set all possible car models for the current filter down below
+        }
 
         // Fetch follows
         if (user) {
@@ -115,15 +124,64 @@ export default function DealerCatalog() {
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { fetchSettingsAndFilters(); }, [fetchSettingsAndFilters]);
 
-    // Update car models when car brand changes
+    // This fetching only happens on manual search.
+    const searchProducts = async (e) => {
+        if (e && e.key && e.key !== 'Enter') return;
+
+        // Ensure at least one filter or search text is provided to avoid accidentally loading all 50k products
+        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkWay && !checkNew && !checkCampaign && !checkFollowed) {
+            setProducts([]);
+            setHasSearched(false);
+            return;
+        }
+
+        setLoading(true);
+        setHasSearched(true);
+        setCurrentPage(1);
+
+        try {
+            let query = supabase.from('products').select('*').eq('is_active', true);
+
+            // Text search
+            if (filterText.trim()) {
+                const term = `%${filterText.trim()}%`;
+                query = query.or(`name.ilike.${term},code.ilike.${term},product_number.ilike.${term},oem_no.ilike.${term},brand.ilike.${term}`);
+            }
+
+            // Dropdown filters
+            if (filterBrand) query = query.eq('brand', filterBrand);
+            if (filterCarBrand) query = query.eq('car_brand', filterCarBrand);
+            if (filterCarModel) query = query.eq('car_model', filterCarModel);
+
+            // Note: We'll fetch the matching set, then apply the client-side checkboxes in the `filtered` variable,
+            // because querying custom dynamic stock logic in Supabase directly via REST filter is tricky (e.g., checkIn, checkWay).
+            const { data, error } = await query.order('brand').order('name');
+            if (error) throw error;
+
+            setProducts(data || []);
+        } catch (err) {
+            console.error('Search error:', err);
+            showToast('Ürünler yüklenirken bir sorun oluştu.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Update car models when car brand changes based on API fetch (or skip for now, since we don't have all data. We'll use a hack to fetch car models when carbrand is selected)
     useEffect(() => {
         if (!filterCarBrand) { setCarModels([]); setFilterCarModel(''); return; }
-        const models = [...new Set(products.filter(p => p.car_brand === filterCarBrand).map(p => p.car_model).filter(Boolean))];
-        setCarModels(models);
-        setFilterCarModel('');
-    }, [filterCarBrand, products]);
+        // Fetch model list for this car brand directly
+        supabase.from('products')
+            .select('car_model')
+            .eq('car_brand', filterCarBrand)
+            .eq('is_active', true)
+            .then(({ data }) => {
+                if (data) setCarModels([...new Set(data.map(p => p.car_model).filter(Boolean))].sort());
+                setFilterCarModel('');
+            });
+    }, [filterCarBrand, supabase]);
 
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
@@ -159,15 +217,7 @@ export default function DealerCatalog() {
     };
 
     const filtered = products.filter(p => {
-        if (filterBrand && p.brand !== filterBrand) return false;
-        if (filterCarBrand && p.car_brand !== filterCarBrand) return false;
-        if (filterCarModel && p.car_model !== filterCarModel) return false;
-        if (filterText) {
-            const q = filterText.toLowerCase();
-            if (!p.name?.toLowerCase().includes(q) && !p.code?.toLowerCase().includes(q) &&
-                !p.product_number?.toLowerCase().includes(q) &&
-                !p.oem_no?.toLowerCase().includes(q) && !p.brand?.toLowerCase().includes(q)) return false;
-        }
+        // We already server-side filtered branding, car brand, car model, and text, so we only need to filter stock, new, campaign, follows here
         const st = getStockStatus(p.stock_quantity);
         if (checkIn && st !== 'in_stock') return false;
         if (checkLow && st !== 'low_stock') return false;
@@ -246,6 +296,8 @@ export default function DealerCatalog() {
     const clearFilters = () => {
         setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText('');
         setCheckIn(false); setCheckLow(false); setCheckWay(false); setCheckNew(false); setCheckCampaign(false); setCheckFollowed(false);
+        setProducts([]);
+        setHasSearched(false);
         setCurrentPage(1);
     };
 
@@ -293,7 +345,7 @@ export default function DealerCatalog() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Ürün Arama</h1>
-                    <p className="page-subtitle">{filtered.length} ürün bulundu • %{discountPercent} iskonto</p>
+                    <p className="page-subtitle">{hasSearched ? `${filtered.length} ürün bulundu` : 'Ürün aramak için filtreleri kullanın'} • %{discountPercent} iskonto</p>
                 </div>
                 <a href="/dashboard/cart" className="btn btn-primary" id="go-cart" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <ShoppingCartIcon style={{ width: 18, height: 18 }} /> Sepet {totalCartItems > 0 && <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 999, padding: '1px 8px', fontSize: 12 }}>{totalCartItems}</span>}
@@ -328,9 +380,10 @@ export default function DealerCatalog() {
                             <div style={{ background: '#fef08a', padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
                                 <input
                                     style={{ border: 'none', background: 'transparent', width: '100%', fontSize: 13, outline: 'none', color: '#000' }}
-                                    placeholder="Ara..."
+                                    placeholder="Ara... (Enter'a basın)"
                                     value={filterText}
                                     onChange={e => setFilterText(e.target.value)}
+                                    onKeyDown={searchProducts}
                                     id="catalog-search"
                                 />
                             </div>
@@ -357,7 +410,7 @@ export default function DealerCatalog() {
 
                 {/* Action bar */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', background: 'var(--bg-secondary)' }}>
-                    <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => { }} id="search-btn">Ara</button>
+                    <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => searchProducts()} id="search-btn">Ara</button>
                     <button className="btn btn-danger" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={clearFilters} id="clear-btn">Temizle</button>
                     <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={openCatalogPrint} id="catalog-btn">Katalog</button>
                     <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center' }}>
@@ -372,6 +425,18 @@ export default function DealerCatalog() {
                     <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
                     <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>
                         {pageImagesLoading ? 'Katalog Görselleri Yükleniyor...' : 'Yükleniyor...'}
+                    </div>
+                </div>
+            ) : !hasSearched ? (
+                <div className="card" style={{ padding: '60px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
+                        <MagnifyingGlassIcon style={{ width: 32, height: 32 }} />
+                    </div>
+                    <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+                        Katalogda Arama Yapın
+                    </div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 400, textAlign: 'center' }}>
+                        Lütfen ilgili filtreleme seçeneklerini doldurup veya genel arama kısmına yazıp "Ara" düğmesine basın.
                     </div>
                 </div>
             ) : filtered.length === 0 ? (
@@ -517,7 +582,7 @@ export default function DealerCatalog() {
             )}
 
             {/* Pagination Controls */}
-            {!loading && filtered.length > ITEMS_PER_PAGE && (
+            {!loading && hasSearched && filtered.length > ITEMS_PER_PAGE && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button
                         className="btn btn-ghost"

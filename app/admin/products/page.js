@@ -240,7 +240,7 @@ export default function AdminProducts() {
                         <thead>
                             <tr>
                                 <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
-                                <th>Liste Fiyatı</th><th>İskonto %</th><th style={{ textAlign: 'center' }}>Koli</th><th style={{ textAlign: 'center' }}>Merkez</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
+                                <th>Liste Fiyatı</th><th>İskonto %</th><th style={{ textAlign: 'center' }}>Koli</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -382,7 +382,7 @@ export default function AdminProducts() {
                                     </select>
                                 </div>
                                 <div className="form-group"><label className="form-label">Koli Adeti</label><input className="form-input" type="number" min="1" value={form.box_quantity} onChange={up('box_quantity')} id="prod-box-qty" /></div>
-                                <div className="form-group"><label className="form-label">Merkez Stok</label><input className="form-input" type="number" min="0" value={form.stock_merkez} onChange={up('stock_merkez')} id="prod-merkez" /></div>
+                                <div className="form-group"><label className="form-label">İstanbul Stok</label><input className="form-input" type="number" min="0" value={form.stock_merkez} onChange={up('stock_merkez')} id="prod-merkez" /></div>
                                 <div className="form-group"><label className="form-label">Depo Stok</label><input className="form-input" type="number" min="0" value={form.stock_depo} onChange={up('stock_depo')} id="prod-depo" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}>
                                     <label className="form-label">Ürün Görseli</label>
@@ -449,7 +449,7 @@ export default function AdminProducts() {
                                 <div>
                                     <label className="form-label">Konum</label>
                                     <select className="form-select" value={stockLocation} onChange={e => setStockLocation(e.target.value)} id="stock-location">
-                                        <option value="merkez">Merkez Depo</option>
+                                        <option value="merkez">İstanbul Depo</option>
                                         <option value="depo">Şube Depo</option>
                                     </select>
                                 </div>

@@ -279,7 +279,7 @@ export default function DealerCatalog() {
         <p>${filtered.length} ürün • ${new Date().toLocaleDateString('tr-TR')}</p>
         <table>
             <thead><tr>
-                <th>Stok Kodu</th><th>Ürün Adı</th><th>Marka</th><th>Birim</th><th>Fiyat (KDV Dahil)</th><th>Merkez</th><th>Depo</th><th>Koli</th>
+                <th>Stok Kodu</th><th>Ürün Adı</th><th>Marka</th><th>Birim</th><th>Fiyat (KDV Dahil)</th><th>İstanbul</th><th>Depo</th><th>Koli</th>
             </tr></thead>
             <tbody>${rows}</tbody>
         </table>
@@ -389,7 +389,7 @@ export default function DealerCatalog() {
                                 <th>Birim</th>
                                 <th style={{ textAlign: 'center' }}>İskonto</th>
                                 <th style={{ textAlign: 'right' }}>Fiyat (KDV Dahil)</th>
-                                <th style={{ textAlign: 'center' }}>Merkez</th>
+                                <th style={{ textAlign: 'center' }}>İstanbul</th>
                                 <th style={{ textAlign: 'center' }}>Depo</th>
                                 <th style={{ textAlign: 'center' }}>Koli Ad.</th>
                                 <th style={{ width: 80 }}>Sip.Mik.</th>

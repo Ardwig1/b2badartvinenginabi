@@ -274,7 +274,8 @@ export default function DealerCatalog() {
         const n = parseInt(val, 10);
         ctxSetQty(p.id, p, isNaN(n) ? 0 : n);
     };
-    const totalCartItems = Object.values(cartQtys).reduce((a, b) => a + b.qty, 0);
+    const safeCartQtys = cartQtys || {};
+    const totalCartItems = Object.values(safeCartQtys).reduce((a, b) => a + (b.qty || 0), 0);
 
     const toggleFollow = async (productId) => {
         if (!userId) return;
@@ -465,8 +466,8 @@ export default function DealerCatalog() {
                         <tbody>
                             {filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE).map(p => {
                                 const stKey = p.stock_status && STOCK_STATUS[p.stock_status] ? p.stock_status : getStockStatus(p.stock_quantity);
-                                const st = STOCK_STATUS[stKey];
-                                const qty = cartQtys[p.id] || 0;
+                                const st = STOCK_STATUS[stKey] || STOCK_STATUS['out_of_stock'];
+                                const qty = safeCartQtys[p.id] || 0;
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                                 const isFollowed = follows.has(p.id);
                                 return (
@@ -542,7 +543,7 @@ export default function DealerCatalog() {
                                         <td>
                                             <input
                                                 type="number" min="0"
-                                                value={cartQtys[p.id]?.qty || ''}
+                                                value={safeCartQtys[p.id]?.qty || ''}
                                                 onChange={e => setQty(p, e.target.value)}
                                                 style={{ width: 60, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
                                                 id={`qty-${p.id}`}
@@ -551,7 +552,7 @@ export default function DealerCatalog() {
                                         <td>
                                             <button
                                                 className="btn btn-primary btn-sm"
-                                                onClick={() => { if ((cartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
+                                                onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
                                                 disabled={isOutOfStock}
                                                 style={{ opacity: isOutOfStock ? 0.4 : 1, whiteSpace: 'nowrap' }}
                                                 id={`add-cart-${p.id}`}

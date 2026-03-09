@@ -8,7 +8,6 @@ export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [hasSearched, setHasSearched] = useState(false);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -27,7 +26,7 @@ export default function AdminProducts() {
     const [isDragging, setIsDragging] = useState(false);
     const supabase = createClient();
 
-    const fetchSettings = useCallback(async () => {
+    const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
             const marginRes = await fetch('/api/admin/margin');
@@ -35,44 +34,31 @@ export default function AdminProducts() {
             if (marginData?.margin !== undefined) {
                 setGlobalMargin(marginData.margin);
             }
+
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            setProducts(data || []);
         } catch (e) {
-            console.error('Margin fetch error:', e);
+            console.error('Fetch error:', e);
         }
         setLoading(false);
     }, []);
 
-    useEffect(() => { fetchSettings(); }, [fetchSettings]);
+    useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-    const searchProducts = async (e) => {
-        if (e && e.key && e.key !== 'Enter') return;
-        if (!search.trim()) {
-            setProducts([]);
-            setHasSearched(false);
-            return;
-        }
-
-        setLoading(true);
-        setHasSearched(true);
-
-        try {
-            const term = `%${search.trim()}%`;
-            // Search in name, code, oem_no, and brand
-            const { data, error } = await supabase
-                .from('products')
-                .select('*')
-                .or(`name.ilike.${term},code.ilike.${term},oem_no.ilike.${term},brand.ilike.${term}`)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-            setProducts(data || []);
-            setCurrentPage(1);
-        } catch (err) {
-            console.error('Search error:', err);
-            alert('Ürünler aranırken bir hata oluştu.');
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Client-side filtering based on search term
+    const filtered = search.trim()
+        ? products.filter(p => {
+            const term = search.trim().toLowerCase();
+            return (p.name && p.name.toLowerCase().includes(term)) ||
+                (p.code && p.code.toLowerCase().includes(term)) ||
+                (p.oem_no && p.oem_no.toLowerCase().includes(term)) ||
+                (p.brand && p.brand.toLowerCase().includes(term));
+        })
+        : products;
 
     const openNew = () => {
         setEditing(null);
@@ -111,10 +97,8 @@ export default function AdminProducts() {
         setSaving(false);
         setShowModal(false);
 
-        // If we are currently searching for something, re-trigger the search to see updates
-        if (hasSearched) {
-            searchProducts();
-        }
+        // Re-fetch products to see updates
+        fetchProducts();
     };
 
     const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
@@ -164,7 +148,7 @@ export default function AdminProducts() {
 
     const toggleActive = async (p) => {
         await supabase.from('products').update({ is_active: !p.is_active }).eq('id', p.id);
-        if (hasSearched) searchProducts();
+        fetchProducts();
     };
 
     const saveStock = async (e) => {
@@ -186,11 +170,10 @@ export default function AdminProducts() {
 
         await supabase.from('products').update(updatePayload).eq('id', stockTarget.id);
         setShowStockModal(false);
-        if (hasSearched) searchProducts();
+        fetchProducts();
     };
 
-    // Removing local filtering because filtering is now done on the server
-    const currentChunk = products.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+    const currentChunk = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
     const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
 
     useEffect(() => {
@@ -235,7 +218,7 @@ export default function AdminProducts() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Ürünler & Stok</h1>
-                    <p className="page-subtitle">Ürün arayarak stok ve fiyatları yönetin</p>
+                    <p className="page-subtitle">{filtered.length} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
                 <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
             </div>
@@ -247,15 +230,14 @@ export default function AdminProducts() {
                     <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                         <span className="search-icon" style={{ position: 'absolute', left: 16, display: 'flex' }}><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
                         <input
-                            placeholder="Aramak için ürün adı, kod, oem, marka yazıp Enter'a basın..."
+                            placeholder="Ürün adı, kod, oem, marka ile filtrele..."
                             value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            onKeyDown={searchProducts}
+                            onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
                             style={{ width: '100%', paddingLeft: 40, paddingRight: 16, height: 44, borderRadius: 8, border: '1px solid var(--border)', outline: 'none' }}
                             id="product-search"
                         />
                     </div>
-                    <button className="btn btn-primary" onClick={() => searchProducts()}>Bul</button>
+                    {search.trim() && <button className="btn btn-ghost" onClick={() => { setSearch(''); setCurrentPage(1); }}>Temizle</button>}
                 </div>
             </div>
 
@@ -266,19 +248,7 @@ export default function AdminProducts() {
                         {pageImagesLoading ? 'Ürün Görselleri Yükleniyor...' : 'Yükleniyor...'}
                     </div>
                 </div>
-            ) : !hasSearched ? (
-                <div className="card" style={{ minHeight: 'calc(100vh - 300px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
-                        <MagnifyingGlassIcon style={{ width: 32, height: 32 }} />
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-                        Ürünleri Listelemek İçin Arama Yapın
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 400, textAlign: 'center' }}>
-                        Tüm ürünleri yüklemek yerine aranılan kelimeyi (Örn: "far", "clio") içeren ürünleri getiriyoruz.
-                    </div>
-                </div>
-            ) : products.length === 0 ? (
+            ) : filtered.length === 0 ? (
                 <div className="card" style={{ minHeight: 'calc(100vh - 300px)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
                         <CubeIcon style={{ width: 32, height: 32 }} />
@@ -346,7 +316,7 @@ export default function AdminProducts() {
             )}
 
             {/* Pagination Controls */}
-            {!loading && hasSearched && products.length > ITEMS_PER_PAGE && (
+            {!loading && filtered.length > ITEMS_PER_PAGE && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button
                         className="btn btn-ghost"
@@ -358,14 +328,14 @@ export default function AdminProducts() {
                     </button>
 
                     <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
-                        Sayfa {currentPage} / {Math.ceil(products.length / ITEMS_PER_PAGE)}
+                        Sayfa {currentPage} / {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
                     </span>
 
                     <button
                         className="btn btn-ghost"
-                        disabled={currentPage === Math.ceil(products.length / ITEMS_PER_PAGE)}
+                        disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
                         onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(products.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(products.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(products.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
                     >
                         Sonraki
                     </button>

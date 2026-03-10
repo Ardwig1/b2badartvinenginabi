@@ -29,7 +29,7 @@ export default function GizlilikVeGuvenlik() {
             <h3 style={{ marginTop: '20px' }}>3. Ödeme Güvenliği ve Kredi Kartı Bilgileri</h3>
             <p>
                 Sitemiz üzerinden kredi kartı ile yapılan ödemelerde 256 bit SSL şifreleme teknolojisi kullanılmaktadır.
-                Sanal POS ekranında girdiğiniz kredi kartı bilgileriniz doğrudan ilgili ödeme kuruluşuna (PayTR / iyzico vb.)
+                Sanal POS ekranında girdiğiniz kredi kartı bilgileriniz doğrudan ilgili ödeme kuruluşuna (Tosla vb.)
                 iletilir; kesinlikle sistemlerimizde, veritabanlarımızda saklanmaz veya kaydedilmez.
             </p>
 

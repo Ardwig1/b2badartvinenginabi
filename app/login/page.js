@@ -158,7 +158,7 @@ export default function LoginPage() {
                     </button>
                 </form>
 
-                {/* PayTR Test Hesabı */}
+                {/* Tosla Test Hesabı */}
                 <div style={{
                     marginTop: '1.2rem',
                     padding: '14px 16px',
@@ -169,17 +169,17 @@ export default function LoginPage() {
                     color: 'var(--text-secondary)',
                     lineHeight: '1.6'
                 }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 PayTR Entegrasyon Test Hesabı</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 Tosla Entegrasyon Test Hesabı</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>PAYTR</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>PAYTR</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>123456</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>tosla1234</span>
                     </div>
                 </div>
 
             </div>
 
-            {/* PayTR Required Footer */}
+            {/* Payment Provider Required Footer */}
             <div style={{
                 position: 'absolute',
                 bottom: 0,
@@ -193,7 +193,7 @@ export default function LoginPage() {
                 fontSize: '12px',
                 color: '#888',
                 backgroundColor: 'rgba(0, 0, 0, 0.4)',// trigger deploy for Ardwig1
-                
+
                 borderTop: '1px solid rgba(255, 255, 255, 0.1)'
             }}>
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>

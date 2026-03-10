@@ -179,35 +179,52 @@ export default function LoginPage() {
 
             </div>
 
-            {/* Payment Provider Required Footer */}
+            {/* Clean Footer for Requirements */}
             <div style={{
                 position: 'absolute',
                 bottom: 0,
                 width: '100%',
-                padding: '1rem',
+                padding: '2rem 1rem',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center',
                 alignItems: 'center',
-                gap: '10px',
-                fontSize: '12px',
-                color: '#888',
-                backgroundColor: 'rgba(0, 0, 0, 0.4)',// trigger deploy for Ardwig1
-
-                borderTop: '1px solid rgba(255, 255, 255, 0.1)'
+                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(10px)',
+                zIndex: 10
             }}>
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                    <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</a>
-                    <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>İptal ve İade Koşulları</a>
-                    <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#aaa', textDecoration: 'underline' }}>Gizlilik ve Güvenlik Politikası</a>
-                </div>
-                <div style={{ textAlign: 'center', lineHeight: '1.4' }}>
-                    <strong>Murat Kaan Şaşmaz - OMİ GROUP'S</strong><br />
-                    B2B Yedek Parça Satış Portalı<br />
-                    Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
-                    Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL<br />
-                    Tel: 0532 597 0664 | E-posta: muratkaan@omigroups.com<br />
-                    Vergi Dairesi: Sarıgazi VD. / 800081338
+                <div style={{ maxWidth: 1000, width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem' }}>
+
+                    {/* Legal Links */}
+                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Kurumsal</h4>
+                        <a href="/hakkimizda" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Hakkımızda</a>
+                        <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Mesafeli Satış Sözleşmesi</a>
+                        <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>İptal ve İade Koşulları</a>
+                        <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Gizlilik ve Güvenlik</a>
+                    </div>
+
+                    {/* Contact details */}
+                    <div style={{ flex: '1 1 300px', fontSize: '12px', color: '#94a3b8', lineHeight: '1.6' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600, fontSize: '13px' }}>İletişim</h4>
+                        <p style={{ margin: 0 }}><strong>Murat Kaan Şaşmaz - OMİ GROUP'S</strong></p>
+                        <p style={{ margin: 0 }}>Ofis: Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL</p>
+                        <p style={{ margin: 0 }}>Depo: Mimar Sinan Mah Yedpa Tic. Mrk. İçi Ataşehir/İSTANBUL</p>
+                        <p style={{ margin: 0, marginTop: '4px' }}>Tel: 0532 597 0664 | E-posta: muratkaan@omigroups.com</p>
+                        <p style={{ margin: 0 }}>Vergi Dairesi: Sarıgazi VD. / 800081338</p>
+                    </div>
+
+                    {/* Payment Logos */}
+                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
+                        <h4 style={{ color: '#fff', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>Güvenli Ödeme</h4>
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '6px' }}>
+                            <img src="/visa.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
+                            <img src="/mastercard.png" alt="Mastercard" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
+                            <img src="/troy.png" alt="Troy" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>256-bit SSL Sertifikası ile korunmaktadır.</span>
+                    </div>
+
                 </div>
             </div>
         </div>

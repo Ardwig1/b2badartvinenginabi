@@ -459,6 +459,15 @@ export default function DealerCatalog() {
                                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
                             >
+                                {/* Takip butonu */}
+                                <button
+                                    onClick={() => toggleFollow(p.id)}
+                                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
+                                    title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
+                                >
+                                    {isFollowed ? <StarSolidIcon style={{ width: 18, height: 18, color: '#f59e0b' }} /> : <StarIcon style={{ width: 18, height: 18, color: '#fff' }} />}
+                                </button>
+
                                 {/* Ürün Görseli */}
                                 <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
                                     {p.image_url ? (
@@ -518,19 +527,6 @@ export default function DealerCatalog() {
                                     >
                                         {isOutOfStock ? 'Yok' : '🛒 Ekle'}
                                     </button>
-                                    <input
-                                        type="checkbox"
-                                        checked={(safeCartQtys[p.id]?.qty || 0) > 0 && !(safeCartQtys[p.id]?.unselected)}
-                                        onChange={(e) => {
-                                            const isChecked = e.target.checked;
-                                            if (isChecked && (safeCartQtys[p.id]?.qty || 0) === 0) {
-                                                setQty(p, 1);
-                                            }
-                                            ctxSetQty(p.id, p, safeCartQtys[p.id]?.qty || (isChecked ? 1 : 0), !isChecked);
-                                        }}
-                                        style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary)', margin: 0, marginLeft: 2 }}
-                                        title="Siparişe Dahil Et"
-                                    />
                                 </div>
                             </div>
                         );
@@ -554,11 +550,13 @@ export default function DealerCatalog() {
                                 <th style={{ textAlign: 'center' }}>Koli Ad.</th>
                                 <th style={{ width: 80 }}>Sip.Mik.</th>
                                 <th>Sepete At</th>
+                                <th style={{ textAlign: 'center' }}>Takip</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
+                                const isFollowed = follows.has(p.id);
                                 return (
                                     <tr key={p.id}>
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
@@ -622,7 +620,7 @@ export default function DealerCatalog() {
                                                 style={{ width: 60, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
                                             />
                                         </td>
-                                        <td style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, height: 50 }}>
+                                        <td>
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
@@ -631,21 +629,19 @@ export default function DealerCatalog() {
                                             >
                                                 {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
                                             </button>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 8 }}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={(safeCartQtys[p.id]?.qty || 0) > 0 && !(safeCartQtys[p.id]?.unselected)}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        if (isChecked && (safeCartQtys[p.id]?.qty || 0) === 0) {
-                                                            setQty(p, 1);
-                                                        }
-                                                        ctxSetQty(p.id, p, safeCartQtys[p.id]?.qty || (isChecked ? 1 : 0), !isChecked);
-                                                    }}
-                                                    style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--primary)', margin: 0 }}
-                                                    title="Siparişe Dahil Et"
-                                                />
-                                            </div>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <button
+                                                onClick={() => toggleFollow(p.id)}
+                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
+                                                title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
+                                            >
+                                                {isFollowed ? (
+                                                    <StarSolidIcon style={{ width: 20, height: 20, color: '#f59e0b' }} />
+                                                ) : (
+                                                    <StarIcon style={{ width: 20, height: 20, color: 'var(--text-muted)' }} />
+                                                )}
+                                            </button>
                                         </td>
                                     </tr>
                                 );

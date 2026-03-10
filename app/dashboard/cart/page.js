@@ -13,6 +13,10 @@ export default function DealerCart() {
         return Object.values(contextCartItems).filter(item => item.qty > 0);
     }, [contextCartItems]);
 
+    const [unselectedItems, setUnselectedItems] = useState(new Set());
+
+    const isSelected = (id) => !unselectedItems.has(id);
+
     const [products, setProducts] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
@@ -120,16 +124,30 @@ export default function DealerCart() {
         const currentQty = contextCartItems[p.id]?.qty || 0;
         ctxSetQty(p.id, p, currentQty + delta);
     };
-    const removeItem = (p) => ctxSetQty(p.id, p, 0);
+    const removeItem = (p) => {
+        ctxSetQty(p.id, p, 0);
+        setUnselectedItems(prev => { const next = new Set(prev); next.delete(p.id); return next; });
+    };
 
-    const subtotal = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
-    const totalDiscount = cartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * (discountPercent / 100) * i.qty), 0);
+    const toggleSelect = (id) => {
+        setUnselectedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    };
+    const selectAll = () => setUnselectedItems(new Set());
+    const deselectAll = () => setUnselectedItems(new Set(cartItems.map(i => i.product.id)));
+
+    const selectedCartItems = cartItems.filter(i => isSelected(i.product.id));
+    const subtotal = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
+    const totalDiscount = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * (discountPercent / 100) * i.qty), 0);
     const totalAfterDiscount = subtotal - totalDiscount;
     const vat = totalAfterDiscount * 0.20;
     const grandTotal = totalAfterDiscount + vat;
 
     const placeOrder = async () => {
-        if (cartItems.length === 0) return;
+        if (selectedCartItems.length === 0) return;
         setSubmitting(true);
         const finalAddress = isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi';
         const finalNote = `[${shippingMethod}] ${note}`;
@@ -143,7 +161,7 @@ export default function DealerCart() {
         }).select().single();
 
         if (order) {
-            await supabase.from('order_items').insert(cartItems.map(i => ({
+            await supabase.from('order_items').insert(selectedCartItems.map(i => ({
                 order_id: order.id,
                 product_id: i.product.id,
                 quantity: i.qty,
@@ -151,7 +169,7 @@ export default function DealerCart() {
                 total_price: getDiscountedPrice(i.product) * i.qty,
             })));
             // Reduce stock
-            for (const item of cartItems) {
+            for (const item of selectedCartItems) {
                 await supabase.rpc('decrement_stock', { product_id: item.product.id, qty: item.qty }).catch(() => {
                     supabase.from('products').select('stock_quantity').eq('id', item.product.id).single().then(({ data }) => {
                         supabase.from('products').update({ stock_quantity: Math.max(0, (data?.stock_quantity || 0) - item.qty) }).eq('id', item.product.id);
@@ -159,7 +177,10 @@ export default function DealerCart() {
                 });
             }
         }
-        clearCart();
+        // Only remove ordered (selected) items from cart, keep the rest
+        for (const item of selectedCartItems) {
+            ctxSetQty(item.product.id, item.product, 0);
+        }
         setSubmitting(false);
         setSuccess(true);
     };
@@ -219,30 +240,50 @@ export default function DealerCart() {
                     {cartItems.length === 0 ? (
                         <div className="card"><div className="empty-state"><div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Sepetiniz boş</div><div className="empty-state-text">Katalogdan ürün ekleyin</div></div></div>
                     ) : (
-                        <div className="table-wrapper">
-                            <table>
-                                <thead><tr><th>Ürün</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th></th></tr></thead>
-                                <tbody>
-                                    {cartItems.map(({ product: p, qty }) => (
-                                        <tr key={p.id}>
-                                            <td>
-                                                <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
-                                            </td>
-                                            <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                            <td>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)} id={`minus-${p.id}`}>−</button>
-                                                    <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
-                                                    <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)} id={`plus-${p.id}`}>+</button>
-                                                </div>
-                                            </td>
-                                            <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                            <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p)} id={`remove-${p.id}`}>✕</button></td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                        <div>
+                            {/* Select all / Deselect all */}
+                            <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
+                                <button className="btn btn-ghost btn-sm" onClick={selectAll} style={{ fontSize: 13 }}>☑ Tümünü Seç</button>
+                                <button className="btn btn-ghost btn-sm" onClick={deselectAll} style={{ fontSize: 13 }}>☐ Seçimi Kaldır</button>
+                                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>{selectedCartItems.length} / {cartItems.length} ürün seçili</span>
+                            </div>
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead><tr><th style={{ width: 60, minWidth: 60, paddingLeft: 16 }}></th><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th></th></tr></thead>
+                                    <tbody>
+                                        {cartItems.map(({ product: p, qty }) => {
+                                            const itemSelected = isSelected(p.id);
+                                            return (
+                                                <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5, transition: 'opacity 0.15s' }}>
+                                                    <td style={{ textAlign: 'center', paddingLeft: 12 }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={itemSelected}
+                                                            onChange={() => toggleSelect(p.id)}
+                                                            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', margin: 0, display: 'block' }}
+                                                        />
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
+                                                    </td>
+                                                    <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{p.brand || '-'}</td>
+                                                    <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)}>−</button>
+                                                            <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
+                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)}>+</button>
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p)}>✕</button></td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -301,8 +342,8 @@ export default function DealerCart() {
                         <span>₺{grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                     </div>
 
-                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={cartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
-                        {submitting ? 'Sipariş veriliyor...' : '✓ Sipariş Onayla'}
+                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={selectedCartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
+                        {submitting ? 'Sipariş veriliyor...' : selectedCartItems.length === 0 ? 'Ürün seçin' : `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
                     </button>
                 </div>
             </div>

@@ -217,10 +217,10 @@ export default function LoginPage() {
                     {/* Payment Logos */}
                     <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
                         <h4 style={{ color: '#fff', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>Güvenli Ödeme</h4>
-                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '6px' }}>
-                            <img src="https://cdn.worldvectorlogo.com/logos/visa.svg" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:bold; font-size:12px;">VISA</span>'); }} />
-                            <img src="https://cdn.worldvectorlogo.com/logos/mastercard-2.svg" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:12px;">MASTERCARD</span>'); }} />
-                            <img src="https://troyodeme.com/images/troy-logo.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:bold; font-size:12px;">TROY</span>'); }} />
+                        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'transparent', padding: '8px 0', borderRadius: '6px' }}>
+                            <img src="/user_logo2.png" alt="Visa" style={{ height: 26, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:bold; font-size:12px;">VISA</span>'); }} />
+                            <img src="/user_logo1.png" alt="Mastercard" style={{ height: 26, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:12px;">MASTERCARD</span>'); }} />
+                            <img src="/user_logo3.png" alt="Troy" style={{ height: 26, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:bold; font-size:12px;">TROY</span>'); }} />
                         </div>
                         <span style={{ fontSize: '11px', color: '#94a3b8' }}>256-bit SSL Sertifikası ile korunmaktadır.</span>
                     </div>

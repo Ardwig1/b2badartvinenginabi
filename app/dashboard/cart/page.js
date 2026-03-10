@@ -249,20 +249,12 @@ export default function DealerCart() {
                             </div>
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th style={{ width: 60, minWidth: 60, paddingLeft: 16 }}></th><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
                                             return (
                                                 <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5, transition: 'opacity 0.15s' }}>
-                                                    <td style={{ textAlign: 'center', paddingLeft: 12 }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={itemSelected}
-                                                            onChange={() => toggleSelect(p.id)}
-                                                            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', margin: 0, display: 'block' }}
-                                                        />
-                                                    </td>
                                                     <td>
                                                         <div style={{ fontWeight: 600 }}>{p.name}</div>
                                                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
@@ -277,6 +269,14 @@ export default function DealerCart() {
                                                         </div>
                                                     </td>
                                                     <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'center' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={itemSelected}
+                                                            onChange={() => toggleSelect(p.id)}
+                                                            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', margin: '0 auto', display: 'block' }}
+                                                        />
+                                                    </td>
                                                     <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p)}>✕</button></td>
                                                 </tr>
                                             );

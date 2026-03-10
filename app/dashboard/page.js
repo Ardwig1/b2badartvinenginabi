@@ -25,16 +25,12 @@ export default async function DealerDashboard() {
         { count: totalOrders },
         { data: recentOrders },
         { data: recentQuotes },
-        { count: unpaidInvoices },
     ] = await Promise.all([
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
         supabase.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
-        supabase.from('quotes').select('id, status, total_amount, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
-        supabase.from('invoices').select('total_amount').eq('company_id', companyId).neq('status', 'paid'),
+        supabase.from('quotes').select('id, status, total_amount, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3)
     ]);
-
-    const totalUnpaidAmount = unpaidInvoices?.reduce((acc, inv) => acc + Number(inv.total_amount), 0) || 0;
 
     const company = profile?.company;
     const pg = company?.price_group;
@@ -110,11 +106,7 @@ export default async function DealerDashboard() {
                         <span style={{ fontSize: 13, marginLeft: 4 }}>{company?.current_balance < 0 ? '(B)' : '(A)'}</span>
                     </div>
                 </div>
-                <div className="stat-card">
-                    <div className="stat-icon" style={{ background: '#fee2e2', color: '#dc2626' }}><PresentationChartLineIcon style={{ width: 24, height: 24 }} /></div>
-                    <div className="stat-label">Açık Faturalar (Borç)</div>
-                    <div className="stat-value">₺{totalUnpaidAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                </div>
+
                 <div className="stat-card">
                     <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}><ShieldCheckIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Risk Limiti</div>

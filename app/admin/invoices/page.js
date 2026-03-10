@@ -32,65 +32,69 @@ export default function AdminInvoices() {
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
 
-    const addItem = () => setInvoiceItems(prev => [...prev, { product_id: '', description: '', quantity: 1, unit_price: '' }]);
-    const removeItem = (i) => setInvoiceItems(prev => prev.filter((_, idx) => idx !== i));
-    const updateItem = (i, field, val) => setInvoiceItems(prev => prev.map((item, idx) => idx === i ? { ...item, [field]: val } : item));
-    const updateProductItem = (i, productId) => {
-        const prod = products.find(p => p.id === productId);
-        setInvoiceItems(prev => prev.map((item, idx) => idx === i ? { ...item, product_id: productId, description: prod?.name || '', unit_price: prod?.list_price || '' } : item));
-    };
-
-    const subtotal = invoiceItems.reduce((acc, i) => acc + (Number(i.unit_price || 0) * Number(i.quantity || 0)), 0);
-    const taxAmount = subtotal * (Number(form.tax_percent) / 100);
-    const totalAmount = subtotal + taxAmount;
-
     const saveInvoice = async (e) => {
         e.preventDefault();
         setSaving(true);
-        const { data: inv, error } = await supabase.from('invoices').insert({
-            company_id: form.company_id,
-            order_id: form.order_id || null,
-            invoice_number: form.invoice_number,
-            due_date: form.due_date || null,
-            tax_percent: Number(form.tax_percent),
-            tax_amount: taxAmount,
-            subtotal,
-            total_amount: totalAmount,
-            note: form.note,
-            status: 'unpaid',
-        }).select().single();
-        if (!error && inv) {
-            await supabase.from('invoice_items').insert(invoiceItems.map(item => ({
-                invoice_id: inv.id,
-                product_id: item.product_id || null,
-                description: item.description,
-                quantity: Number(item.quantity),
-                unit_price: Number(item.unit_price),
-                total_price: Number(item.unit_price) * Number(item.quantity),
-            })));
+
+        // 1. Dosya Yükleme
+        let fileUrl = '';
+        if (form.file) {
+            const formData = new FormData();
+            formData.append('file', form.file);
+
+            try {
+                const uploadRes = await fetch('/api/admin/upload-file', {
+                    method: 'POST',
+                    body: formData
+                });
+                const uploadData = await uploadRes.json();
+                if (!uploadRes.ok || !uploadData.success) {
+                    alert('Dosya yüklenemedi: ' + (uploadData.error || 'Bilinmeyen hata'));
+                    setSaving(false);
+                    return;
+                }
+                fileUrl = uploadData.url;
+            } catch (err) {
+                alert('Dosya yükleme sırasında bağlantı hatası: ' + err.message);
+                setSaving(false);
+                return;
+            }
         }
+
+        // 2. Veritabanına Kayıt
+        const noteData = JSON.stringify({ desc: form.desc, url: fileUrl });
+
+        const { error } = await supabase.from('invoices').insert({
+            company_id: form.company_id,
+            invoice_number: `CH-${Date.now()}`,
+            due_date: form.due_date || null,
+            tax_percent: 0,
+            tax_amount: 0,
+            subtotal: 0,
+            total_amount: 0,
+            note: noteData,
+            status: 'unpaid',
+        });
+
+        if (error) {
+            alert('Kayıt oluşturulurken hata oluştu: ' + error.message);
+        }
+
         setSaving(false);
         setShowModal(false);
         fetchAll();
     };
 
-    const updatePayment = async (id, status) => {
-        await supabase.from('invoices').update({ status }).eq('id', id);
-        fetchAll();
-    };
-
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
-    const statusBadge = { unpaid: 'badge-unpaid', paid: 'badge-paid', partial: 'badge-partial' };
-    const statusLabel = { unpaid: 'Ödenmedi', paid: 'Ödendi', partial: 'Kısmi' };
 
     return (
         <div className="page-wrapper">
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">Fatura Yönetimi</h1>
-                    <p className="page-subtitle">Fatura oluşturun ve takip edin</p>
+                    <h1 className="page-title">Cari Hesap Yönetimi</h1>
+                    <p className="page-subtitle">Firmalara ait PDF ekstre ve faturalarını yükleyin</p>
                 </div>
-                <button className="btn btn-primary" onClick={() => { setForm({ company_id: '', order_id: '', invoice_number: `INV-${Date.now()}`, due_date: '', tax_percent: 18, note: '' }); setInvoiceItems([{ product_id: '', description: '', quantity: 1, unit_price: '' }]); setShowModal(true); }} id="add-invoice-btn">+ Yeni Fatura</button>
+                <button className="btn btn-primary" onClick={() => { setForm({ company_id: '', due_date: new Date().toISOString().split('T')[0], desc: '', file: null }); setShowModal(true); }}>+ Yeni Kayıt</button>
             </div>
 
             {loading ? (
@@ -98,25 +102,28 @@ export default function AdminInvoices() {
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Fatura No</th><th>Firma</th><th>Tutar</th><th>Vade Tarihi</th><th>Durum</th><th>İşlemler</th></tr></thead>
+                        <thead><tr><th>Tarih</th><th>Firma</th><th>Açıklama</th><th>İşlem</th></tr></thead>
                         <tbody>
-                            {invoices.map(inv => (
-                                <tr key={inv.id}>
-                                    <td style={{ fontFamily: 'monospace', color: 'var(--primary)' }}>{inv.invoice_number}</td>
-                                    <td style={{ fontWeight: 600 }}>{inv.company?.name}</td>
-                                    <td>₺{Number(inv.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                    <td>{inv.due_date ? new Date(inv.due_date).toLocaleDateString('tr-TR') : '-'}</td>
-                                    <td><span className={`badge ${statusBadge[inv.status]}`}>{statusLabel[inv.status]}</span></td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            {inv.status !== 'paid' && <button className="btn btn-success btn-sm" onClick={() => updatePayment(inv.id, 'paid')} id={`pay-${inv.id}`}>✓ Ödendi</button>}
-                                            {inv.status === 'unpaid' && <button className="btn btn-ghost btn-sm" onClick={() => updatePayment(inv.id, 'partial')} id={`partial-${inv.id}`}>Kısmi</button>}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            {invoices.map(inv => {
+                                let noteData = { desc: '', url: '' };
+                                try { noteData = JSON.parse(inv.note || '{}'); } catch (e) { noteData = { desc: inv.note, url: '' }; }
+                                return (
+                                    <tr key={inv.id}>
+                                        <td style={{ fontWeight: 600 }}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString('tr-TR') : '-'}</td>
+                                        <td style={{ fontWeight: 600, color: 'var(--primary)' }}>{inv.company?.name}</td>
+                                        <td>{noteData.desc || '-'}</td>
+                                        <td>
+                                            {noteData.url ? (
+                                                <a href={noteData.url} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm" style={{ color: '#2563eb', fontWeight: 600 }}>📄 PDF İndir</a>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Dosya Yok</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                )
+                            })}
                             {invoices.length === 0 && (
-                                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>Fatura bulunamadı</td></tr>
+                                <tr><td colSpan={4} style={{ textAlign: 'center', padding: 40, color: 'var(--text-secondary)' }}>Kayıt bulunamadı</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -125,71 +132,32 @@ export default function AdminInvoices() {
 
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3 className="modal-title">Yeni Fatura</h3>
+                            <h3 className="modal-title">Yeni Cari Kayıt Ekle</h3>
                             <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
                         </div>
                         <form onSubmit={saveInvoice}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-                                <div className="form-group"><label className="form-label">Firma *</label>
-                                    <select className="form-select" value={form.company_id} onChange={up('company_id')} required id="inv-company">
-                                        <option value="">Firma seçin</option>
-                                        {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="form-group"><label className="form-label">Fatura No *</label>
-                                    <input className="form-input" value={form.invoice_number} onChange={up('invoice_number')} required id="inv-number" />
-                                </div>
-                                <div className="form-group"><label className="form-label">Vade Tarihi</label>
-                                    <input className="form-input" type="date" value={form.due_date} onChange={up('due_date')} id="inv-due" />
-                                </div>
-                                <div className="form-group"><label className="form-label">KDV (%)</label>
-                                    <input className="form-input" type="number" min="0" max="100" value={form.tax_percent} onChange={up('tax_percent')} id="inv-tax" />
-                                </div>
+                            <div className="form-group"><label className="form-label">Firma *</label>
+                                <select className="form-select" value={form.company_id} onChange={up('company_id')} required>
+                                    <option value="">Firma seçin</option>
+                                    {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="form-group"><label className="form-label">Tarih *</label>
+                                <input className="form-input" type="date" value={form.due_date} onChange={up('due_date')} required />
+                            </div>
+                            <div className="form-group"><label className="form-label">Açıklama *</label>
+                                <input className="form-input" value={form.desc} onChange={up('desc')} placeholder="Örn: Temmuz Ayı Faturası" required />
+                            </div>
+                            <div className="form-group"><label className="form-label">Dosya (PDF) *</label>
+                                <input className="form-input" type="file" accept=".pdf,image/*" onChange={(e) => setForm(prev => ({ ...prev, file: e.target.files[0] }))} required />
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Faturalar veya PDF ekstreleri yükleyebilirsiniz.</div>
                             </div>
 
-                            <hr className="divider" />
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                                <div style={{ fontWeight: 600, fontSize: 14 }}>Kalemler</div>
-                                <button type="button" className="btn btn-ghost btn-sm" onClick={addItem} id="add-item-btn">+ Kalem Ekle</button>
-                            </div>
-                            {invoiceItems.map((item, i) => (
-                                <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8, alignItems: 'end' }}>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        {i === 0 && <label className="form-label">Ürün / Açıklama</label>}
-                                        <select className="form-select" value={item.product_id} onChange={e => updateProductItem(i, e.target.value)} id={`item-prod-${i}`}>
-                                            <option value="">Ürün seçin ya da yazın</option>
-                                            {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        {i === 0 && <label className="form-label">Miktar</label>}
-                                        <input className="form-input" type="number" min="1" value={item.quantity} onChange={e => updateItem(i, 'quantity', e.target.value)} id={`item-qty-${i}`} />
-                                    </div>
-                                    <div className="form-group" style={{ marginBottom: 0 }}>
-                                        {i === 0 && <label className="form-label">Birim Fiyat</label>}
-                                        <input className="form-input" type="number" step="0.01" value={item.unit_price} onChange={e => updateItem(i, 'unit_price', e.target.value)} id={`item-price-${i}`} />
-                                    </div>
-                                    <button type="button" className="btn btn-danger btn-sm" onClick={() => removeItem(i)} style={{ marginTop: i === 0 ? 22 : 0 }} id={`remove-item-${i}`}>✕</button>
-                                </div>
-                            ))}
-
-                            <div style={{ background: 'var(--bg-surface)', borderRadius: 'var(--radius)', padding: 16, marginTop: 12, marginBottom: 16 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                                    <span>Ara Toplam</span><span>₺{subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--text-secondary)', marginBottom: 6 }}>
-                                    <span>KDV ({form.tax_percent}%)</span><span>₺{taxAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: 18, color: 'var(--primary)' }}>
-                                    <span>Toplam</span><span>₺{totalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving} id="save-invoice-btn">{saving ? 'Kaydediliyor...' : 'Fatura Oluştur'}</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Ekleniyor...' : 'Kayıt Ekle'}</button>
                             </div>
                         </form>
                     </div>

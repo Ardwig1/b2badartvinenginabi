@@ -37,8 +37,23 @@ export function CartProvider({ children }) {
             if (newQty === 0) {
                 const copy = { ...prev };
                 delete copy[productId];
+
+                // Log removal
+                fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: productData?.name } })
+                }).catch(e => console.error(e));
+
                 return copy;
             }
+
+            // Log update
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'cart_update', details: { id: productId, name: productData?.name, prevQty: current.qty, newQty } })
+            }).catch(e => console.error(e));
 
             return {
                 ...prev,
@@ -55,11 +70,28 @@ export function CartProvider({ children }) {
                 [product.id]: { product, qty: currentQty + 1, unselected: false }
             };
         });
+
+        fetch('/api/log-activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action_type: 'cart_add', details: { id: product.id, name: product.name, qty: 1 } })
+        }).catch(e => console.error(e));
     };
 
     const removeItem = (productId) => {
         setCartItems(prev => {
             const copy = { ...prev };
+
+            // Log removal without product data (we only have productId here unless we pull from prev)
+            const item = prev[productId];
+            if (item) {
+                fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: item.product?.name } })
+                }).catch(e => console.error(e));
+            }
+
             delete copy[productId];
             return copy;
         });

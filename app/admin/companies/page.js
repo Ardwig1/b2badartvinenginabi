@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { BuildingOfficeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import Link from 'next/link';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
 const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
@@ -153,7 +154,11 @@ export default function AdminCompanies() {
                         <tbody>
                             {filtered.map(c => (
                                 <tr key={c.id}>
-                                    <td style={{ fontWeight: 600 }}>{c.name}</td>
+                                    <td style={{ fontWeight: 600 }}>
+                                        <Link href={`/admin/companies/${c.id}`} style={{ color: 'var(--brand)', textDecoration: 'none' }} className="hover-underline">
+                                            {c.name}
+                                        </Link>
+                                    </td>
                                     <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
                                     <td>{c.contact_person || '-'}</td>
                                     <td style={{ color: 'var(--text-secondary)' }}>{c.email}</td>

@@ -172,6 +172,24 @@ export default function DealerCatalog() {
             const { data, error } = await query.order('brand').order('name');
             if (error) throw error;
 
+            // Log activity asynchronously if there is a search term and user is identified
+            if (userId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
+                fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_id: userId,
+                        action_type: 'search',
+                        details: {
+                            text: filterText.trim(),
+                            brand: filterBrand,
+                            carBrand: filterCarBrand,
+                            carModel: filterCarModel
+                        }
+                    })
+                }).catch(e => console.error('Search log error:', e));
+            }
+
             setProducts(data || []);
         } catch (err) {
             console.error('Search error:', err);

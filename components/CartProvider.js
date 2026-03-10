@@ -29,7 +29,7 @@ export function CartProvider({ children }) {
     }, [cartItems]);
 
     // Add 1 or update specific quantity
-    const setQty = (productId, productData, count) => {
+    const setQty = (productId, productData, count, unselected = false) => {
         setCartItems(prev => {
             const current = prev[productId] || { product: productData, qty: 0 };
             const newQty = Math.max(0, count);
@@ -42,7 +42,7 @@ export function CartProvider({ children }) {
 
             return {
                 ...prev,
-                [productId]: { product: productData, qty: newQty }
+                [productId]: { product: productData, qty: newQty, unselected }
             };
         });
     };
@@ -52,7 +52,7 @@ export function CartProvider({ children }) {
             const currentQty = prev[product.id]?.qty || 0;
             return {
                 ...prev,
-                [product.id]: { product, qty: currentQty + 1 }
+                [product.id]: { product, qty: currentQty + 1, unselected: false }
             };
         });
     };

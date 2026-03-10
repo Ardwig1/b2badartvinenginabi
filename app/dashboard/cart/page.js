@@ -13,9 +13,7 @@ export default function DealerCart() {
         return Object.values(contextCartItems).filter(item => item.qty > 0);
     }, [contextCartItems]);
 
-    const [unselectedItems, setUnselectedItems] = useState(new Set());
-
-    const isSelected = (id) => !unselectedItems.has(id);
+    const isSelected = (id) => !(contextCartItems[id]?.unselected);
 
     const [products, setProducts] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
@@ -122,22 +120,24 @@ export default function DealerCart() {
 
     const updateQty = (p, delta) => {
         const currentQty = contextCartItems[p.id]?.qty || 0;
-        ctxSetQty(p.id, p, currentQty + delta);
+        ctxSetQty(p.id, p, currentQty + delta, contextCartItems[p.id]?.unselected);
     };
     const removeItem = (p) => {
         ctxSetQty(p.id, p, 0);
-        setUnselectedItems(prev => { const next = new Set(prev); next.delete(p.id); return next; });
     };
 
     const toggleSelect = (id) => {
-        setUnselectedItems(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
-            return next;
-        });
+        const item = contextCartItems[id];
+        if (item) {
+            ctxSetQty(id, item.product, item.qty, !item.unselected);
+        }
     };
-    const selectAll = () => setUnselectedItems(new Set());
-    const deselectAll = () => setUnselectedItems(new Set(cartItems.map(i => i.product.id)));
+    const selectAll = () => {
+        cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, false));
+    };
+    const deselectAll = () => {
+        cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, true));
+    };
 
     const selectedCartItems = cartItems.filter(i => isSelected(i.product.id));
     const subtotal = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);

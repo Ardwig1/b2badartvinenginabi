@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getUserDiscount } from '../actions';
 import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
@@ -36,6 +36,31 @@ export default function DealerCatalog() {
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
     const [userId, setUserId] = useState(null);
+
+    // Hover Tooltip State
+    const [hoveredRow, setHoveredRow] = useState(null);
+    const hoverTimeoutRef = useRef(null);
+    const mousePosRef = useRef({ x: 0, y: 0 });
+
+    const handleRowMouseEnter = (e, p) => {
+        mousePosRef.current = { x: e.clientX, y: e.clientY };
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredRow({ product: p, x: mousePosRef.current.x, y: mousePosRef.current.y });
+        }, 1000);
+    };
+
+    const handleRowMouseMove = (e, p) => {
+        mousePosRef.current = { x: e.clientX, y: e.clientY };
+        if (hoveredRow && hoveredRow.product.id === p.id) {
+            setHoveredRow(prev => ({ ...prev, x: e.clientX, y: e.clientY }));
+        }
+    };
+
+    const handleRowMouseLeave = () => {
+        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+        setHoveredRow(null);
+    };
 
     // Filters
     const [brands, setBrands] = useState([]);
@@ -427,8 +452,9 @@ export default function DealerCatalog() {
                                 transition: 'box-shadow 0.2s, transform 0.2s', cursor: 'default',
                                 position: 'relative'
                             }}
-                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-                                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
+                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; handleRowMouseEnter(e, p); }}
+                                onMouseMove={e => handleRowMouseMove(e, p)}
+                                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; handleRowMouseLeave(); }}
                             >
                                 {/* Ürün Görseli */}
                                 <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
@@ -518,7 +544,11 @@ export default function DealerCatalog() {
                             {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                                 return (
-                                    <tr key={p.id}>
+                                    <tr key={p.id}
+                                        onMouseEnter={(e) => handleRowMouseEnter(e, p)}
+                                        onMouseMove={(e) => handleRowMouseMove(e, p)}
+                                        onMouseLeave={handleRowMouseLeave}
+                                    >
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
@@ -622,6 +652,57 @@ export default function DealerCatalog() {
                     >
                         Sonraki
                     </button>
+                </div>
+            )}
+
+            {hoveredRow && (
+                <div style={{
+                    position: 'fixed',
+                    left: Math.min(hoveredRow.x + 15, typeof window !== 'undefined' ? window.innerWidth - 300 : 0),
+                    top: Math.min(hoveredRow.y + 15, typeof window !== 'undefined' ? window.innerHeight - 200 : 0),
+                    background: 'var(--bg-card)',
+                    border: '1px solid var(--border)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    zIndex: 99999,
+                    minWidth: '260px',
+                    pointerEvents: 'none',
+                    fontSize: 13,
+                    color: 'var(--text-primary)'
+                }}>
+                    {(() => {
+                        const hp = hoveredRow.product;
+                        const activeUsdRate = globalUsdActive && globalUsdRate > 0 ? globalUsdRate : (rates?.USD || 1);
+                        const netTl = getDiscountedPrice(hp);
+                        const netTlKdv = getKdvPrice(hp);
+                        const netUsd = netTl / activeUsdRate;
+                        const netUsdKdv = netTlKdv / activeUsdRate;
+
+                        return (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 600 }}>Net Fiyat ($)</span>
+                                    <span>: ${netUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 600 }}>Net Fiyat KDV Dahil ($)</span>
+                                    <span>: ${netUsdKdv.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 600 }}>Net Fiyat (₺)</span>
+                                    <span>: ₺{netTl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ fontWeight: 600 }}>Net Fiyat KDV Dahil (₺)</span>
+                                    <span>: ₺{netTlKdv.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-light)', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', textAlign: 'center' }}>
+                                    {hp.id}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 

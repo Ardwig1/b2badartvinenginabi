@@ -35,7 +35,6 @@ export default function DealerCatalog() {
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
-    const [follows, setFollows] = useState(new Set());
     const [userId, setUserId] = useState(null);
 
     // Filters
@@ -51,7 +50,6 @@ export default function DealerCatalog() {
     const [checkWay, setCheckWay] = useState(false);
     const [checkNew, setCheckNew] = useState(false);
     const [checkCampaign, setCheckCampaign] = useState(false);
-    const [checkFollowed, setCheckFollowed] = useState(false);
 
     const supabase = createClient();
 
@@ -80,17 +78,6 @@ export default function DealerCatalog() {
             setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
             setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
             // We'll set all possible car models for the current filter down below
-        }
-
-        // Fetch follows
-        if (user) {
-            const { data: followData } = await supabase
-                .from('product_follows')
-                .select('product_id')
-                .eq('user_id', user.id);
-            if (followData) {
-                setFollows(new Set(followData.map(f => f.product_id)));
-            }
         }
 
         try {
@@ -131,8 +118,7 @@ export default function DealerCatalog() {
     const searchProducts = async (e) => {
         if (e && e.key && e.key !== 'Enter') return;
 
-        // Ensure at least one filter or search text is provided to avoid accidentally loading all 50k products
-        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkWay && !checkNew && !checkCampaign && !checkFollowed) {
+        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkWay && !checkNew && !checkCampaign) {
             setProducts([]);
             setHasSearched(false);
             return;
@@ -225,7 +211,6 @@ export default function DealerCatalog() {
         if (checkWay && p.stock_status !== 'on_the_way') return false;
         if (checkNew && !p.is_new) return false;
         if (checkCampaign && !p.is_campaign) return false;
-        if (checkFollowed && !follows.has(p.id)) return false;
         return true;
     });
 
@@ -278,26 +263,13 @@ export default function DealerCatalog() {
     const safeCartQtys = cartQtys || {};
     const totalCartItems = Object.values(safeCartQtys).reduce((a, b) => a + (b.qty || 0), 0);
 
-    const toggleFollow = async (productId) => {
-        if (!userId) return;
-        if (follows.has(productId)) {
-            await supabase.from('product_follows').delete().eq('user_id', userId).eq('product_id', productId);
-            setFollows(prev => { const next = new Set(prev); next.delete(productId); return next; });
-            showToast('Takipten çıkarıldı');
-        } else {
-            await supabase.from('product_follows').insert({ user_id: userId, product_id: productId });
-            setFollows(prev => new Set(prev).add(productId));
-            showToast('Takibe alındı');
-        }
-    };
-
     useEffect(() => {
         setCurrentPage(1);
-    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkWay, checkNew, checkCampaign, checkFollowed]);
+    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkWay, checkNew, checkCampaign]);
 
     const clearFilters = () => {
         setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText('');
-        setCheckIn(false); setCheckLow(false); setCheckWay(false); setCheckNew(false); setCheckCampaign(false); setCheckFollowed(false);
+        setCheckIn(false); setCheckLow(false); setCheckWay(false); setCheckNew(false); setCheckCampaign(false);
         setProducts([]);
         setHasSearched(false);
         setCurrentPage(1);
@@ -400,7 +372,6 @@ export default function DealerCatalog() {
                             { label: 'Az Var', val: checkLow, set: setCheckLow },
                             { label: 'Yolda Olanlar', val: checkWay, set: setCheckWay },
                             { label: 'Yeni Ürün', val: checkNew, set: setCheckNew },
-                            { label: 'Takipteki Ürünler', val: checkFollowed, set: setCheckFollowed },
                         ].map(({ label, val, set }) => (
                             <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
                                 <input type="checkbox" checked={val} onChange={e => set(e.target.checked)} style={{ width: 16, height: 16 }} />
@@ -459,15 +430,6 @@ export default function DealerCatalog() {
                                 onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
                                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; }}
                             >
-                                {/* Takip butonu */}
-                                <button
-                                    onClick={() => toggleFollow(p.id)}
-                                    style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.4)', border: 'none', borderRadius: '50%', width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 2 }}
-                                    title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
-                                >
-                                    {isFollowed ? <StarSolidIcon style={{ width: 18, height: 18, color: '#f59e0b' }} /> : <StarIcon style={{ width: 18, height: 18, color: '#fff' }} />}
-                                </button>
-
                                 {/* Ürün Görseli */}
                                 <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
                                     {p.image_url ? (
@@ -550,13 +512,11 @@ export default function DealerCatalog() {
                                 <th style={{ textAlign: 'center' }}>Koli Ad.</th>
                                 <th style={{ width: 80 }}>Sip.Mik.</th>
                                 <th>Sepete At</th>
-                                <th style={{ textAlign: 'center' }}>Takip</th>
                             </tr>
                         </thead>
                         <tbody>
                             {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
-                                const isFollowed = follows.has(p.id);
                                 return (
                                     <tr key={p.id}>
                                         <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
@@ -628,19 +588,6 @@ export default function DealerCatalog() {
                                                 style={{ opacity: isOutOfStock ? 0.4 : 1, whiteSpace: 'nowrap' }}
                                             >
                                                 {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
-                                            </button>
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <button
-                                                onClick={() => toggleFollow(p.id)}
-                                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}
-                                                title={isFollowed ? 'Takipten çıkar' : 'Takip et'}
-                                            >
-                                                {isFollowed ? (
-                                                    <StarSolidIcon style={{ width: 20, height: 20, color: '#f59e0b' }} />
-                                                ) : (
-                                                    <StarIcon style={{ width: 20, height: 20, color: 'var(--text-muted)' }} />
-                                                )}
                                             </button>
                                         </td>
                                     </tr>

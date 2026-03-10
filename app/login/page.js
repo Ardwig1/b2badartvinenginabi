@@ -181,8 +181,8 @@ export default function LoginPage() {
 
             {/* Clean Footer for Requirements */}
             <div style={{
-                position: 'absolute',
-                bottom: 0,
+                position: 'relative',
+                marginTop: '3rem',
                 width: '100%',
                 padding: '2rem 1rem',
                 display: 'flex',
@@ -196,16 +196,16 @@ export default function LoginPage() {
                 <div style={{ maxWidth: 1000, width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem' }}>
 
                     {/* Legal Links */}
-                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px' }}>
+                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                         <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Kurumsal</h4>
-                        <a href="/hakkimizda" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Hakkımızda</a>
-                        <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Mesafeli Satış Sözleşmesi</a>
-                        <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>İptal ve İade Koşulları</a>
-                        <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#94a3b8', textDecoration: 'none', transition: 'color 0.2s' }}>Gizlilik ve Güvenlik</a>
+                        <a href="/hakkimizda" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Hakkımızda</a>
+                        <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Mesafeli Satış Sözleşmesi</a>
+                        <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>İptal ve İade Koşulları</a>
+                        <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Gizlilik ve Güvenlik</a>
                     </div>
 
                     {/* Contact details */}
-                    <div style={{ flex: '1 1 300px', fontSize: '12px', color: '#94a3b8', lineHeight: '1.6' }}>
+                    <div style={{ flex: '1 1 300px', fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
                         <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600, fontSize: '13px' }}>İletişim</h4>
                         <p style={{ margin: 0 }}><strong>Murat Kaan Şaşmaz - OMİ GROUP'S</strong></p>
                         <p style={{ margin: 0 }}>Ofis: Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL</p>
@@ -218,11 +218,11 @@ export default function LoginPage() {
                     <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
                         <h4 style={{ color: '#fff', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>Güvenli Ödeme</h4>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '6px' }}>
-                            <img src="/visa.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
-                            <img src="/mastercard.png" alt="Mastercard" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
-                            <img src="/troy.png" alt="Troy" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
+                            <img src="/visa.png" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:bold; font-size:12px;">VISA</span>'); }} />
+                            <img src="/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:12px;">MASTERCARD</span>'); }} />
+                            <img src="/troy.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:bold; font-size:12px;">TROY</span>'); }} />
                         </div>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>256-bit SSL Sertifikası ile korunmaktadır.</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>256-bit SSL Sertifikası ile korunmaktadır.</span>
                     </div>
 
                 </div>

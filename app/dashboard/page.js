@@ -69,11 +69,10 @@ export default async function DealerDashboard() {
 
             {/* Announcements (Image supported) */}
             <div style={{ marginBottom: 20 }}>
-                {/* Visual Banner Placeholder */}
                 <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minHeight: 120, background: 'var(--bg-surface)' }}>
                     <Image
                         src="/banner.jpg"
-                        alt="Güncel Kampanyalar. Not: public klasörüne banner.jpg eklendiğinde burada görünecektir."
+                        alt="Güncel Kampanyalar"
                         width={1200}
                         height={300}
                         style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', minHeight: 120 }}

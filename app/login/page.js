@@ -82,107 +82,107 @@ export default function LoginPage() {
     };
 
     return (
-        <div className={styles.authBg}>
-            <div className={styles.authCard}>
-                <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <img src="/omi-logo.png" alt="OMI GROUP'S Logo" style={{ width: '180px', height: 'auto', objectFit: 'contain' }} />
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+                <div className={styles.authCard}>
+                    <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <img src="/omi-logo.png" alt="OMI GROUP'S Logo" style={{ width: '180px', height: 'auto', objectFit: 'contain' }} />
+                    </div>
+                    <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
+                    <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
+
+                    <form onSubmit={handleLogin} className={styles.authForm}>
+                        {error && <div className={styles.errorBox}>{error}</div>}
+
+                        <div className="form-group">
+                            <label className="form-label">Bayi Kodu</label>
+                            <input
+                                className="form-input"
+                                type="text"
+                                placeholder="Örn: B-1001"
+                                value={dealerCode}
+                                onChange={e => setDealerCode(e.target.value.toUpperCase())}
+                                required
+                                id="login-dealer-code"
+                                autoComplete="off"
+                                style={{ textTransform: 'uppercase' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Kullanıcı Kodu</label>
+                            <input
+                                className="form-input"
+                                type="text"
+                                placeholder="Örn: ADMIN"
+                                value={userCode}
+                                onChange={e => setUserCode(e.target.value.toUpperCase())}
+                                required
+                                id="login-user-code"
+                                autoComplete="off"
+                                style={{ textTransform: 'uppercase' }}
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">Şifre</label>
+                            <input
+                                className="form-input"
+                                type="password"
+                                placeholder="••••••••"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                required
+                                id="login-password"
+                            />
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontSize: '14px', color: 'var(--text-secondary)' }}>
+                            <input
+                                type="checkbox"
+                                id="remember-me"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                            />
+                            <label htmlFor="remember-me" style={{ cursor: 'pointer', userSelect: 'none' }}>Beni Hatırla</label>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-lg"
+                            disabled={loading}
+                            id="login-submit"
+                            style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
+                        >
+                            {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
+                        </button>
+                    </form>
+
+                    {/* Tosla Test Hesabı */}
+                    <div style={{
+                        marginTop: '1.2rem',
+                        padding: '14px 16px',
+                        background: 'rgba(37, 99, 235, 0.08)',
+                        border: '1px solid rgba(37, 99, 235, 0.2)',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        color: 'var(--text-secondary)',
+                        lineHeight: '1.6'
+                    }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 Tosla Entegrasyon Test Hesabı</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
+                            <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
+                            <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
+                            <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>tosla1234</span>
+                        </div>
+                    </div>
                 </div>
-                <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
-                <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
-
-                <form onSubmit={handleLogin} className={styles.authForm}>
-                    {error && <div className={styles.errorBox}>{error}</div>}
-
-                    <div className="form-group">
-                        <label className="form-label">Bayi Kodu</label>
-                        <input
-                            className="form-input"
-                            type="text"
-                            placeholder="Örn: B-1001"
-                            value={dealerCode}
-                            onChange={e => setDealerCode(e.target.value.toUpperCase())}
-                            required
-                            id="login-dealer-code"
-                            autoComplete="off"
-                            style={{ textTransform: 'uppercase' }}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Kullanıcı Kodu</label>
-                        <input
-                            className="form-input"
-                            type="text"
-                            placeholder="Örn: ADMIN"
-                            value={userCode}
-                            onChange={e => setUserCode(e.target.value.toUpperCase())}
-                            required
-                            id="login-user-code"
-                            autoComplete="off"
-                            style={{ textTransform: 'uppercase' }}
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Şifre</label>
-                        <input
-                            className="form-input"
-                            type="password"
-                            placeholder="••••••••"
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            required
-                            id="login-password"
-                        />
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontSize: '14px', color: 'var(--text-secondary)' }}>
-                        <input
-                            type="checkbox"
-                            id="remember-me"
-                            checked={rememberMe}
-                            onChange={(e) => setRememberMe(e.target.checked)}
-                            style={{ cursor: 'pointer', width: '16px', height: '16px' }}
-                        />
-                        <label htmlFor="remember-me" style={{ cursor: 'pointer', userSelect: 'none' }}>Beni Hatırla</label>
-                    </div>
-
-                    <button
-                        type="submit"
-                        className="btn btn-primary btn-lg"
-                        disabled={loading}
-                        id="login-submit"
-                        style={{ width: '100%', justifyContent: 'center', marginTop: '8px' }}
-                    >
-                        {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-                    </button>
-                </form>
-
-                {/* Tosla Test Hesabı */}
-                <div style={{
-                    marginTop: '1.2rem',
-                    padding: '14px 16px',
-                    background: 'rgba(37, 99, 235, 0.08)',
-                    border: '1px solid rgba(37, 99, 235, 0.2)',
-                    borderRadius: '10px',
-                    fontSize: '13px',
-                    color: 'var(--text-secondary)',
-                    lineHeight: '1.6'
-                }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 Tosla Entegrasyon Test Hesabı</div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
-                        <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
-                        <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>tosla1234</span>
-                    </div>
-                </div>
-
             </div>
 
             {/* Clean Footer for Requirements */}
             <div style={{
                 position: 'relative',
-                marginTop: '3rem',
                 width: '100%',
                 padding: '2rem 1rem',
                 display: 'flex',
@@ -218,9 +218,9 @@ export default function LoginPage() {
                     <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '12px' }}>
                         <h4 style={{ color: '#fff', marginBottom: '4px', fontWeight: 600, fontSize: '13px' }}>Güvenli Ödeme</h4>
                         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', background: '#fff', padding: '8px 12px', borderRadius: '6px' }}>
-                            <img src="/visa.png" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:bold; font-size:12px;">VISA</span>'); }} />
-                            <img src="/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:12px;">MASTERCARD</span>'); }} />
-                            <img src="/troy.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:bold; font-size:12px;">TROY</span>'); }} />
+                            <img src="https://cdn.worldvectorlogo.com/logos/visa.svg" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:bold; font-size:12px;">VISA</span>'); }} />
+                            <img src="https://cdn.worldvectorlogo.com/logos/mastercard-2.svg" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:12px;">MASTERCARD</span>'); }} />
+                            <img src="https://troyodeme.com/images/troy-logo.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:bold; font-size:12px;">TROY</span>'); }} />
                         </div>
                         <span style={{ fontSize: '11px', color: '#94a3b8' }}>256-bit SSL Sertifikası ile korunmaktadır.</span>
                     </div>

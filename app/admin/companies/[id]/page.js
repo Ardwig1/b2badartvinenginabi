@@ -38,7 +38,7 @@ export default function AdminCompanyDetail() {
         setLoading(true);
 
         const [compRes, actRes, ordRes, invRes] = await Promise.all([
-            supabase.from('companies').select('*, profiles(email)').eq('id', params.id).single(),
+            supabase.from('companies').select('*, profiles(*)').eq('id', params.id).single(),
             supabase.from('user_activities').select('*').eq('company_id', params.id).order('created_at', { ascending: false }).limit(200),
             supabase.from('orders').select('*').eq('company_id', params.id).order('created_at', { ascending: false }),
             supabase.from('invoices').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
@@ -94,7 +94,7 @@ export default function AdminCompanyDetail() {
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Yetkili & İletişim</div>
                         <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{company.contact_person || 'Belirtilmedi'}</div>
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{company.phone || '-'}</div>
-                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{company.profiles?.[0]?.email || '-'}</div>
+                        <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{company.email || '-'}</div>
                     </div>
                     <div style={{ background: 'var(--bg-card)', padding: '20px 24px' }}>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Adres</div>

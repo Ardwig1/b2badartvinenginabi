@@ -30,36 +30,38 @@ export function CartProvider({ children }) {
 
     // Add 1 or update specific quantity
     const setQty = (productId, productData, count, unselected = false) => {
+        const newQty = Math.max(0, count);
+
         setCartItems(prev => {
             const current = prev[productId] || { product: productData, qty: 0 };
-            const newQty = Math.max(0, count);
 
             if (newQty === 0) {
                 const copy = { ...prev };
                 delete copy[productId];
-
-                // Log removal
-                fetch('/api/log-activity', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: productData?.name } })
-                }).catch(e => console.error(e));
-
                 return copy;
             }
-
-            // Log update
-            fetch('/api/log-activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'cart_update', details: { id: productId, name: productData?.name, prevQty: current.qty, newQty } })
-            }).catch(e => console.error(e));
 
             return {
                 ...prev,
                 [productId]: { product: productData, qty: newQty, unselected }
             };
         });
+
+        // Log asynchronously outside of the state setter
+        const currentQty = cartItems[productId]?.qty || 0;
+        if (newQty === 0) {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: productData?.name } })
+            }).catch(e => console.error(e));
+        } else {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'cart_update', details: { id: productId, name: productData?.name, prevQty: currentQty, newQty } })
+            }).catch(e => console.error(e));
+        }
     };
 
     const addToCart = (product) => {
@@ -79,22 +81,22 @@ export function CartProvider({ children }) {
     };
 
     const removeItem = (productId) => {
+        const item = cartItems[productId];
+
         setCartItems(prev => {
             const copy = { ...prev };
-
-            // Log removal without product data (we only have productId here unless we pull from prev)
-            const item = prev[productId];
-            if (item) {
-                fetch('/api/log-activity', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: item.product?.name } })
-                }).catch(e => console.error(e));
-            }
-
             delete copy[productId];
             return copy;
         });
+
+        // Log removal
+        if (item) {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: item.product?.name } })
+            }).catch(e => console.error(e));
+        }
     };
 
     const clearCart = () => {

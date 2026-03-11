@@ -462,7 +462,6 @@ export default function DealerCatalog() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
                     {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                         const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
-                        const isFollowed = follows.has(p.id);
                         return (
                             <div key={p.id} style={{
                                 background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12,
@@ -673,7 +672,7 @@ export default function DealerCatalog() {
                 </div>
             )}
 
-            {hoveredRow && (
+            {hoveredRow && hoveredRow.product && (
                 <div style={{
                     position: 'fixed',
                     left: Math.min(hoveredRow.x + 15, typeof window !== 'undefined' ? window.innerWidth - 300 : 0),

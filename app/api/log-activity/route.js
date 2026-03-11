@@ -33,9 +33,15 @@ export async function POST(request) {
             return NextResponse.json({ success: false, error: 'Missing action_type' });
         }
 
+        // Fetch company_id from user's profile
+        const { data: profile } = await serviceSupabase.from('profiles').select('company_id').eq('id', user.id).single();
+        if (!profile?.company_id) {
+            return NextResponse.json({ success: false, error: 'User is not linked to a company' });
+        }
+
         // We use service role to gracefully bypass any RLS on inserts 
         const { error } = await serviceSupabase.from('user_activities').insert({
-            company_id: user.id,
+            company_id: profile.company_id,
             action_type,
             details: details || {}
         });

@@ -30,6 +30,7 @@ export default function AdminCompanyDetail() {
     const [orders, setOrders] = useState([]);
     const [invoices, setInvoices] = useState([]);
     const [activeTab, setActiveTab] = useState('activity');
+    const [errorMsg, setErrorMsg] = useState('');
     const supabase = createClient();
 
     const fetchDetails = useCallback(async () => {
@@ -43,6 +44,10 @@ export default function AdminCompanyDetail() {
             supabase.from('invoices').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
         ]);
 
+        if (compRes.error) {
+            console.error('Company Fetch Error:', compRes.error);
+            setErrorMsg(compRes.error.message || JSON.stringify(compRes.error));
+        }
         if (compRes.data) setCompany(compRes.data);
         if (actRes.data) setActivities(actRes.data);
         if (ordRes.data) setOrders(ordRes.data);
@@ -54,6 +59,7 @@ export default function AdminCompanyDetail() {
     useEffect(() => { fetchDetails(); }, [fetchDetails]);
 
     if (loading) return <div className="page-wrapper"><div className="loading-center"><div className="loading-spinner" /></div></div>;
+    if (errorMsg) return <div className="page-wrapper"><div className="empty-state" style={{ color: 'red' }}>Veritabanı Hatası: {errorMsg}</div></div>;
     if (!company) return <div className="page-wrapper"><div className="empty-state">Firma bulunamadı.</div></div>;
 
     const formatCurrency = (amount) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount || 0);

@@ -152,37 +152,53 @@ export default function DealerCart() {
         const finalAddress = isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi';
         const finalNote = `[${shippingMethod}] ${note}`;
 
-        const { data: order } = await supabase.from('orders').insert({
-            company_id: companyId,
-            shipping_address: finalAddress,
-            note: finalNote,
-            total_amount: grandTotal,
-            status: 'pending',
-        }).select().single();
+        try {
+            const { data: order, error: orderError } = await supabase.from('orders').insert({
+                company_id: companyId,
+                shipping_address: finalAddress,
+                note: finalNote,
+                total_amount: grandTotal,
+                status: 'pending',
+            }).select().single();
 
-        if (order) {
-            await supabase.from('order_items').insert(selectedCartItems.map(i => ({
-                order_id: order.id,
-                product_id: i.product.id,
-                quantity: i.qty,
-                unit_price: getDiscountedPrice(i.product),
-                total_price: getDiscountedPrice(i.product) * i.qty,
-            })));
-            // Reduce stock
-            for (const item of selectedCartItems) {
-                await supabase.rpc('decrement_stock', { product_id: item.product.id, qty: item.qty }).catch(() => {
-                    supabase.from('products').select('stock_quantity').eq('id', item.product.id).single().then(({ data }) => {
-                        supabase.from('products').update({ stock_quantity: Math.max(0, (data?.stock_quantity || 0) - item.qty) }).eq('id', item.product.id);
-                    });
-                });
+            if (orderError) throw orderError;
+
+            if (order) {
+                const { error: itemsError } = await supabase.from('order_items').insert(selectedCartItems.map(i => ({
+                    order_id: order.id,
+                    product_id: i.product.id,
+                    quantity: i.qty,
+                    unit_price: getDiscountedPrice(i.product),
+                    total_price: getDiscountedPrice(i.product) * i.qty,
+                })));
+
+                if (itemsError) throw itemsError;
+
+                // Reduce stock
+                for (const item of selectedCartItems) {
+                    const { error: rpcError } = await supabase.rpc('decrement_stock', { product_id: item.product.id, qty: item.qty });
+                    if (rpcError) {
+                        const { data } = await supabase.from('products').select('stock_quantity').eq('id', item.product.id).single();
+                        if (data !== null && data !== undefined) {
+                            await supabase.from('products').update({ stock_quantity: Math.max(0, (data.stock_quantity || 0) - item.qty) }).eq('id', item.product.id);
+                        }
+                    }
+                }
             }
+
+            // Only remove ordered (selected) items from cart, keep the rest
+            for (const item of selectedCartItems) {
+                ctxSetQty(item.product.id, item.product, 0);
+            }
+
+            setSuccess(true);
+
+        } catch (error) {
+            console.error("Order placement failed:", error);
+            alert("Sipariş verilirken bir hata oluştu: " + (error.message || "Lütfen tekrar deneyin."));
+        } finally {
+            setSubmitting(false);
         }
-        // Only remove ordered (selected) items from cart, keep the rest
-        for (const item of selectedCartItems) {
-            ctxSetQty(item.product.id, item.product, 0);
-        }
-        setSubmitting(false);
-        setSuccess(true);
     };
 
     if (success) {

@@ -397,7 +397,7 @@ export default function DealerCatalog() {
                             <div style={{ background: '#fef08a', padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
                                 <input
                                     style={{ border: 'none', background: 'transparent', width: '100%', fontSize: 13, outline: 'none', color: '#000' }}
-                                    placeholder="Ara... (Enter'a basın)"
+                                    placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın (Enter'a basmayı unutmayın)"
                                     value={filterText}
                                     onChange={e => setFilterText(e.target.value)}
                                     onKeyDown={searchProducts}

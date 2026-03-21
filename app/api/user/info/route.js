@@ -20,9 +20,10 @@ export async function GET() {
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
+        // Fixed query: removed non-existent 'email' column from profiles
         const { data: profile, error: profileError } = await adminSupabase
             .from('profiles')
-            .select('email, phone, company_id, company:companies(name, current_balance)')
+            .select('company_id, company:companies(name, current_balance)')
             .eq('id', user.id)
             .single();
 
@@ -32,8 +33,8 @@ export async function GET() {
         }
 
         return NextResponse.json({
-            email: profile.email || user.email,
-            phone: profile.phone || '',
+            email: user.email, // Use email from auth session
+            phone: '', // Phone might not be in profiles, keeping empty or you can add if it exists
             companyId: profile.company_id,
             companyName: profile.company?.name || '',
             currentBalance: Number(profile.company?.current_balance) || 0

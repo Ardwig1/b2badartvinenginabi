@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CreditCardIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { CreditCardIcon, ArrowLeftIcon, RefreshIcon } from '@heroicons/react/24/outline'; // Note: Heroicons 2.0 might use ArrowPathIcon for Refresh
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 
 export default function PaymentPage() {
     const [amount, setAmount] = useState('');
@@ -11,25 +10,30 @@ export default function PaymentPage() {
     const [expireMonth, setExpireMonth] = useState('');
     const [expireYear, setExpireYear] = useState('');
     const [cvv, setCvv] = useState('');
-    
+
     const [cartTotal, setCartTotal] = useState(null);
     const [isCartChecked, setIsCartChecked] = useState(false);
     const [isDebtChecked, setIsDebtChecked] = useState(false);
 
     const [loading, setLoading] = useState(false);
-    const [threeDHtml, setThreeDHtml] = useState(null);
-    const [buyerInfo, setBuyerInfo] = useState({ currentBalance: 0 });
+    const [isInfoLoading, setIsInfoLoading] = useState(true);
+    const [infoError, setInfoError] = useState(null);
+    const [toslaData, setToslaData] = useState(null);
+    const [buyerInfo, setBuyerInfo] = useState({ email: '', phone: '', companyId: '', companyName: '', currentBalance: 0 });
+    const [context, setContext] = useState('');
 
     useEffect(() => {
-        // Recover cart total and auto-select if applicable
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
             const amt = params.get('amount');
+            const ctx = params.get('context');
             if (amt) setAmount(amt);
+            if (ctx) setContext(ctx);
 
             const cTot = sessionStorage.getItem('pendingCartTotal');
             if (cTot) {
                 setCartTotal(cTot);
+                // Auto-select cart if it exists and no manual amount was provided in URL
                 if (!amt) {
                     setIsCartChecked(true);
                     setAmount(parseFloat(cTot).toFixed(2));
@@ -38,21 +42,56 @@ export default function PaymentPage() {
         }
 
         const fetchUser = async () => {
+            let backupName = '';
+            if (typeof window !== 'undefined') {
+                backupName = localStorage.getItem('storedCompanyName') || '';
+                if (backupName) {
+                    setBuyerInfo(prev => ({ ...prev, companyName: backupName }));
+                }
+            }
+
+            setInfoError(null);
             try {
                 const res = await fetch('/api/user/info', { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     setBuyerInfo({
+                        email: data.email || '',
+                        phone: data.phone || '',
+                        companyId: data.companyId || '',
+                        companyName: data.companyName || backupName || '',
                         currentBalance: Number(data.currentBalance) || 0
                     });
+                    
+                    if (data.companyName && typeof window !== 'undefined') {
+                        localStorage.setItem('storedCompanyName', data.companyName);
+                    }
+                } else {
+                    const errData = await res.json().catch(() => ({}));
+                    if (!backupName) {
+                        setInfoError(errData.error || 'Bilgiler alınamadı.');
+                    }
                 }
             } catch (err) {
                 console.error('Error fetching user info:', err);
+                if (!backupName) {
+                    setInfoError('Bağlantı hatası.');
+                }
+            } finally {
+                setIsInfoLoading(false);
             }
         };
 
         fetchUser();
+        // Expose for retry
+        window._retryFetchUser = fetchUser;
     }, []);
+
+    useEffect(() => {
+        if (toslaData) {
+            document.getElementById("tosla3dForm")?.submit();
+        }
+    }, [toslaData]);
 
     const handleCartCheck = (e) => {
         const checked = e.target.checked;
@@ -79,16 +118,36 @@ export default function PaymentPage() {
     const handlePayment = async (e) => {
         e.preventDefault();
         setLoading(true);
+
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) {
+            alert('Lütfen geçerli bir tutar giriniz.');
+            setLoading(false);
+            return;
+        }
+
         try {
             const res = await fetch('/api/payment/tosla/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount, cardHolderName, cardNumber, expireMonth, expireYear, cvv })
+                body: JSON.stringify({
+                    amount: numericAmount.toFixed(2),
+                    cardHolderName: buyerInfo.companyName || 'MUSTERI', // Use company name as reference
+                    cardNumber: cardNumber.replace(/\s/g, ''),
+                    expireMonth,
+                    expireYear,
+                    cvv,
+                    buyerEmail: buyerInfo.email,
+                    buyerPhone: buyerInfo.phone,
+                    companyId: buyerInfo.companyId,
+                    companyName: buyerInfo.companyName,
+                    context: context
+                })
             });
             const data = await res.json();
             
             if (res.ok && data.success) {
-                setThreeDHtml(data.data);
+                setToslaData(data.data);
             } else {
                 alert('Ödeme başlatılamadı: ' + (data.error || 'Bilinmeyen hata'));
             }
@@ -100,13 +159,13 @@ export default function PaymentPage() {
         }
     };
 
-    if (threeDHtml) {
+    if (toslaData) {
         return (
             <div className="page-wrapper">
                 <div style={{ padding: 40, textAlign: 'center' }}>
                     <h2>Güvenli Ödeme Sayfasına Yönlendiriliyorsunuz...</h2>
                     <p>Lütfen bekleyin.</p>
-                    <div dangerouslySetInnerHTML={{ __html: threeDHtml }} />
+                    <div dangerouslySetInnerHTML={{ __html: toslaData }} />
                 </div>
             </div>
         );
@@ -124,89 +183,135 @@ export default function PaymentPage() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 30, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '300px' }}>
-                    <div className="card" style={{ padding: 30 }}>
-                        <h2 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700 }}>Ödeme Bilgileri</h2>
-                        <form onSubmit={handlePayment}>
-                            <div className="form-group" style={{ marginBottom: 20 }}>
-                                <label className="form-label">Ödenecek Tutar (₺)</label>
-                                <input type="number" step="0.01" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => { setAmount(e.target.value); setIsCartChecked(false); setIsDebtChecked(false); }} placeholder="0.00" required />
+            <div style={{ display: 'flex', gap: 30, alignItems: 'flex-start', justifyContent: 'center', maxWidth: 1200, margin: '0 auto', flexWrap: 'wrap' }}>
+                <div className="card" style={{ flex: '1', maxWidth: 500, padding: 30 }}>
+                    <h2 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700 }}>Ödeme Bilgileri</h2>
+                    <form onSubmit={handlePayment}>
+                        <div className="form-group" style={{ marginBottom: 20 }}>
+                            <label className="form-label">Ödenecek Tutar (₺)</label>
+                            <input type="number" step="0.01" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => { setAmount(e.target.value); setIsCartChecked(false); setIsDebtChecked(false); }} placeholder="0.00" required />
+                        </div>
+                        
+                        <div className="form-group" style={{ marginBottom: 15 }}>
+                            <label className="form-label">İşlem Yapan Firma (Tosla'ya gönderilecek referans)</label>
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={infoError ? 'Hata oluştu!' : (buyerInfo.companyName || (isInfoLoading ? 'Yükleniyor...' : 'FİRMA BİLGİSİ EKSİK!'))}
+                                    disabled
+                                    style={{
+                                        backgroundColor: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#fff1f2' : '#f8f9fa',
+                                        cursor: 'not-allowed',
+                                        color: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#dc2626' : (isInfoLoading ? '#6c757d' : '#1e293b'),
+                                        fontWeight: 'bold',
+                                        border: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '1px solid #fda4af' : '1px solid var(--border)'
+                                    }}
+                                />
+                                {(infoError || (!isInfoLoading && !buyerInfo.companyName)) && (
+                                    <button
+                                        type="button"
+                                        onClick={() => window._retryFetchUser?.()}
+                                        style={{
+                                            position: 'absolute',
+                                            right: 8,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            padding: '4px 8px',
+                                            fontSize: 11,
+                                            backgroundColor: 'var(--primary)',
+                                            color: 'white',
+                                            borderRadius: 4,
+                                            border: 'none',
+                                            cursor: 'pointer'
+                                        }}
+                                    > Yenile</button>
+                                )}
                             </div>
-                            
-                            <div className="form-group" style={{ marginBottom: 15 }}>
-                                <label className="form-label">Kart Üzerindeki İsim</label>
-                                <input type="text" className="form-input" value={cardHolderName} onChange={e => setCardHolderName(e.target.value)} placeholder="AD SOYAD" required />
+                        </div>
+
+                        <div className="form-group" style={{ marginBottom: 15 }}>
+                            <label className="form-label">Kredi Kartı Numarası</label>
+                            <input type="text" className="form-input" value={cardNumber} onChange={e => {
+                                let val = e.target.value.replace(/\D/g, '');
+                                let parts = val.match(/.{1,4}/g);
+                                setCardNumber(parts ? parts.join(' ') : val);
+                            }} placeholder="0000 0000 0000 0000" maxLength="19" required />
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label">Son Kullanma (Ay)</label>
+                                <input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value.replace(/\D/g, ''))} placeholder="AA" maxLength="2" required />
                             </div>
-
-                            <div className="form-group" style={{ marginBottom: 15 }}>
-                                <label className="form-label">Kredi Kartı Numarası</label>
-                                <input type="text" className="form-input" value={cardNumber} onChange={e => setCardNumber(e.target.value)} placeholder="0000 0000 0000 0000" maxLength="19" required />
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label">Son Kullanma (Yıl)</label>
+                                <input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value.replace(/\D/g, ''))} placeholder="YY" maxLength="2" required />
                             </div>
-
-                            <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Son Kullanma (Ay)</label>
-                                    <input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value)} placeholder="AA" maxLength="2" required />
-                                </div>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">Son Kullanma (Yıl)</label>
-                                    <input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value)} placeholder="YY" maxLength="2" required />
-                                </div>
-                                <div className="form-group" style={{ flex: 1 }}>
-                                    <label className="form-label">CVV</label>
-                                    <input type="text" className="form-input" value={cvv} onChange={e => setCvv(e.target.value)} placeholder="123" maxLength="4" required />
-                                </div>
+                            <div className="form-group" style={{ flex: 1 }}>
+                                <label className="form-label">CVV</label>
+                                <input type="password" placeholder="***" className="form-input" value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, ''))} maxLength="4" required />
                             </div>
+                        </div>
 
-                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }} disabled={loading}>
-                                {loading ? 'İşleniyor...' : <><CreditCardIcon style={{ width: 18, height: 18 }} /> Güvenli Ödeme Yap (Tosla)</>}
-                            </button>
-                        </form>
+                        <button
+                            type="submit"
+                            className="btn btn-primary btn-lg"
+                            style={{
+                                width: '100%',
+                                justifyContent: 'center',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                opacity: (loading || isInfoLoading || infoError || !buyerInfo.companyName) ? 0.6 : 1,
+                                transition: 'all 0.2s'
+                            }}
+                            disabled={loading || isInfoLoading || infoError || !buyerInfo.companyName}
+                        >
+                            {loading ? 'İşleniyor...' : <><CreditCardIcon style={{ width: 20, height: 20 }} /> Güvenli Ödeme Yap (Tosla)</>}
+                        </button>
+                    </form>
 
-                        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                            <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
+                    <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                        <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
+
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '24px',
+                            padding: '16px 24px',
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '12px',
+                            marginBottom: '20px'
+                        }}>
+                            <img src="/user_logo3.png" alt="Troy" style={{ height: 32 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            <img src="/user_logo2.png" alt="Visa" style={{ height: 24 }} onError={(e) => { e.target.style.display = 'none'; }} />
+                            <img src="/user_logo1.png" alt="Mastercard" style={{ height: 32 }} onError={(e) => { e.target.style.display = 'none'; }} />
 
                             <div style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '24px',
-                                padding: '16px 24px',
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                border: '1px solid rgba(255, 255, 255, 0.08)',
-                                borderRadius: '12px',
-                                marginBottom: '20px'
+                                gap: '8px',
+                                paddingLeft: '24px',
+                                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+                                height: '32px'
                             }}>
-                                <img src="/user_logo3.png" alt="Troy" style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:900; font-size:18px; font-style: italic;">troy</span>'); }} />
-                                <img src="/user_logo2.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:900; font-size:22px; font-style: italic;">VISA</span>'); }} />
-                                <img src="/user_logo1.png" alt="Mastercard" style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:16px;">mastercard</span>'); }} />
-
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    paddingLeft: '24px',
-                                    borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-                                    height: '32px'
-                                }}>
-                                    <div style={{ width: 28, height: 28, background: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                                    </div>
-                                    <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-                                        <div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.5px' }}>256 BIT SSL</div>
-                                        <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>GÜVENLİ ÖDEME</div>
-                                    </div>
+                                <div style={{ width: 28, height: 28, background: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                                </div>
+                                <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
+                                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.5px' }}>256 BIT SSL</div>
+                                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>GÜVENLİ ÖDEME</div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-                                <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link>
-                                <span style={{ color: 'var(--border)' }}>|</span>
-                                <Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İptal ve İade Koşulları</Link>
-                                <span style={{ color: 'var(--border)' }}>|</span>
-                                <Link href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik Politikası</Link>
-                            </div>
+                        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+                            <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Sözleşme</Link>
+                            <Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İade Koşulları</Link>
+                            <Link href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik</Link>
                         </div>
                     </div>
                 </div>
@@ -283,3 +388,4 @@ export default function PaymentPage() {
         </div>
     );
 }
+

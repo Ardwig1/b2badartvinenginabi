@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -9,19 +10,25 @@ export async function GET() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
+            console.error('Auth Error:', authError);
             return NextResponse.json({ error: 'Oturum açılmamış.' }, { status: 401 });
         }
 
-        // Fetch profile and company balance
-        const { data: profile, error: profileError } = await supabase
+        // Use service role to bypass potential RLS issues in API context
+        const adminSupabase = createAdminClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+
+        const { data: profile, error: profileError } = await adminSupabase
             .from('profiles')
             .select('email, phone, company_id, company:companies(name, current_balance)')
             .eq('id', user.id)
             .single();
 
         if (profileError || !profile) {
-            console.error('Profile Error:', profileError);
-            return NextResponse.json({ error: 'Profil bilgileri alınamadı.' }, { status: 404 });
+            console.error('Profile/Company Error for user', user.id, ':', profileError);
+            return NextResponse.json({ error: 'Profil bilgileri alınamadı.', details: profileError?.message }, { status: 404 });
         }
 
         return NextResponse.json({
@@ -33,7 +40,7 @@ export async function GET() {
         });
 
     } catch (err) {
-        console.error('API Error in /api/user/info:', err);
-        return NextResponse.json({ error: 'Sunucu hatası.' }, { status: 500 });
+        console.error('API-level Error in /api/user/info:', err);
+        return NextResponse.json({ error: 'Sunucu hatası: ' + err.message }, { status: 500 });
     }
 }

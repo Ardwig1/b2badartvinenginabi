@@ -76,7 +76,7 @@ export default async function AdminDashboard() {
                                         <td>{o.company?.name || '-'}</td>
                                         <td>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                         <td><span className={`badge badge-${o.status}`}>{statusMap[o.status] || o.status}</span></td>
-                                        <td>{new Date(o.created_at).toLocaleDateString('tr-TR')}</td>
+                                        <td>{new Date(o.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                                     </tr>
                                 ))}
                             </tbody>

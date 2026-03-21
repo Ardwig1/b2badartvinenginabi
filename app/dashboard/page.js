@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getExchangeRates } from '@/lib/tcmb';
 import {
     UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
-    ShieldCheckIcon, TagIcon, ShoppingCartIcon
+    ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 
@@ -129,7 +129,7 @@ export default async function DealerDashboard() {
                             <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                                 <div>
                                     <div style={{ fontWeight: 500, fontSize: 14 }}>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(o.created_at).toLocaleDateString('tr-TR')}</div>
+                                    <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(o.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                                 </div>
                                 <span className={`badge badge-${o.status}`}>{orderStatusMap[o.status]}</span>
                             </div>

@@ -18,7 +18,8 @@ const adminNav = [
     { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Cari Hesap Yönetimi', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Cari Hareketler', href: '/admin/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Faturalar', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 const dealerNav = [
@@ -26,7 +27,8 @@ const dealerNav = [
     { label: 'Ürün Arama', href: '/dashboard/catalog', icon: <MagnifyingGlassIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Sepetim', href: '/dashboard/cart', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişlerim', href: '/dashboard/orders', icon: <ClipboardDocumentListIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Cari Hesap', href: '/dashboard/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Cari Hesap', href: '/dashboard/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Faturalarım', href: '/dashboard/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Online Ödeme', href: '/dashboard/payment', icon: <CreditCardIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Dosyalar', href: '/dashboard/files', icon: <FolderOpenIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Banka Bilgileri', href: '/dashboard/bank-accounts', icon: <BuildingLibraryIcon style={{ width: 20, height: 20 }} /> },
@@ -112,3 +114,4 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
         </aside>
     );
 }
+

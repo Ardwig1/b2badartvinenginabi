@@ -171,7 +171,7 @@ export default function PaymentPage() {
         );
     }
 
-    const showCartBox = (buyerInfo.currentBalance === 0) || (buyerInfo.currentBalance < 0 && cartTotal && parseFloat(cartTotal) > 0);
+    const showCartBox = (buyerInfo.currentBalance >= 0) || (buyerInfo.currentBalance < 0 && cartTotal && parseFloat(cartTotal) > 0);
     const showDebtBox = (buyerInfo.currentBalance < 0);
 
     return (

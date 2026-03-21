@@ -70,33 +70,10 @@ create table if not exists stock_movements (
   created_at timestamptz default now()
 );
 
--- 7. QUOTES
-create table if not exists quotes (
-  id uuid primary key default gen_random_uuid(),
-  company_id uuid references companies(id) on delete cascade,
-  status text default 'pending' check (status in ('pending', 'sent', 'accepted', 'rejected')),
-  note text,
-  admin_note text,
-  total_amount numeric default 0,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
--- 8. QUOTE ITEMS
-create table if not exists quote_items (
-  id uuid primary key default gen_random_uuid(),
-  quote_id uuid references quotes(id) on delete cascade,
-  product_id uuid references products(id),
-  quantity integer not null,
-  unit_price numeric,
-  total_price numeric
-);
-
 -- 9. ORDERS
 create table if not exists orders (
   id uuid primary key default gen_random_uuid(),
   company_id uuid references companies(id) on delete cascade,
-  quote_id uuid references quotes(id),
   status text default 'pending' check (status in ('pending', 'confirmed', 'preparing', 'shipped', 'delivered', 'cancelled')),
   shipping_address text,
   note text,
@@ -154,8 +131,6 @@ alter table products enable row level security;
 alter table product_prices enable row level security;
 alter table price_groups enable row level security;
 alter table stock_movements enable row level security;
-alter table quotes enable row level security;
-alter table quote_items enable row level security;
 alter table orders enable row level security;
 alter table order_items enable row level security;
 alter table invoices enable row level security;
@@ -183,17 +158,6 @@ create policy "Company creates orders" on orders for insert with check (
   company_id = (select company_id from profiles where id = auth.uid())
 );
 create policy "Admins manage orders" on orders for all using (
-  exists (select 1 from profiles where id = auth.uid() and is_admin = true)
-);
-
--- Quotes: companies see their own
-create policy "Company sees own quotes" on quotes for select using (
-  company_id = (select company_id from profiles where id = auth.uid())
-);
-create policy "Company creates quotes" on quotes for insert with check (
-  company_id = (select company_id from profiles where id = auth.uid())
-);
-create policy "Admins manage quotes" on quotes for all using (
   exists (select 1 from profiles where id = auth.uid() and is_admin = true)
 );
 

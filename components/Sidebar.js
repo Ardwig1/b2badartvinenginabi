@@ -18,7 +18,6 @@ const adminNav = [
     { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Teklifler', href: '/admin/quotes', icon: <ClipboardDocumentListIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Cari Hesap Yönetimi', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
 ];
 
@@ -27,7 +26,6 @@ const dealerNav = [
     { label: 'Ürün Arama', href: '/dashboard/catalog', icon: <MagnifyingGlassIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Sepetim', href: '/dashboard/cart', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişlerim', href: '/dashboard/orders', icon: <ClipboardDocumentListIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Tekliflerim', href: '/dashboard/quotes', icon: <ChatBubbleLeftEllipsisIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Cari Hesap', href: '/dashboard/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Online Ödeme', href: '/dashboard/payment', icon: <CreditCardIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Dosyalar', href: '/dashboard/files', icon: <FolderOpenIcon style={{ width: 20, height: 20 }} /> },

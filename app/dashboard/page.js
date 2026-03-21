@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getExchangeRates } from '@/lib/tcmb';
 import {
     UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
-    ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
+    ShieldCheckIcon, TagIcon, ShoppingCartIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
 
@@ -24,19 +24,16 @@ export default async function DealerDashboard() {
         { count: pendingOrders },
         { count: totalOrders },
         { data: recentOrders },
-        { data: recentQuotes },
     ] = await Promise.all([
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
         supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
         supabase.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
-        supabase.from('quotes').select('id, status, total_amount, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3)
     ]);
 
     const company = profile?.company;
     const pg = company?.price_group;
 
     const orderStatusMap = { pending: 'Bekliyor', confirmed: 'Onaylandı', preparing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal' };
-    const quoteStatusMap = { pending: 'Değerlendiriliyor', sent: 'Teklif Geldi', accepted: 'Kabul Edildi', rejected: 'Reddedildi' };
 
     return (
         <div className="page-wrapper">
@@ -120,7 +117,7 @@ export default async function DealerDashboard() {
                 </div>
             </div>
 
-            <div className="content-grid two-col">
+            <div className="content-grid">
                 {/* Recent Orders */}
                 <div className="card">
                     <div className="card-header">
@@ -141,30 +138,6 @@ export default async function DealerDashboard() {
                         <div className="empty-state" style={{ padding: '30px 0' }}>
                             <div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div>
                             <div className="empty-state-title">Henüz sipariş yok</div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Recent Quotes */}
-                <div className="card">
-                    <div className="card-header">
-                        <h2 className="card-title">Son Teklifler</h2>
-                        <a href="/dashboard/quotes" className="btn btn-ghost btn-sm">Tümü →</a>
-                    </div>
-                    {recentQuotes && recentQuotes.length > 0 ? (
-                        recentQuotes.map(q => (
-                            <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
-                                <div>
-                                    <div style={{ fontWeight: 500, fontSize: 14 }}>{q.total_amount ? `₺${Number(q.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}` : 'Fiyat Bekleniyor'}</div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(q.created_at).toLocaleDateString('tr-TR')}</div>
-                                </div>
-                                <span className={`badge badge-${q.status}`}>{quoteStatusMap[q.status]}</span>
-                            </div>
-                        ))
-                    ) : (
-                        <div className="empty-state" style={{ padding: '30px 0' }}>
-                            <div className="empty-state-icon"><ChatBubbleLeftEllipsisIcon style={{ width: 32, height: 32 }} /></div>
-                            <div className="empty-state-title">Teklif bulunamadı</div>
                         </div>
                     )}
                 </div>

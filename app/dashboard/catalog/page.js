@@ -450,7 +450,7 @@ export default function DealerCatalog() {
                         ].map(({ label, value, set, opts }) => (
                             <div key={label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>{label}</div>
-                                 <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center' }}>
+                                 <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', background: '#fff' }}>
                                     <select 
                                         className="form-select" 
                                         style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1, color: '#000' }} 

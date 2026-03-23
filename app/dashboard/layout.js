@@ -21,6 +21,7 @@ export default async function DashboardLayout({ children }) {
     return (
         <div className="app-layout">
             <Sidebar isAdmin={false} userEmail={user.email} companyName={profile?.company?.name || ''} />
+            <script dangerouslySetInnerHTML={{ __html: `localStorage.setItem('storedCompanyName', '${(profile?.company?.name || '').replace(/'/g, "\\'")}');` }} />
             <main className="main-content">
                 <TopHeader />
                 <div style={{ padding: '0 24px' }}>

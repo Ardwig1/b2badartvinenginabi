@@ -21,6 +21,7 @@ export default function DealerCart() {
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [companyId, setCompanyId] = useState('');
+    const [companyData, setCompanyData] = useState({});
     const [shipping, setShipping] = useState('');
     const [shippingMethod, setShippingMethod] = useState('Kargo');
     const [isDifferentAddress, setIsDifferentAddress] = useState(false);
@@ -29,6 +30,7 @@ export default function DealerCart() {
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
+    const [stockError, setStockError] = useState('');
     const supabase = createClient();
 
     const fetchUser = useCallback(async () => {
@@ -36,10 +38,11 @@ export default function DealerCart() {
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id')
+            .select('company_id, companies(current_balance, is_prepayment_locked, risk_limit)')
             .eq('id', user.id)
             .single();
         setCompanyId(profile?.company_id || '');
+        setCompanyData(profile?.companies || {});
 
         if (user?.id) {
             const disc = await getUserDiscount(user.id);
@@ -120,7 +123,9 @@ export default function DealerCart() {
 
     const updateQty = (p, delta) => {
         const currentQty = contextCartItems[p.id]?.qty || 0;
-        ctxSetQty(p.id, p, currentQty + delta, contextCartItems[p.id]?.unselected);
+        const newQty = currentQty + delta;
+        if (newQty > (p.stock_quantity ?? Infinity)) return; // block exceeding stock
+        ctxSetQty(p.id, p, newQty, contextCartItems[p.id]?.unselected);
     };
     const removeItem = (p) => {
         ctxSetQty(p.id, p, 0);
@@ -139,63 +144,77 @@ export default function DealerCart() {
         cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, true));
     };
 
+    useEffect(() => {
+        if (!loading && companyData && typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('autoSubmit') === 'true') {
+                if (cartItems.length > 0) {
+                    window.history.replaceState(null, '', window.location.pathname);
+                    try {
+                        const saved = localStorage.getItem('b2b_cart_shipping');
+                        if (saved) {
+                            const p = JSON.parse(saved);
+                            if (p.shipping) setShipping(p.shipping);
+                            if (p.shippingMethod) setShippingMethod(p.shippingMethod);
+                            if (p.isDifferentAddress !== undefined) setIsDifferentAddress(p.isDifferentAddress);
+                            if (p.note) setNote(p.note);
+                        }
+                    } catch (e) {}
+                    setTimeout(() => { document.getElementById('place-order-btn')?.click(); }, 600);
+                }
+            }
+        }
+    }, [loading, companyData, cartItems.length]);
+
     const selectedCartItems = cartItems.filter(i => isSelected(i.product.id));
     const subtotal = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
     const totalDiscount = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * (discountPercent / 100) * i.qty), 0);
     const totalAfterDiscount = subtotal - totalDiscount;
     const vat = totalAfterDiscount * 0.20;
-    const grandTotal = totalAfterDiscount + vat;
+    const grandTotal = Number((totalAfterDiscount + vat).toFixed(2));
 
     const placeOrder = async () => {
         if (selectedCartItems.length === 0) return;
+        
+        // Prepayment lock is now handled in the button onClick
+        
         setSubmitting(true);
         const finalAddress = isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi';
         const finalNote = `[${shippingMethod}] ${note}`;
 
         try {
-            const { data: order, error: orderError } = await supabase.from('orders').insert({
-                company_id: companyId,
-                shipping_address: finalAddress,
-                note: finalNote,
-                total_amount: grandTotal,
-                status: 'pending',
-            }).select().single();
+            const orderItemsJson = selectedCartItems.map(i => ({
+                product_id: i.product.id,
+                quantity: i.qty,
+                unit_price: getDiscountedPrice(i.product),
+                total_price: getDiscountedPrice(i.product) * i.qty,
+            }));
+
+            const { data: result, error: orderError } = await supabase.rpc('place_b2b_order', {
+                p_company_id: companyId,
+                p_shipping_address: finalAddress,
+                p_note: finalNote,
+                p_total_amount: grandTotal,
+                p_items: orderItemsJson
+            });
 
             if (orderError) throw orderError;
-
-            if (order) {
-                const { error: itemsError } = await supabase.from('order_items').insert(selectedCartItems.map(i => ({
-                    order_id: order.id,
-                    product_id: i.product.id,
-                    quantity: i.qty,
-                    unit_price: getDiscountedPrice(i.product),
-                    total_price: getDiscountedPrice(i.product) * i.qty,
-                })));
-
-                if (itemsError) throw itemsError;
-
-                // Reduce stock
-                for (const item of selectedCartItems) {
-                    const { error: rpcError } = await supabase.rpc('decrement_stock', { product_id: item.product.id, qty: item.qty });
-                    if (rpcError) {
-                        const { data } = await supabase.from('products').select('stock_quantity').eq('id', item.product.id).single();
-                        if (data !== null && data !== undefined) {
-                            await supabase.from('products').update({ stock_quantity: Math.max(0, (data.stock_quantity || 0) - item.qty) }).eq('id', item.product.id);
-                        }
-                    }
-                }
-            }
 
             // Only remove ordered (selected) items from cart, keep the rest
             for (const item of selectedCartItems) {
                 ctxSetQty(item.product.id, item.product, 0);
             }
-
+            setStockError('');
             setSuccess(true);
 
         } catch (error) {
             console.error("Order placement failed:", error);
-            alert("Sipariş verilirken bir hata oluştu: " + (error.message || "Lütfen tekrar deneyin."));
+            const msg = error.message || '';
+            if (msg.includes('Stok yetersiz')) {
+                setStockError(msg);
+            } else {
+                alert("Sipariş verilirken bir hata oluştu: " + (msg || "Lütfen tekrar deneyin."));
+            }
         } finally {
             setSubmitting(false);
         }
@@ -265,24 +284,30 @@ export default function DealerCart() {
                             </div>
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Stok</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
                                             return (
-                                                <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5, transition: 'opacity 0.15s' }}>
+                                                <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5, transition: 'opacity 0.15s', background: qty > (p.stock_quantity ?? qty) ? 'rgba(220,38,38,0.05)' : 'transparent' }}>
                                                     <td>
                                                         <div style={{ fontWeight: 600 }}>{p.name}</div>
                                                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
                                                     </td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{p.brand || '-'}</td>
+                                                    <td>
+                                                        <span style={{ fontWeight: 600, color: (p.stock_quantity ?? 1) === 0 ? 'var(--danger)' : (p.stock_quantity ?? 99) < 5 ? '#f59e0b' : 'var(--success)', fontSize: 13 }}>
+                                                            {p.stock_quantity ?? '?'}
+                                                        </span>
+                                                    </td>
                                                     <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                                     <td>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)}>−</button>
+                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)} disabled={qty <= 1}>−</button>
                                                             <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
-                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)}>+</button>
+                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)} disabled={qty >= (p.stock_quantity ?? Infinity)} title={qty >= (p.stock_quantity ?? Infinity) ? 'Mevcut stok bu kadar' : ''}>+</button>
                                                         </div>
+                                                        {qty > (p.stock_quantity ?? qty) && <div style={{ fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>Stok yetersiz!</div>}
                                                     </td>
                                                     <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                                     <td style={{ textAlign: 'center' }}>
@@ -358,9 +383,42 @@ export default function DealerCart() {
                         <span>₺{grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                     </div>
 
-                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={selectedCartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
-                        {submitting ? 'Sipariş veriliyor...' : selectedCartItems.length === 0 ? 'Ürün seçin' : `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
-                    </button>
+                    {stockError && (
+                        <div style={{ background: 'rgba(220,38,38,0.1)', border: '1px solid var(--danger)', borderRadius: 'var(--radius)', padding: '10px 14px', marginBottom: 12, fontSize: 13, color: 'var(--danger)', lineHeight: 1.5 }}>
+                            ⚠️ {stockError}
+                        </div>
+                    )}
+                    {(() => {
+                        const debt = (Number(companyData.current_balance) || 0) < 0 ? Math.abs(Number(companyData.current_balance)) : 0;
+                        const riskLimit = Number(companyData.risk_limit) || 0;
+                        const exceedsRisk = riskLimit > 0 && (debt + grandTotal) > riskLimit;
+                        const isPrepaymentNeeded = companyData?.is_prepayment_locked && (Number(companyData.current_balance) || 0) < grandTotal;
+
+                        return (
+                            <button
+                                className="btn btn-primary btn-lg"
+                                style={{ width: '100%', justifyContent: 'center' }}
+                                disabled={selectedCartItems.length === 0 || submitting || selectedCartItems.some(i => i.qty > (i.product.stock_quantity ?? i.qty)) || exceedsRisk}
+                                onClick={() => { 
+                                    setStockError(''); 
+                                    if (isPrepaymentNeeded) {
+                                        sessionStorage.setItem('pendingCartTotal', grandTotal);
+                                        window.location.href = `/dashboard/payment`;
+                                    } else {
+                                        placeOrder(); 
+                                    }
+                                }}
+                                id="place-order-btn"
+                            >
+                                {submitting ? 'İşleniyor...' : 
+                                 selectedCartItems.length === 0 ? 'Ürün seçin' : 
+                                 selectedCartItems.some(i => i.qty > (i.product.stock_quantity ?? i.qty)) ? '⚠️ Stok yetersiz' : 
+                                 exceedsRisk ? `Yetersiz Bakiye (Limit: ₺${riskLimit.toLocaleString('tr-TR')})` :
+                                 isPrepaymentNeeded ? 'Yetersiz Bakiye (Ön Ödeme Gerekli)' : 
+                                 `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
+                            </button>
+                        );
+                    })()}
                 </div>
             </div>
         </div>

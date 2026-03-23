@@ -101,13 +101,57 @@ export async function PATCH(request) {
     const user = await verifyAdmin();
     if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
-    const { id, status, price_group_id } = await request.json();
+    const { id, status, price_group_id, password, user_code, dealer_code, is_prepayment_locked, risk_limit } = await request.json();
     const adminSupabase = await getAdminClient();
     const updates = {};
     if (status !== undefined) updates.status = status;
     if (price_group_id !== undefined) updates.price_group_id = price_group_id || null;
+    if (user_code !== undefined) updates.user_code = user_code;
+    if (dealer_code !== undefined) updates.dealer_code = dealer_code;
+    if (is_prepayment_locked !== undefined) updates.is_prepayment_locked = is_prepayment_locked;
+    if (risk_limit !== undefined) updates.risk_limit = risk_limit;
 
-    const { error } = await adminSupabase.from('companies').update(updates).eq('id', id);
+    // Update company table
+    if (Object.keys(updates).length > 0) {
+        const { error } = await adminSupabase.from('companies').update(updates).eq('id', id);
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // If password needs updating, find user and update
+    if (password && password.trim().length >= 6) {
+        const { data: profileList } = await adminSupabase.from('profiles').select('id').eq('company_id', id);
+        if (profileList && profileList.length > 0) {
+            for (const profile of profileList) {
+                await adminSupabase.auth.admin.updateUserById(profile.id, { password: password.trim() });
+            }
+        }
+    }
+
+    return NextResponse.json({ success: true });
+}
+
+// DELETE — Firmayı ve kullanıcısını tamamen sil
+export async function DELETE(request) {
+    const user = await verifyAdmin();
+    if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'Firma ID gerekli.' }, { status: 400 });
+
+    const adminSupabase = await getAdminClient();
+
+    // 1. Delete associated users from Auth
+    const { data: profiles } = await adminSupabase.from('profiles').select('id').eq('company_id', id);
+    if (profiles && profiles.length > 0) {
+        for (const p of profiles) {
+            await adminSupabase.auth.admin.deleteUser(p.id);
+        }
+    }
+
+    // 2. Delete company (profiles and activities should cascade, but company is the root)
+    const { error } = await adminSupabase.from('companies').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
     return NextResponse.json({ success: true });
 }

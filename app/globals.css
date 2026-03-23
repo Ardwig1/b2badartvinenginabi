@@ -367,6 +367,11 @@ select {
   padding-right: 36px;
 }
 
+.form-select option {
+  color: #000;
+  background-color: #fff;
+}
+
 .form-textarea {
   resize: vertical;
   min-height: 100px;

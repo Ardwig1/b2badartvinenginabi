@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import styles from './auth.module.css';
+import Logo from '@/components/Logo';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -29,7 +30,6 @@ export default function LoginPage() {
         setError('');
 
         try {
-            // 1. Fetch real email via lookup API
             const lookupRes = await fetch('/api/auth/lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -44,8 +44,6 @@ export default function LoginPage() {
             }
 
             const email = lookupData.email;
-
-            // 2. Sign in with the retrieved email
             const supabase = createClient();
             const { error: err } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -65,7 +63,6 @@ export default function LoginPage() {
                 localStorage.removeItem('b2b_user_code');
             }
 
-            // Check if admin
             const { data: { user } } = await supabase.auth.getUser();
             const { data: profile } = await supabase
                 .from('profiles')
@@ -76,17 +73,17 @@ export default function LoginPage() {
             router.push(profile?.is_admin ? '/admin' : '/dashboard');
             router.refresh();
         } catch (err) {
-            setError('Giriş yapılırken bir hata oluştu: ' + err.message);
+            setError('Giriş yapılırken bir hata oluşti: ' + err.message);
             setLoading(false);
         }
     };
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
                 <div className={styles.authCard}>
                     <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <img src="/omi-logo.png" alt="OMI GROUP'S Logo" style={{ width: '180px', height: 'auto', objectFit: 'contain' }} />
+                        <img src="/omi-logo.png" alt="Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
                     </div>
                     <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
                     <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
@@ -158,64 +155,67 @@ export default function LoginPage() {
                             {loading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
                         </button>
                     </form>
-
-                    {/* Tosla Test Hesabı */}
-                    <div style={{
-                        marginTop: '1.2rem',
-                        padding: '14px 16px',
-                        background: 'rgba(37, 99, 235, 0.08)',
-                        border: '1px solid rgba(37, 99, 235, 0.2)',
-                        borderRadius: '10px',
-                        fontSize: '13px',
-                        color: 'var(--text-secondary)',
-                        lineHeight: '1.6'
-                    }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6, fontSize: 13 }}>🔑 Tosla Entegrasyon Test Hesabı</div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2px 12px', fontFamily: 'monospace', fontSize: 13 }}>
-                            <span style={{ color: 'var(--text-muted)' }}>Bayi Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
-                            <span style={{ color: 'var(--text-muted)' }}>Kullanıcı Kodu:</span><span style={{ fontWeight: 600 }}>TOSLA</span>
-                            <span style={{ color: 'var(--text-muted)' }}>Şifre:</span><span style={{ fontWeight: 600 }}>tosla1234</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 
-            {/* Clean Footer for Requirements */}
+            {/* Redesigned Footer Section */}
             <div style={{
-                position: 'relative',
                 width: '100%',
-                padding: '2rem 1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                borderTop: '1px solid rgba(255, 255, 255, 0.05)',
-                backdropFilter: 'blur(10px)',
+                padding: '3rem 1.5rem 1.5rem',
+                backgroundColor: 'rgba(15, 23, 42, 0.98)',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                backdropFilter: 'blur(15px)',
                 zIndex: 10
             }}>
-                <div style={{ maxWidth: 1000, width: '100%', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '2rem' }}>
-
-                    {/* Legal Links */}
-                    <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
-                        <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600 }}>Kurumsal</h4>
-                        <a href="/hakkimizda" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Hakkımızda</a>
-                        <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Mesafeli Satış Sözleşmesi</a>
-                        <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>İptal ve İade Koşulları</a>
-                        <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#bae6fd', fontWeight: 500, textDecoration: 'underline', transition: 'color 0.2s' }}>Gizlilik ve Güvenlik</a>
+                <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+                    
+                    {/* Logos Row */}
+                    <div style={{ 
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        gap: '60px', 
+                        marginBottom: '2.5rem' 
+                    }}>
+                        <Logo type="auto" color="#fff" />
+                        <Logo type="tech" color="#3b82f6" />
                     </div>
 
-                    {/* Contact details */}
-                    <div style={{ flex: '1 1 300px', fontSize: '12px', color: '#cbd5e1', lineHeight: '1.6' }}>
-                        <h4 style={{ color: '#fff', marginBottom: '8px', fontWeight: 600, fontSize: '13px' }}>İletişim</h4>
-                        <p style={{ margin: 0 }}><strong>Murat Kaan Şaşmaz - OMİ GROUP'S</strong></p>
-                        <p style={{ margin: 0 }}>Ofis: Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL</p>
-                        <p style={{ margin: 0 }}>Depo: Mimar Sinan Mah Yedpa Tic. Mrk. İçi Ataşehir/İSTANBUL</p>
-                        <p style={{ margin: 0, marginTop: '4px' }}>Tel: 0532 597 0664 | E-posta: muratkaan@omigroups.com</p>
-                        <p style={{ margin: 0 }}>Vergi Dairesi: Sarıgazi VD. / 800081338</p>
+                    {/* Contact Info Row */}
+                    <div style={{ 
+                        textAlign: 'center', 
+                        fontSize: '13px', 
+                        color: '#94a3b8', 
+                        lineHeight: '1.8',
+                        marginBottom: '2.5rem',
+                        padding: '0 20px'
+                    }}>
+                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Murat Kaan Şaşmaz - OMİ GROUP'S</p>
+                        <p style={{ margin: '4px 0' }}>Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL | Mimar Sinan Mah Yedpa Tic. Mrk. Ataşehir/İSTANBUL</p>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '4px' }}>
+                            <span>📞 0532 597 0664</span>
+                            <span>✉️ muratkaan@omigroups.com</span>
+                            <span>🏢 Sarıgazi VD. / 800081338</span>
+                        </div>
                     </div>
 
-                    {/* Secure payment logos removed from here as per request */}
-
+                    {/* Legal Links - Single Line */}
+                    <div style={{ 
+                        borderTop: '1px solid rgba(255,255,255,0.05)', 
+                        paddingTop: '1.5rem',
+                        display: 'flex', 
+                        flexWrap: 'wrap', 
+                        justifyContent: 'center', 
+                        gap: '24px', 
+                        fontSize: '12px' 
+                    }}>
+                        <a href="/hakkimizda" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Hakkımızda</a>
+                        <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Mesafeli Satış Sözleşmesi</a>
+                        <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>İptal ve İade Koşulları</a>
+                        <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Gizlilik ve Güvenlik</a>
+                        <span style={{ color: '#475569', marginLeft: 'auto' }}>© 2026 OMİ GROUP'S</span>
+                    </div>
                 </div>
             </div>
         </div>

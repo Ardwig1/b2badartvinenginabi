@@ -49,17 +49,19 @@ export function CartProvider({ children }) {
 
         // Log asynchronously outside of the state setter
         const currentQty = cartItems[productId]?.qty || 0;
+        const cid = typeof window !== 'undefined' ? localStorage.getItem('b2b_company_id') : null;
+        if (!cid) return; // don't log if company unknown
         if (newQty === 0) {
             fetch('/api/log-activity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: productData?.name } })
+                body: JSON.stringify({ company_id: cid, action_type: 'cart_remove', details: { id: productId, name: productData?.name, oem_no: productData?.oem_no } })
             }).catch(e => console.error(e));
         } else {
             fetch('/api/log-activity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'cart_update', details: { id: productId, name: productData?.name, prevQty: currentQty, newQty } })
+                body: JSON.stringify({ company_id: cid, action_type: 'cart_update', details: { id: productId, name: productData?.name, oem_no: productData?.oem_no, prevQty: currentQty, newQty } })
             }).catch(e => console.error(e));
         }
     };
@@ -73,10 +75,12 @@ export function CartProvider({ children }) {
             };
         });
 
+        const cid = typeof window !== 'undefined' ? localStorage.getItem('b2b_company_id') : null;
+        if (!cid) return;
         fetch('/api/log-activity', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action_type: 'cart_add', details: { id: product.id, name: product.name, qty: 1 } })
+            body: JSON.stringify({ company_id: cid, action_type: 'cart_add', details: { id: product.id, name: product.name, oem_no: product.oem_no, qty: 1 } })
         }).catch(e => console.error(e));
     };
 
@@ -91,11 +95,14 @@ export function CartProvider({ children }) {
 
         // Log removal
         if (item) {
-            fetch('/api/log-activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action_type: 'cart_remove', details: { id: productId, name: item.product?.name } })
-            }).catch(e => console.error(e));
+            const cid = typeof window !== 'undefined' ? localStorage.getItem('b2b_company_id') : null;
+            if (cid) {
+                fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company_id: cid, action_type: 'cart_remove', details: { id: productId, name: item.product?.name, oem_no: item.product?.oem_no } })
+                }).catch(e => console.error(e));
+            }
         }
     };
 

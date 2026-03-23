@@ -3,9 +3,16 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DocumentTextIcon } from '@heroicons/react/24/outline';
 
-const START_YEAR = 2020;
+const START_YEAR = 2026;
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - START_YEAR + 1 }, (_, i) => START_YEAR + i);
+
+const months = [
+    { id: 1, name: 'OCAK' }, { id: 2, name: 'ŞUBAT' }, { id: 3, name: 'MART' },
+    { id: 4, name: 'NİSAN' }, { id: 5, name: 'MAYIS' }, { id: 6, name: 'HAZİRAN' },
+    { id: 7, name: 'TEMMUZ' }, { id: 8, name: 'AĞUSTOS' }, { id: 9, name: 'EYLÜL' },
+    { id: 10, name: 'EKİM' }, { id: 11, name: 'KASIM' }, { id: 12, name: 'ARALIK' }
+];
 
 function addDays(dateStr, days) {
     const d = new Date(dateStr);
@@ -32,7 +39,8 @@ export default function DealerAccountLedger() {
     const [orderDetails, setOrderDetails] = useState({});
     const [loadingDetails, setLoadingDetails] = useState({});
     const [dbError, setDbError] = useState(false);
-    const [selectedYear, setSelectedYear] = useState(currentYear);
+    const [selectedYear, setSelectedYear] = useState(currentYear < 2026 ? 2026 : currentYear);
+    const [selectedMonth, setSelectedMonth] = useState(null);
     const [totals, setTotals] = useState({ debt: 0, credit: 0, balance: 0 });
     const supabase = createClient();
 
@@ -49,14 +57,21 @@ export default function DealerAccountLedger() {
             setTotals(prev => ({ ...prev, balance: profile.company.current_balance || 0 }));
         }
 
-        const yearStart = `${selectedYear}-01-01`;
-        const yearEnd = `${selectedYear}-12-31T23:59:59`;
+        let startDate, endDate;
+        if (selectedMonth) {
+            startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+            endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
+        } else {
+            startDate = `${selectedYear}-01-01`;
+            endDate = `${selectedYear}-12-31T23:59:59`;
+        }
 
         const { data, error } = await supabase.from('account_transactions')
             .select('*')
             .eq('company_id', profile?.company_id)
-            .gte('created_at', yearStart)
-            .lte('created_at', yearEnd)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -69,7 +84,7 @@ export default function DealerAccountLedger() {
             setTotals(prev => ({ ...prev, debt: tDebt, credit: tCredit }));
         }
         setLoading(false);
-    }, [selectedYear]);
+    }, [selectedYear, selectedMonth]);
 
     useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
@@ -114,27 +129,56 @@ export default function DealerAccountLedger() {
                 </div>
             </div>
 
-            {/* Year Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-                {years.map(y => (
-                    <button
-                        key={y}
-                        onClick={() => { setSelectedYear(y); setExpandedRow(null); }}
-                        style={{
-                            padding: '4px 12px',
-                            borderRadius: 6,
-                            border: '1px solid var(--border)',
-                            background: selectedYear === y ? 'var(--primary)' : 'var(--bg-surface)',
-                            color: selectedYear === y ? '#fff' : 'var(--text-secondary)',
-                            fontWeight: selectedYear === y ? 700 : 400,
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            transition: 'all 0.15s'
-                        }}
-                    >
-                        {y}
-                    </button>
-                ))}
+            {/* Filter Tabs */}
+            <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>YIL:</span>
+                    {years.map(y => (
+                        <button
+                            key={y}
+                            onClick={() => { setSelectedYear(y); setSelectedMonth(null); setExpandedRow(null); }}
+                            style={{
+                                padding: '6px 16px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: selectedYear === y && !selectedMonth ? 'var(--primary)' : 'var(--bg-surface)',
+                                color: selectedYear === y && !selectedMonth ? '#fff' : 'var(--text-secondary)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {y}
+                        </button>
+                    ))}
+                </div>
+                
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>AY:</span>
+                    {months.map(m => (
+                        <button
+                            key={m.id}
+                            onClick={() => { 
+                                setSelectedMonth(selectedMonth === m.id ? null : m.id); 
+                                setExpandedRow(null); 
+                            }}
+                            style={{
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: selectedMonth === m.id ? 'var(--primary)' : 'var(--bg-tag)',
+                                color: selectedMonth === m.id ? '#fff' : 'var(--text-primary)',
+                                fontWeight: selectedMonth === m.id ? 700 : 500,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {m.name}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -254,7 +298,7 @@ export default function DealerAccountLedger() {
                         {!loading && transactions.length > 0 && (
                             <tfoot style={{ background: 'var(--bg-surface)', borderTop: '2px solid var(--border)' }}>
                                 <tr>
-                                    <td colSpan="5" style={{ textAlign: 'right', fontWeight: 700, padding: '16px 20px' }}>{selectedYear} TOPLAM</td>
+                                    <td colSpan="5" style={{ textAlign: 'right', fontWeight: 700, padding: '16px 20px' }}>DÖNEM TOPLAMI</td>
                                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)', padding: '16px 20px', fontSize: 16 }}>
                                         {fmtMoney(totals.debt)}
                                     </td>

@@ -1,8 +1,7 @@
-import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
+// Use service role to bypass all RLS
 const serviceSupabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -10,38 +9,31 @@ const serviceSupabase = createClient(
 
 export async function POST(request) {
     try {
-        const cookieStore = cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            {
-                cookies: {
-                    getAll() { return cookieStore.getAll(); },
-                    setAll() { /* read only needed here */ }
-                }
-            }
-        );
-
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-
         const body = await request.json();
-        const { action_type, details } = body;
+        const { action_type, details, company_id } = body;
 
-        // Fire and forget logic
         if (!action_type) {
             return NextResponse.json({ success: false, error: 'Missing action_type' });
         }
 
-        // Fetch company_id from user's profile
-        const { data: profile } = await serviceSupabase.from('profiles').select('company_id').eq('id', user.id).single();
-        if (!profile?.company_id) {
-            return NextResponse.json({ success: false, error: 'User is not linked to a company' });
+        // company_id must be provided by the client
+        if (!company_id) {
+            return NextResponse.json({ success: false, error: 'Missing company_id' });
         }
 
-        // We use service role to gracefully bypass any RLS on inserts 
+        // Validate that the company_id is a real company (security check)
+        const { data: company } = await serviceSupabase
+            .from('companies')
+            .select('id')
+            .eq('id', company_id)
+            .single();
+
+        if (!company) {
+            return NextResponse.json({ success: false, error: 'Invalid company_id' });
+        }
+
         const { error } = await serviceSupabase.from('user_activities').insert({
-            company_id: profile.company_id,
+            company_id,
             action_type,
             details: details || {}
         });

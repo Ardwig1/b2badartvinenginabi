@@ -20,6 +20,7 @@ const adminNav = [
     { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Cari Hareketler', href: '/admin/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Faturalar', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Kullanıcı Önerileri', href: '/admin/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 const dealerNav = [
@@ -30,7 +31,6 @@ const dealerNav = [
     { label: 'Cari Hesap', href: '/dashboard/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Faturalarım', href: '/dashboard/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Online Ödeme', href: '/dashboard/payment', icon: <CreditCardIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Dosyalar', href: '/dashboard/files', icon: <FolderOpenIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Banka Bilgileri', href: '/dashboard/bank-accounts', icon: <BuildingLibraryIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Öneri ve Şikayet', href: '/dashboard/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'İletişim', href: '/dashboard/contact', icon: <PhoneIcon style={{ width: 20, height: 20 }} /> },

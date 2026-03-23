@@ -18,7 +18,7 @@ export async function POST(request) {
 
         const { data, error } = await adminSupabase
             .from('companies')
-            .select('email')
+            .select('email, status')
             .ilike('dealer_code', dealerCode.trim())
             .ilike('user_code', userCode.trim())
             .single();
@@ -26,6 +26,10 @@ export async function POST(request) {
         if (error || !data) {
             console.error("Supabase Error / No Data:", error);
             return NextResponse.json({ error: 'Kullanıcı bulunamadı. Girdiğiniz bilgileri kontrol edin.' }, { status: 404 });
+        }
+
+        if (data.status === 'rejected') {
+            return NextResponse.json({ error: 'Hesabınız uzaklaştırılmıştır. Lütfen yetkililere ulaşın: Telefon: 0532 597 0664 Email: muratkaan@omigroups.com' }, { status: 403 });
         }
 
         return NextResponse.json({ email: data.email });

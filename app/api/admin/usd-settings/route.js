@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { verifyAdmin } from '@/lib/auth/admin';
 
 // Use Service Role to bypass Row Level Security constraints for settings
 const supabase = createClient(
@@ -9,6 +10,8 @@ const supabase = createClient(
 
 export async function GET() {
     try {
+        const user = await verifyAdmin();
+        if (!user) return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
         const { data: rateData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE').single();
         const { data: activeData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE_ACTIVE').single();
 
@@ -27,6 +30,9 @@ export async function GET() {
 
 export async function POST(req) {
     try {
+        const user = await verifyAdmin();
+        if (!user) return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
+
         const { usd_rate, is_active } = await req.json();
 
         if (usd_rate !== undefined) {

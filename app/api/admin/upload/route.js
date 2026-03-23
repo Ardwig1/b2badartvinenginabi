@@ -1,25 +1,12 @@
 import { NextResponse } from 'next/server';
 import sharp from 'sharp';
 import { uploadToR2 } from '@/lib/r2/storage';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { verifyAdmin } from '@/lib/auth/admin';
 
 export async function POST(request) {
     try {
         // 1. Verify Authentication
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            {
-                cookies: {
-                    get(name) { return cookieStore.get(name)?.value; }
-                }
-            }
-        );
-
-        // Check if the user is logged in
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await verifyAdmin();
         if (!user) {
             return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
         }

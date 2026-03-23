@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
 const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
@@ -10,14 +10,18 @@ const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', reje
 function ActivityIcon({ type }) {
     if (type === 'search') return <div style={{ background: '#e0f2fe', color: '#0284c7', padding: 6, borderRadius: '50%' }}><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></div>;
     if (type?.startsWith('cart_')) return <div style={{ background: '#fef3c7', color: '#d97706', padding: 6, borderRadius: '50%' }}><ShoppingCartIcon style={{ width: 14, height: 14 }} /></div>;
+    if (type === 'payment_init') return <div style={{ background: '#dcfce7', color: '#16a34a', padding: 6, borderRadius: '50%' }}><BanknotesIcon style={{ width: 14, height: 14 }} /></div>;
+    if (type === 'payment_failed') return <div style={{ background: '#fee2e2', color: '#dc2626', padding: 6, borderRadius: '50%' }}><ExclamationCircleIcon style={{ width: 14, height: 14 }} /></div>;
     return <div style={{ background: '#f3f4f6', color: '#4b5563', padding: 6, borderRadius: '50%' }}><DocumentTextIcon style={{ width: 14, height: 14 }} /></div>;
 }
 
 function ActivityText({ act }) {
     if (act.action_type === 'search') return <span>Aradı: <strong>{act.details?.text || act.details?.term || 'Bilinmiyor'}</strong> {act.details?.brand ? `(Marka: ${act.details.brand})` : ''}</span>;
-    if (act.action_type === 'cart_add') return <span>Sepete Eklendi: <strong>{act.details?.name || 'Ürün'}</strong> ({act.details?.qty} adet)</span>;
-    if (act.action_type === 'cart_update') return <span>Sepet Güncellendi: <strong>{act.details?.name || 'Ürün'}</strong> ({act.details?.prevQty} → {act.details?.newQty} adet)</span>;
-    if (act.action_type === 'cart_remove') return <span>Sepetten Silindi: <strong>{act.details?.name || 'Ürün'}</strong></span>;
+    if (act.action_type === 'cart_add') return <span>Sepete Eklendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.qty} adet)</span>;
+    if (act.action_type === 'cart_update') return <span>Sepet Güncellendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.prevQty} → {act.details?.newQty} adet)</span>;
+    if (act.action_type === 'cart_remove') return <span>Sepetten Silindi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''}</span>;
+    if (act.action_type === 'payment_init') return <span>Ödeme İşlemi Başlatıldı (Tosla) - Tutar: <strong>{act.details?.amount ? `${(parseFloat(act.details.amount)/100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL` : 'Belirsiz'}</strong></span>;
+    if (act.action_type === 'payment_failed') return <span>Ödeme Başarısız (Banka Reddetti) - Nedeni: <strong style={{color: 'var(--danger)'}}>{act.details?.errMsg || 'Bilinmiyor'}</strong></span>;
     return <span>{act.action_type}</span>;
 }
 
@@ -28,9 +32,12 @@ export default function AdminCompanyDetail() {
     const [company, setCompany] = useState(null);
     const [activities, setActivities] = useState([]);
     const [orders, setOrders] = useState([]);
-    const [invoices, setInvoices] = useState([]);
+    const [transactions, setTransactions] = useState([]);
     const [activeTab, setActiveTab] = useState('activity');
     const [errorMsg, setErrorMsg] = useState('');
+    const [showTxModal, setShowTxModal] = useState(false);
+    const [txForm, setTxForm] = useState({ type: 'debt', amount: '', description: '', documentNo: '' });
+    const [txSaving, setTxSaving] = useState(false);
     const supabase = createClient();
 
     const fetchDetails = useCallback(async () => {
@@ -41,7 +48,7 @@ export default function AdminCompanyDetail() {
             supabase.from('companies').select('*, profiles(*)').eq('id', params.id).single(),
             supabase.from('user_activities').select('*').eq('company_id', params.id).order('created_at', { ascending: false }).limit(200),
             supabase.from('orders').select('*').eq('company_id', params.id).order('created_at', { ascending: false }),
-            supabase.from('invoices').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
+            supabase.from('account_transactions').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
         ]);
 
         if (compRes.error) {
@@ -51,12 +58,38 @@ export default function AdminCompanyDetail() {
         if (compRes.data) setCompany(compRes.data);
         if (actRes.data) setActivities(actRes.data);
         if (ordRes.data) setOrders(ordRes.data);
-        if (invRes.data) setInvoices(invRes.data);
+        if (invRes.data) setTransactions(invRes.data);
 
         setLoading(false);
     }, [params.id, supabase]);
 
     useEffect(() => { fetchDetails(); }, [fetchDetails]);
+
+    const handleAddTx = async (e) => {
+        e.preventDefault();
+        setTxSaving(true);
+        try {
+            const res = await fetch('/api/admin/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: company.id,
+                    type: txForm.type,
+                    amount: txForm.amount,
+                    description: txForm.description,
+                    documentNo: txForm.documentNo
+                })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'İşlem başarısız');
+            setShowTxModal(false);
+            setTxForm({ type: 'debt', amount: '', description: '', documentNo: '' });
+            fetchDetails(); // Reload data immediately
+        } catch(err) {
+            alert('Hata: ' + err.message);
+        }
+        setTxSaving(false);
+    };
 
     if (loading) return <div className="page-wrapper"><div className="loading-center"><div className="loading-spinner" /></div></div>;
     if (errorMsg) return <div className="page-wrapper"><div className="empty-state" style={{ color: 'red' }}>Veritabanı Hatası: {errorMsg}</div></div>;
@@ -85,6 +118,11 @@ export default function AdminCompanyDetail() {
                             </div>
                         </div>
                     </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                    <button className="btn btn-primary" onClick={() => setShowTxModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <BanknotesIcon style={{ width: 18, height: 18 }} /> Bakiye İşlemi (Borç/Alacak)
+                    </button>
                 </div>
             </div>
 
@@ -115,7 +153,7 @@ export default function AdminCompanyDetail() {
             <div className="tabs" style={{ marginBottom: 24 }}>
                 <button className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Son Hareketler (Arama & Sepet)</button>
                 <button className={`tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Sipariş Geçmişi ({orders.length})</button>
-                <button className={`tab ${activeTab === 'invoices' ? 'active' : ''}`} onClick={() => setActiveTab('invoices')}>Cari Hesap / Ekstre ({invoices.length})</button>
+                <button className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>Cari Hesap Hareketleri ({transactions.length})</button>
             </div>
 
             {/* TAB CONTENT */}
@@ -178,33 +216,47 @@ export default function AdminCompanyDetail() {
                 </div>
             )}
 
-            {activeTab === 'invoices' && (
+            {activeTab === 'transactions' && (
                 <div className="card" style={{ padding: 0 }}>
-                    {(!invoices || invoices.length === 0) ? (
+                    {(!transactions || transactions.length === 0) ? (
                         <div className="empty-state" style={{ padding: 40 }}>Cari işlem veya fatura bulunamadı.</div>
                     ) : (
                         <div className="table-wrapper">
                             <table>
                                 <thead>
                                     <tr>
-                                        <th>Evrak / Takip No</th>
                                         <th>Tarih</th>
                                         <th>Vade Tarihi</th>
-                                        <th>Tutar</th>
-                                        <th>Durum</th>
+                                        <th>Evrak No</th>
+                                        <th>İşlem Türü</th>
+                                        <th style={{ textAlign: 'right' }}>Borç</th>
+                                        <th style={{ textAlign: 'right' }}>Alacak</th>
+                                        <th style={{ textAlign: 'right' }}>Bakiye</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {invoices.map(inv => (
-                                        <tr key={inv.id}>
-                                            <td style={{ fontWeight: 600 }}>{inv.invoice_number}</td>
-                                            <td>{formatDate(inv.created_at)}</td>
-                                            <td style={{ color: 'var(--text-secondary)' }}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString('tr-TR') : '-'}</td>
-                                            <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{formatCurrency(inv.total_amount)}</td>
+                                    {transactions.map(tx => (
+                                        <tr key={tx.id}>
+                                            <td style={{ fontWeight: 500 }}>{formatDate(tx.created_at)}</td>
+                                            <td style={{ color: 'var(--text-secondary)' }}>{tx.due_date ? new Date(tx.due_date).toLocaleDateString('tr-TR') : '-'}</td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tx.document_no ? tx.document_no.slice(0, 8).toUpperCase() : '-'}</td>
                                             <td>
-                                                <span className={`badge ${inv.status === 'paid' ? 'badge-approved' : 'badge-pending'}`}>
-                                                    {inv.status === 'paid' ? 'Ödendi / Kapandı' : 'Açık / Ödenmedi'}
+                                                <span style={{
+                                                    fontWeight: 600,
+                                                    color: tx.transaction_type === 'KREDİ KARTI' || tx.transaction_type === 'HAVALE/EFT' || tx.transaction_type?.includes('TAHSİLAT') ? 'var(--success)' :
+                                                            tx.transaction_type === 'TOPTAN SATIŞ' ? 'var(--primary)' : 'var(--text-secondary)'
+                                                }}>
+                                                    {tx.transaction_type}
                                                 </span>
+                                            </td>
+                                            <td style={{ textAlign: 'right', fontWeight: tx.debt > 0 ? 600 : 400, color: tx.debt > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                                                {tx.debt > 0 ? formatCurrency(tx.debt) : '0,00'}
+                                            </td>
+                                            <td style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+                                                {tx.credit > 0 ? formatCurrency(tx.credit) : '0,00'}
+                                            </td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                                                {formatCurrency(tx.balance_after)}
                                             </td>
                                         </tr>
                                     ))}
@@ -212,6 +264,43 @@ export default function AdminCompanyDetail() {
                             </table>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* BALANCE ADJUSTMENT MODAL */}
+            {showTxModal && (
+                <div className="modal-overlay" onClick={() => setShowTxModal(false)}>
+                    <div className="modal" style={{ maxWidth: 450 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Bakiye İşlemi Ekle</h3>
+                            <button className="modal-close" onClick={() => setShowTxModal(false)}>✕</button>
+                        </div>
+                        <form onSubmit={handleAddTx}>
+                            <div className="form-group">
+                                <label className="form-label">İşlem Türü *</label>
+                                <select className="form-select" value={txForm.type} onChange={e => setTxForm(prev => ({ ...prev, type: e.target.value }))} required>
+                                    <option value="debt">Borçlandır (Firma Bize Borçlanır)</option>
+                                    <option value="credit">Alacaklandır / Tahsilat (Firma Ödeme Yapar)</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Tutar (₺) *</label>
+                                <input className="form-input" type="number" step="0.01" min="0.01" value={txForm.amount} onChange={e => setTxForm(prev => ({ ...prev, amount: e.target.value }))} placeholder="Örn: 1500.50" required />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Açıklama *</label>
+                                <input className="form-input" type="text" value={txForm.description} onChange={e => setTxForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Açıklama giriniz (EFT, Manuel Fatura vb.)" required />
+                            </div>
+                            <div className="form-group">
+                                <label className="form-label">Evrak / İşlem No</label>
+                                <input className="form-input" type="text" value={txForm.documentNo} onChange={e => setTxForm(prev => ({ ...prev, documentNo: e.target.value }))} placeholder="(İsteğe bağlı)" />
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowTxModal(false)}>İptal</button>
+                                <button type="submit" className="btn btn-primary" disabled={txSaving}>{txSaving ? 'İşleniyor...' : 'İşlemi Kaydet'}</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
 

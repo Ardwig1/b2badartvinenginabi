@@ -20,10 +20,11 @@ export default function AdminProducts() {
     const [stockNote, setStockNote] = useState('');
     const [stockLocation, setStockLocation] = useState('merkez');
     const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
+    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [rates, setRates] = useState({ USD: null, EUR: null });
     const supabase = createClient();
 
     const fetchProducts = useCallback(async () => {
@@ -41,6 +42,13 @@ export default function AdminProducts() {
                 .order('created_at', { ascending: false });
             if (error) throw error;
             setProducts(data || []);
+
+            // Also fetch rates for the modal
+            const ratesRes = await fetch('/api/rates');
+            const ratesData = await ratesRes.json();
+            if (ratesData.USD && ratesData.EUR) {
+                setRates({ USD: ratesData.USD, EUR: ratesData.EUR });
+            }
         } catch (e) {
             console.error('Fetch error:', e);
         }
@@ -62,14 +70,19 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1' });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1' });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1', is_campaign: !!p.is_campaign });
         setShowModal(true);
+    };
+
+    const toggleCampaign = async (p) => {
+        await supabase.from('products').update({ is_campaign: !p.is_campaign }).eq('id', p.id);
+        fetchProducts();
     };
 
     const openStock = (p) => {
@@ -301,6 +314,14 @@ export default function AdminProducts() {
                                     <td><span className={`badge ${p.is_active ? 'badge-approved' : 'badge-rejected'}`}>{p.is_active ? 'Aktif' : 'Pasif'}</span></td>
                                     <td>
                                         <div style={{ display: 'flex', gap: 6 }}>
+                                            <button 
+                                                className={`btn btn-sm ${p.is_campaign ? 'btn-warning' : 'btn-ghost'}`} 
+                                                onClick={() => toggleCampaign(p)}
+                                                title="Kampanya Durumu"
+                                                style={{ padding: '4px 8px', borderColor: p.is_campaign ? '#eab308' : 'var(--border)' }}
+                                            >
+                                                {p.is_campaign ? '⭐' : '☆'}
+                                            </button>
                                             <button className="btn btn-ghost btn-sm" onClick={() => openStock(p)} id={`stock-btn-${p.id}`}><ArchiveBoxIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Stok</button>
                                             <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} id={`edit-btn-${p.id}`}><PencilSquareIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Düzenle</button>
                                             <button className={`btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleActive(p)} id={`toggle-btn-${p.id}`}>
@@ -364,7 +385,30 @@ export default function AdminProducts() {
                                         <option value="TRY">TRY (₺)</option><option value="USD">USD ($)</option><option value="EUR">EUR (€)</option>
                                     </select>
                                 </div>
-                                <div className="form-group"><label className="form-label">Geliş Fiyatı *</label><input className="form-input" type="number" min="0" step="0.01" value={form.cost_price} onChange={up('cost_price')} required id="prod-cost-price" placeholder="Ürünün alış fiyatı" /></div>
+                                <div className="form-group" style={{ gridColumn: '1/-1' }}>
+                                    <div style={{ 
+                                        display: 'flex', 
+                                        gap: 12, 
+                                        background: 'var(--bg-surface)', 
+                                        padding: '8px 12px', 
+                                        borderRadius: 'var(--radius)', 
+                                        border: '1px solid var(--border-light)',
+                                        marginBottom: 4,
+                                        width: 'fit-content'
+                                    }}>
+                                        <div style={{ fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
+                                            <span style={{ color: '#16a34a' }}>USD:</span>
+                                            <span>{rates.USD ? `₺${rates.USD.toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
+                                        </div>
+                                        <div style={{ width: 1, height: 12, background: 'var(--border)', alignSelf: 'center' }} />
+                                        <div style={{ fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
+                                            <span style={{ color: '#2563eb' }}>EUR:</span>
+                                            <span>{rates.EUR ? `₺${rates.EUR.toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
+                                        </div>
+                                    </div>
+                                    <label className="form-label">Geliş Fiyatı *</label>
+                                    <input className="form-input" type="number" min="0" step="0.01" value={form.cost_price} onChange={up('cost_price')} required id="prod-cost-price" placeholder="Ürünün alış fiyatı" />
+                                </div>
                                 <div className="form-group"><label className="form-label">Kâr Oranı (%) *</label><input className="form-input" type="number" min="0" step="0.1" value={form.profit_margin} onChange={up('profit_margin')} required id="prod-profit-margin" placeholder="Örn: 30" /></div>
                                 <div className="form-group"><label className="form-label">İskonto Oranı (%)</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_rate} onChange={up('discount_rate')} id="prod-discount" /></div>
                                 {Number(form.cost_price) > 0 && (() => {
@@ -447,6 +491,10 @@ export default function AdminProducts() {
                                     <div style={{ marginTop: 8 }}>
                                         <input className="form-input" value={form.image_url} onChange={up('image_url')} placeholder="Veya internetten bir görsel URL'sini buraya yapıştırıp ekleyebilirsiniz (https://...)" id="prod-image-url" style={{ fontSize: 13 }} />
                                     </div>
+                                </div>
+                                <div className="form-group" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(234, 179, 8, 0.1)', padding: '10px 16px', borderRadius: 8, border: '1px solid #eab308' }}>
+                                    <input type="checkbox" checked={form.is_campaign} onChange={e => setForm(prev => ({ ...prev, is_campaign: e.target.checked }))} style={{ width: 20, height: 20, cursor: 'pointer' }} id="prod-campaign" />
+                                    <label className="form-label" htmlFor="prod-campaign" style={{ marginBottom: 0, cursor: 'pointer', fontWeight: 700, color: '#854d0e' }}>🌟 BU ÜRÜN KAMPANYALI ÜRÜNDÜR</label>
                                 </div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Açıklama</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.description} onChange={up('description')} id="prod-desc" /></div>
                             </div>

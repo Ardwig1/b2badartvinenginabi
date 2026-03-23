@@ -5,6 +5,7 @@ import {
     ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
 } from '@heroicons/react/24/outline';
 import Image from 'next/image';
+import HomeBanner from '@/components/HomeBanner';
 
 export default async function DealerDashboard() {
     const supabase = await createClient();
@@ -12,7 +13,7 @@ export default async function DealerDashboard() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, company_id, company:companies(name, current_balance, credit_limit, price_group:price_groups(name, discount_percent))')
+        .select('full_name, company_id, company:companies(name, current_balance, risk_limit, price_group:price_groups(name, discount_percent))')
         .eq('id', user.id)
         .single();
 
@@ -60,35 +61,32 @@ export default async function DealerDashboard() {
                 </div>
             </div>
 
-            {/* Announcements (Image supported) */}
-            <div style={{ marginBottom: 20 }}>
-                <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden', minHeight: 120, background: 'var(--bg-surface)' }}>
-                    <Image
-                        src="/banner.jpg"
-                        alt="Güncel Kampanyalar"
-                        width={1200}
-                        height={300}
-                        style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', minHeight: 120 }}
-                        priority
-                    />
-                </div>
-            </div>
+            {/* Sliding Announcements */}
+            <HomeBanner />
 
             {/* Brands Area */}
             <div className="card" style={{ marginBottom: 24 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
                     <h2 style={{ fontSize: 16, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>Markalarımız</h2>
                 </div>
-                {/* Brands Grid (Placeholder styling to match reference image) */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
-                    {['YEKSAN', 'HYUNDAI MOBIS', 'PHC Valeo', 'GOETZE', 'Hanna', 'JERİKO', 'CEKO', 'yavuzsan', 'satf', 'KT GASKET', 'GROS'].map((brand) => (
-                        <div key={brand} style={{
+                    {[
+                        '/logo1.webp', '/logo2.png', '/logo3.jpg', '/logo4.png', '/logo5.png',
+                        '/logo6.png', '/logo7.jpg', '/logo8.png', '/logo9.png', '/logo10.png',
+                        '/logo11.png', '/logo12.png', '/logo13.png', '/logo14.png', '/logo15.png',
+                        '/logo16.png', '/logo17.png', '/logo18.png', '/logo19.png', '/logo20.png',
+                        '/logo21.png', '/logo22.png', '/logo23.jpeg'
+                    ].map((logo, idx) => (
+                        <div key={idx} style={{
                             background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)',
                             height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: 10, fontWeight: 700, color: '#334155', fontSize: 12, textAlign: 'center'
+                            padding: 8, textAlign: 'center'
                         }}>
-                            {/* In production, use standard <img> tags pointing to their public files here */}
-                            {brand}
+                            <img 
+                                src={logo} 
+                                alt={`Brand ${idx + 1}`} 
+                                style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }} 
+                            />
                         </div>
                     ))}
                 </div>
@@ -106,8 +104,21 @@ export default async function DealerDashboard() {
 
                 <div className="stat-card">
                     <div className="stat-icon" style={{ background: '#fef3c720', color: '#d97706' }}><ShieldCheckIcon style={{ width: 24, height: 24 }} /></div>
-                    <div className="stat-label">Risk Limiti</div>
-                    <div className="stat-value">₺{Number(company?.credit_limit || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                    <div className="stat-label">Kalan Risk Limiti</div>
+                    <div className="stat-value">
+                        {(() => {
+                            const riskLimit = Number(company?.risk_limit || 0);
+                            if (riskLimit === 0) return 'Sınırsız';
+                            const debt = (Number(company?.current_balance) || 0) < 0 ? Math.abs(Number(company?.current_balance)) : 0;
+                            const remaining = Math.max(0, riskLimit - debt);
+                            return `₺${remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+                        })()}
+                    </div>
+                    {Number(company?.risk_limit || 0) > 0 && (
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                            Toplam Limit: ₺{Number(company?.risk_limit).toLocaleString('tr-TR')}
+                        </div>
+                    )}
                 </div>
                 <div className="stat-card">
                     <div className="stat-icon" style={{ background: '#dbeafe', color: '#2563eb' }}><TagIcon style={{ width: 24, height: 24 }} /></div>

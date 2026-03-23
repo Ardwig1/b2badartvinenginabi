@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import Sidebar from '@/components/Sidebar';
+import AdminCurrencyHeader from '@/components/AdminCurrencyHeader';
 
 export default async function AdminLayout({ children }) {
     const supabase = await createClient();
@@ -19,6 +20,7 @@ export default async function AdminLayout({ children }) {
     return (
         <div className="app-layout">
             <Sidebar isAdmin={true} userEmail={user.email} companyName={profile.full_name || 'Admin'} />
+            <AdminCurrencyHeader />
             <main className="main-content">
                 {children}
             </main>

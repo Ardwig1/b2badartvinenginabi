@@ -1,31 +1,14 @@
 import { NextResponse } from 'next/server';
 import { uploadToR2 } from '@/lib/r2/storage';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { verifyAdmin } from '@/lib/auth/admin';
 
 export async function POST(request) {
     try {
         // 1. Verify Authentication
-        const cookieStore = await cookies();
-        const supabase = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-            {
-                cookies: {
-                    get(name) { return cookieStore.get(name)?.value; }
-                }
-            }
-        );
-
-        // Check if the user is logged in
-        const { data: { user } } = await supabase.auth.getUser();
+        const user = await verifyAdmin();
         if (!user) {
             return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
         }
-
-        // Check if user is admin is ideal here, but auth is sufficient to prevent public abuse
-
-        // 2. Pars multipart form data
         const formData = await request.formData();
         const file = formData.get('file');
 

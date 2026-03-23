@@ -3,9 +3,16 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DocumentTextIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
-const START_YEAR = 2020;
+const START_YEAR = 2026;
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - START_YEAR + 1 }, (_, i) => START_YEAR + i);
+
+const months = [
+    { id: 1, name: 'OCAK' }, { id: 2, name: 'ŞUBAT' }, { id: 3, name: 'MART' },
+    { id: 4, name: 'NİSAN' }, { id: 5, name: 'MAYIS' }, { id: 6, name: 'HAZİRAN' },
+    { id: 7, name: 'TEMMUZ' }, { id: 8, name: 'AĞUSTOS' }, { id: 9, name: 'EYLÜL' },
+    { id: 10, name: 'EKİM' }, { id: 11, name: 'KASIM' }, { id: 12, name: 'ARALIK' }
+];
 
 function addDays(dateStr, days) {
     const d = new Date(dateStr);
@@ -21,8 +28,14 @@ function fmtTime(date) {
     return new Date(date).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function fmtMoney(n) {
-    return '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+function fmtMoney(n, showSign = false) {
+    const val = Number(n || 0);
+    const absVal = Math.abs(val).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+    if (!showSign) return '₺' + absVal;
+    
+    if (val > 0) return '+₺' + absVal;
+    if (val < 0) return '-₺' + absVal;
+    return '₺' + absVal;
 }
 
 export default function AdminAccountLedger() {
@@ -32,7 +45,8 @@ export default function AdminAccountLedger() {
     const [orderDetails, setOrderDetails] = useState({});
     const [loadingDetails, setLoadingDetails] = useState({});
     const [dbError, setDbError] = useState(false);
-    const [selectedYear, setSelectedYear] = useState(currentYear);
+    const [selectedYear, setSelectedYear] = useState(currentYear < 2026 ? 2026 : currentYear);
+    const [selectedMonth, setSelectedMonth] = useState(null);
     const [totals, setTotals] = useState({ debt: 0, credit: 0 });
     
     const [showTxModal, setShowTxModal] = useState(false);
@@ -45,13 +59,20 @@ export default function AdminAccountLedger() {
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
 
-        const yearStart = `${selectedYear}-01-01`;
-        const yearEnd = `${selectedYear}-12-31T23:59:59`;
+        let startDate, endDate;
+        if (selectedMonth) {
+            startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+            endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
+        } else {
+            startDate = `${selectedYear}-01-01`;
+            endDate = `${selectedYear}-12-31T23:59:59`;
+        }
 
         const { data, error } = await supabase.from('account_transactions')
             .select('*, company:companies(name)')
-            .gte('created_at', yearStart)
-            .lte('created_at', yearEnd)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
             .order('created_at', { ascending: false });
 
         if (error) {
@@ -64,7 +85,7 @@ export default function AdminAccountLedger() {
             setTotals({ debt: tDebt, credit: tCredit });
         }
         setLoading(false);
-    }, [selectedYear]);
+    }, [selectedYear, selectedMonth]);
 
     useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
 
@@ -133,7 +154,7 @@ export default function AdminAccountLedger() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Genel Cari Hareketler (Admin)</h1>
-                    <p className="page-subtitle">Platformdaki tüm bayilerin borç, alacak ve bakiye dökümleri</p>
+                    <p className="page-subtitle">Platformdaki tüm bayilerin borç, alacak ve toplam kâr dökümleri</p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                     <button className="btn btn-primary" onClick={openTxModal} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -145,27 +166,56 @@ export default function AdminAccountLedger() {
                 </div>
             </div>
 
-            {/* Year Tabs */}
-            <div style={{ display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' }}>
-                {years.map(y => (
-                    <button
-                        key={y}
-                        onClick={() => { setSelectedYear(y); setExpandedRow(null); }}
-                        style={{
-                            padding: '4px 12px',
-                            borderRadius: 6,
-                            border: '1px solid var(--border)',
-                            background: selectedYear === y ? 'var(--primary)' : 'var(--bg-surface)',
-                            color: selectedYear === y ? '#fff' : 'var(--text-secondary)',
-                            fontWeight: selectedYear === y ? 700 : 400,
-                            cursor: 'pointer',
-                            fontSize: 13,
-                            transition: 'all 0.15s'
-                        }}
-                    >
-                        {y}
-                    </button>
-                ))}
+            {/* Filter Tabs */}
+            <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>YIL:</span>
+                    {years.map(y => (
+                        <button
+                            key={y}
+                            onClick={() => { setSelectedYear(y); setSelectedMonth(null); setExpandedRow(null); }}
+                            style={{
+                                padding: '6px 16px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: selectedYear === y && !selectedMonth ? 'var(--primary)' : 'var(--bg-surface)',
+                                color: selectedYear === y && !selectedMonth ? '#fff' : 'var(--text-secondary)',
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                fontSize: 13,
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {y}
+                        </button>
+                    ))}
+                </div>
+                
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>AY:</span>
+                    {months.map(m => (
+                        <button
+                            key={m.id}
+                            onClick={() => { 
+                                setSelectedMonth(selectedMonth === m.id ? null : m.id); 
+                                setExpandedRow(null); 
+                            }}
+                            style={{
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                border: '1px solid var(--border)',
+                                background: selectedMonth === m.id ? 'var(--primary)' : 'var(--bg-tag)',
+                                color: selectedMonth === m.id ? '#fff' : 'var(--text-primary)',
+                                fontWeight: selectedMonth === m.id ? 700 : 500,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                transition: 'all 0.15s'
+                            }}
+                        >
+                            {m.name}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -181,7 +231,7 @@ export default function AdminAccountLedger() {
                                 <th>İşlem Türü</th>
                                 <th style={{ textAlign: 'right' }}>Borç</th>
                                 <th style={{ textAlign: 'right' }}>Alacak</th>
-                                <th style={{ textAlign: 'right' }}>Bakiye</th>
+                                <th style={{ textAlign: 'right' }}>Toplam Kâr</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -229,8 +279,12 @@ export default function AdminAccountLedger() {
                                             <td style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
                                                 {tx.credit > 0 ? fmtMoney(tx.credit) : '0,00'}
                                             </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                                                {fmtMoney(tx.balance_after)}
+                                            <td style={{ 
+                                                textAlign: 'right', 
+                                                fontWeight: 700, 
+                                                color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : (tx.balance_after > 0 ? 'var(--success)' : 'var(--text-primary)') 
+                                            }}>
+                                                {fmtMoney(tx.balance_after, true)}
                                             </td>
                                         </tr>
                                         {isExpanded && (
@@ -287,14 +341,22 @@ export default function AdminAccountLedger() {
                         {!loading && transactions.length > 0 && (
                             <tfoot style={{ background: 'var(--bg-surface)', borderTop: '2px solid var(--border)' }}>
                                 <tr>
-                                    <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700, padding: '16px 20px' }}>PLATFORM {selectedYear} TOPLAMI</td>
+                                    <td colSpan="6" style={{ textAlign: 'right', fontWeight: 700, padding: '16px 20px' }}>PLATFORM DÖNEM TOPLAMI</td>
                                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)', padding: '16px 20px', fontSize: 16 }}>
                                         {fmtMoney(totals.debt)}
                                     </td>
                                     <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)', padding: '16px 20px', fontSize: 16 }}>
                                         {fmtMoney(totals.credit)}
                                     </td>
-                                    <td style={{ padding: '16px 20px' }}></td>
+                                    <td style={{ 
+                                        textAlign: 'right', 
+                                        fontWeight: 700, 
+                                        color: (totals.credit - totals.debt) < 0 ? 'var(--danger)' : (totals.credit - totals.debt > 0 ? 'var(--success)' : 'var(--primary)'), 
+                                        padding: '16px 20px', 
+                                        fontSize: 18 
+                                    }}>
+                                        {fmtMoney(totals.credit - totals.debt, true)}
+                                    </td>
                                 </tr>
                             </tfoot>
                         )}

@@ -1,0 +1,75 @@
+'use client';
+import { useState, useEffect } from 'react';
+import Image from 'next/image';
+
+export default function HomeBanner() {
+    const banners = ['/banner1.jpg', '/banner2.jpg', '/banner3.jpg'];
+    const [currentIndex, setCurrentIndex] = useState(0);
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % banners.length);
+        }, 4000); // 4 seconds
+
+        return () => clearInterval(timer);
+    }, [banners.length]);
+
+    return (
+        <div style={{ marginBottom: 20 }}>
+            <div style={{ 
+                position: 'relative', 
+                width: '100%', 
+                borderRadius: 'var(--radius-lg)', 
+                overflow: 'hidden', 
+                minHeight: 120, 
+                background: 'var(--bg-surface)',
+                aspectRatio: '1200 / 300'
+            }}>
+                <div style={{
+                    display: 'flex',
+                    transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: `translateX(-${currentIndex * 100}%)`,
+                    width: '100%',
+                    height: '100%'
+                }}>
+                    {banners.map((src, i) => (
+                        <div key={src} style={{ minWidth: '100%', position: 'relative' }}>
+                            <Image
+                                src={src}
+                                alt={`Banner ${i + 1}`}
+                                width={1200}
+                                height={300}
+                                style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
+                                priority={i === 0}
+                            />
+                        </div>
+                    ))}
+                </div>
+                
+                {/* Dots Indicator */}
+                <div style={{
+                    position: 'absolute',
+                    bottom: 12,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    display: 'flex',
+                    gap: 8,
+                    zIndex: 10
+                }}>
+                    {banners.map((_, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                background: currentIndex === i ? 'var(--primary)' : 'rgba(255,255,255,0.5)',
+                                transition: 'all 0.3s'
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}

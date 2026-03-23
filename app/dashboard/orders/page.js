@@ -15,7 +15,7 @@ export default function DealerOrders() {
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
         const { data } = await supabase.from('orders')
-            .select('*, items:order_items(*, product:products(name, code))')
+            .select('*, items:order_items(*, product:products(name, code, oem_no))')
             .eq('company_id', profile.company_id)
             .order('created_at', { ascending: false });
         setOrders(data || []);
@@ -54,7 +54,7 @@ export default function DealerOrders() {
                                         <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{o.id.slice(0, 8).toUpperCase()}</td>
                                         <td style={{ fontWeight: 600 }}>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                         <td><span className={`badge badge-${o.status}`}>{statusLabels[o.status]}</span></td>
-                                        <td>{new Date(o.created_at).toLocaleDateString('tr-TR')}</td>
+                                        <td>{new Date(o.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                                         <td><button className="btn btn-ghost btn-sm" onClick={() => setSelected(o)} id={`order-detail-${o.id}`}>Detay</button></td>
                                     </tr>
                                 ))}
@@ -95,6 +95,9 @@ export default function DealerOrders() {
                                 <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
                                     <div>
                                         <div style={{ fontWeight: 500 }}>{item.product?.name}</div>
+                                        {item.product?.oem_no && (
+                                            <div style={{ color: 'var(--primary)', fontSize: 11, fontFamily: 'monospace', marginTop: 1 }}>OEM: {item.product.oem_no}</div>
+                                        )}
                                         <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                     </div>
                                     <div style={{ fontWeight: 600 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
@@ -108,6 +111,26 @@ export default function DealerOrders() {
                         {selected.note && (
                             <div style={{ marginTop: 12, padding: 10, background: 'var(--bg-surface)', borderRadius: 'var(--radius)', fontSize: 12, color: 'var(--text-secondary)' }}>
                                 📝 {selected.note}
+                            </div>
+                        )}
+
+                        {(selected.status === 'shipped' || selected.status === 'delivered') && selected.shipping_company && (
+                            <div style={{ marginTop: 12, padding: 16, background: 'rgba(37,99,235,0.05)', borderRadius: 12, border: '1px solid rgba(37,99,235,0.1)', fontSize: 13 }}>
+                                <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 8 }}>🚚 Kargo Detayları</div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Kargo Firması:</span>
+                                        <span style={{ fontWeight: 600 }}>{selected.shipping_company}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Takip No:</span>
+                                        <span style={{ fontWeight: 600, fontFamily: 'monospace' }}>{selected.tracking_number || '-'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Çıkış:</span>
+                                        <span style={{ fontWeight: 600 }}>{selected.shipping_origin}</span>
+                                    </div>
+                                </div>
                             </div>
                         )}
                     </div>

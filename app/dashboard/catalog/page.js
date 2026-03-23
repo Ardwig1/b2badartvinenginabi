@@ -20,6 +20,26 @@ function getStockStatus(qty) {
     return 'out_of_stock';
 }
 
+const getCircleStyle = (qty, size = 16) => {
+    let bg, border, boxShadow;
+    if (qty > 15) { 
+        bg = 'linear-gradient(135deg, #22c55e, #15803d)';
+        border = '1px solid #14532d';
+        boxShadow = `0 0 ${size/2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
+    } else if (qty > 0) { 
+        bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; 
+        border = '1px solid #1e293b';
+        boxShadow = `0 0 ${size/2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`;
+    } else { 
+        bg = 'linear-gradient(135deg, #ef4444, #991b1b)';
+        border = '1px solid #7f1d1d';
+        boxShadow = `0 0 ${size/2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
+    }
+    return {
+        width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0
+    };
+};
+
 export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
@@ -35,10 +55,14 @@ export default function DealerCatalog() {
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
+    const [pendingQtys, setPendingQtys] = useState({});
     const [userId, setUserId] = useState(null);
+    const [companyId, setCompanyId] = useState(null);
 
     // Hover Tooltip State
     const [hoveredRow, setHoveredRow] = useState(null);
+    const [hoveredImage, setHoveredImage] = useState(null);
+    const [hoveredPriceTooltip, setHoveredPriceTooltip] = useState(null);
     const hoverTimeoutRef = useRef(null);
     const mousePosRef = useRef({ x: 0, y: 0 });
 
@@ -72,7 +96,6 @@ export default function DealerCatalog() {
     const [filterText, setFilterText] = useState('');
     const [checkIn, setCheckIn] = useState(false);
     const [checkLow, setCheckLow] = useState(false);
-    const [checkWay, setCheckWay] = useState(false);
     const [checkNew, setCheckNew] = useState(false);
     const [checkCampaign, setCheckCampaign] = useState(false);
 
@@ -84,6 +107,15 @@ export default function DealerCatalog() {
         setLoading(true);
         const { data: { user } } = await supabase.auth.getUser();
         setUserId(user?.id);
+
+        if (user?.id) {
+            const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
+            if (profile?.company_id) {
+                setCompanyId(profile.company_id);
+                // Store for CartProvider to use
+                if (typeof window !== 'undefined') localStorage.setItem('b2b_company_id', profile.company_id);
+            }
+        }
 
         if (user?.id) {
             const disc = await getUserDiscount(user.id);
@@ -143,7 +175,7 @@ export default function DealerCatalog() {
     const searchProducts = async (e) => {
         if (e && e.key && e.key !== 'Enter') return;
 
-        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkWay && !checkNew && !checkCampaign) {
+        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
             setProducts([]);
             setHasSearched(false);
             return;
@@ -172,13 +204,13 @@ export default function DealerCatalog() {
             const { data, error } = await query.order('brand').order('name');
             if (error) throw error;
 
-            // Log activity asynchronously if there is a search term and user is identified
-            if (userId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
+            // Log activity asynchronously if there is a search term and company is identified
+            if (companyId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
                 fetch('/api/log-activity', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        company_id: userId,
+                        company_id: companyId,
                         action_type: 'search',
                         details: {
                             text: filterText.trim(),
@@ -247,12 +279,23 @@ export default function DealerCatalog() {
     };
 
     const filtered = products.filter(p => {
-        // We already server-side filtered branding, car brand, car model, and text, so we only need to filter stock, new, campaign, follows here
-        const st = getStockStatus(p.stock_quantity);
-        if (checkIn && st !== 'in_stock') return false;
-        if (checkLow && st !== 'low_stock') return false;
-        if (checkWay && p.stock_status !== 'on_the_way') return false;
-        if (checkNew && !p.is_new) return false;
+        // "Stokta Olanlar": İstanbul veya Depo'da stoku olan tüm ürünler (Tam yeşil + Yarım yeşil)
+        if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
+
+        // "Az Olanlar": İstanbul veya Depo'da sadece Yarım Yeşil olanlar (1-15 arası)
+        if (checkLow) {
+            const isMerkezLow = p.stock_merkez > 0 && p.stock_merkez <= 15;
+            const isDepoLow = p.stock_depo > 0 && p.stock_depo <= 15;
+            if (!isMerkezLow && !isDepoLow) return false;
+        }
+
+        // "Yeni Ürün": Son 1 hafta (7 gün) içinde eklenenler
+        if (checkNew) {
+            const oneWeekAgo = new Date();
+            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+            if (new Date(p.created_at) < oneWeekAgo) return false;
+        }
+
         if (checkCampaign && !p.is_campaign) return false;
         return true;
     });
@@ -295,24 +338,49 @@ export default function DealerCatalog() {
         return () => { isCancelled = true; };
     }, [chunkUrlHash]);
 
-    const addToCart = (p) => {
-        ctxAddToCart(p);
-        showToast(`${p.name} sepete eklendi`);
+    const handleAddToCart = (p) => {
+        const raw = getPending(p.id);
+        if (!raw || raw === '0') return;
+        
+        const n = parseInt(raw, 10);
+        if (isNaN(n) || n < 1) return;
+        
+        const currentQty = safeCartQtys[p.id]?.qty || 0;
+        ctxSetQty(p.id, p, currentQty + n);
+        
+        // Clear pending qtys for this product
+        setPendingQtys(prev => { 
+            const next = { ...prev }; 
+            delete next[p.id]; 
+            return next; 
+        });
+        showToast(`${p.name} sepete eklendi (${n} adet)`);
     };
-    const setQty = (p, val) => {
-        const n = parseInt(val, 10);
-        ctxSetQty(p.id, p, isNaN(n) ? 0 : n);
+
+    // Pending (local input) quantity helpers — sepete sadece Ekle butonuyla eklenir
+    const getPending = (id) => pendingQtys[id] ?? '';
+    const setPending = (id, val) => {
+        const raw = String(val);
+        // Sadece rakam girişine izin ver, boş string de geçerli
+        if (raw === '' || /^\d+$/.test(raw)) {
+            setPendingQtys(prev => ({ ...prev, [id]: raw }));
+        }
     };
     const safeCartQtys = cartQtys || {};
     const totalCartItems = Object.values(safeCartQtys).reduce((a, b) => a + (b.qty || 0), 0);
 
     useEffect(() => {
+        // Bug Fix: If all filters are cleared, return to "Arama Yapın" state
+        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
+            setProducts([]);
+            setHasSearched(false);
+        }
         setCurrentPage(1);
-    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkWay, checkNew, checkCampaign]);
+    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkNew, checkCampaign]);
 
     const clearFilters = () => {
         setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText('');
-        setCheckIn(false); setCheckLow(false); setCheckWay(false); setCheckNew(false); setCheckCampaign(false);
+        setCheckIn(false); setCheckLow(false); setCheckNew(false); setCheckCampaign(false);
         setProducts([]);
         setHasSearched(false);
         setCurrentPage(1);
@@ -382,10 +450,15 @@ export default function DealerCatalog() {
                         ].map(({ label, value, set, opts }) => (
                             <div key={label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>{label}</div>
-                                <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center' }}>
-                                    <select className="form-select" style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1 }} value={value} onChange={e => set(e.target.value)}>
-                                        <option value="">HEPSİ</option>
-                                        {opts.map(o => <option key={o} value={o}>{o}</option>)}
+                                 <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center' }}>
+                                    <select 
+                                        className="form-select" 
+                                        style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1, color: '#000' }} 
+                                        value={value} 
+                                        onChange={e => set(e.target.value)}
+                                    >
+                                        <option value="" style={{ color: '#000', background: '#fff' }}>HEPSİ</option>
+                                        {opts.map(o => <option key={o} value={o} style={{ color: '#000', background: '#fff' }}>{o}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -413,7 +486,6 @@ export default function DealerCatalog() {
                             { label: 'Kampanya', val: checkCampaign, set: setCheckCampaign },
                             { label: 'Stokta Olanlar', val: checkIn, set: setCheckIn },
                             { label: 'Az Var', val: checkLow, set: setCheckLow },
-                            { label: 'Yolda Olanlar', val: checkWay, set: setCheckWay },
                             { label: 'Yeni Ürün', val: checkNew, set: setCheckNew },
                         ].map(({ label, val, set }) => (
                             <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
@@ -464,7 +536,10 @@ export default function DealerCatalog() {
                         const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                         return (
                             <div key={p.id} style={{
-                                background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 12,
+                                background: p.is_campaign ? '#fef08a' : 'var(--bg-card)', 
+                                border: p.is_campaign ? '1px solid #eab308' : '1px solid var(--border)', 
+                                color: p.is_campaign ? '#000' : 'inherit',
+                                borderRadius: 12,
                                 overflow: 'hidden', display: 'flex', flexDirection: 'column',
                                 transition: 'box-shadow 0.2s, transform 0.2s', cursor: 'default',
                                 position: 'relative'
@@ -493,45 +568,78 @@ export default function DealerCatalog() {
                                 </div>
 
                                 {/* Marka + Birim */}
-                                <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)' }}>
-                                    <span style={{ fontWeight: 600, color: 'var(--danger)' }}>{p.brand || '-'}</span>
-                                    <span>{p.unit || 'AD'}</span>
+                                <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>
+                                    <span style={{ fontWeight: 600, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>{p.brand || '-'}</span>
+                                    <span style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.unit || 'AD'}</span>
                                 </div>
 
                                 {/* Fiyat */}
-                                <div style={{ padding: '6px 10px 0', fontSize: 16, fontWeight: 800, color: 'var(--primary)', fontFamily: 'monospace' }}>
+                                <div 
+                                    style={{ padding: '6px 10px 0', fontSize: 16, fontWeight: 800, color: p.is_campaign ? '#1e40af' : 'var(--primary)', fontFamily: 'monospace', cursor: 'grab' }}
+                                    onMouseEnter={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        setHoveredPriceTooltip({ product: p, x: rect.left, y: rect.top });
+                                    }}
+                                    onMouseLeave={() => setHoveredPriceTooltip(null)}
+                                >
                                     ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                                 </div>
-                                <div style={{ padding: '0 10px', fontSize: 10, color: 'var(--text-muted)' }}>KDV Dahil</div>
+                                <div style={{ padding: '0 10px', fontSize: 10, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>KDV Dahil</div>
 
                                 {/* Stok durumu */}
-                                <div style={{ padding: '6px 10px 0', display: 'flex', gap: 8, fontSize: 11 }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.stock_merkez > 0 ? '#16a34a' : '#dc2626' }} />
+                                <div style={{ padding: '6px 10px 0', display: 'flex', gap: 8, fontSize: 11, color: p.is_campaign ? '#000' : 'inherit' }}>
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                                        <div style={getCircleStyle(p.stock_merkez || 0, 12)} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
                                         İst.
                                     </span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: p.stock_depo > 0 ? '#16a34a' : '#dc2626' }} />
+                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                                        <div style={getCircleStyle(p.stock_depo || 0, 12)} title={p.stock_depo > 15 ? 'Stokta' : p.stock_depo > 0 ? 'Az Kaldı' : 'Stok Yok'} />
                                         Depo
                                     </span>
                                 </div>
 
-                                {/* Sepet */}
-                                <div style={{ padding: '8px 10px 10px', marginTop: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
-                                    <input
-                                        type="number" min="0"
-                                        value={safeCartQtys[p.id]?.qty || ''}
-                                        onChange={e => setQty(p, e.target.value)}
-                                        style={{ width: 44, padding: '4px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 12 }}
-                                    />
-                                    <button
-                                        className="btn btn-primary btn-sm"
-                                        onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
-                                        disabled={isOutOfStock}
-                                        style={{ flex: 1, opacity: isOutOfStock ? 0.4 : 1, fontSize: 12, padding: '6px 0' }}
-                                    >
-                                        {isOutOfStock ? 'Yok' : '🛒 Ekle'}
-                                    </button>
+                                <div style={{ padding: '8px 10px 10px', marginTop: 'auto', display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 36 }}>
+                                        <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
+                                            onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '1', 10); setPending(p.id, Math.max(1, (isNaN(cur) ? 1 : cur) - 1)); }}
+                                        >−</button>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            value={getPending(p.id)}
+                                            onChange={e => setPending(p.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            placeholder="Ad."
+                                            style={{ width: 45, textAlign: 'center', fontSize: 14, fontWeight: 800, border: 'none', background: 'transparent', outline: 'none', color: '#000' }}
+                                        />
+                                        <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
+                                            onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '0', 10); setPending(p.id, (isNaN(cur) ? 1 : cur) + 1); }}
+                                            disabled={isOutOfStock}
+                                        >+</button>
+                                    </div>
+                                    {(() => {
+                                        const pVal = getPending(p.id);
+                                        // "Hiç sayı yazılı değilse veya 0 ise basılamasın"
+                                        const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
+                                        return (
+                                            <button
+                                                className="btn btn-primary btn-sm"
+                                                onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
+                                                disabled={isOutOfStock || isPendingEmpty}
+                                                style={{ 
+                                                    flex: 1, 
+                                                    opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1, 
+                                                    fontSize: 12, 
+                                                    padding: '6px 0',
+                                                    cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
+                                                    filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         );
@@ -547,6 +655,7 @@ export default function DealerCatalog() {
                                 <th>Stok Kodu</th>
                                 <th>OEM No</th>
                                 <th>Ürün Adı</th>
+                                <th style={{ width: 40, textAlign: 'center' }} title="Ürün Resmi"><PhotoIcon style={{ width: 18, height: 18 }} /></th>
                                 <th>Birim</th>
                                 <th style={{ textAlign: 'center' }}>İskonto</th>
                                 <th style={{ textAlign: 'right' }}>Fiyat (KDV Dahil)</th>
@@ -565,77 +674,89 @@ export default function DealerCatalog() {
                                         onMouseEnter={(e) => handleRowMouseEnter(e, p)}
                                         onMouseMove={(e) => handleRowMouseMove(e, p)}
                                         onMouseLeave={handleRowMouseLeave}
+                                        style={{ background: p.is_campaign ? '#fef08a' : 'transparent', color: p.is_campaign ? '#000' : 'inherit' }}
                                     >
-                                        <td style={{ fontWeight: 600, fontSize: 13 }}>{p.brand || '-'}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--primary)' }}>{p.code}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
-                                        <td style={{ fontWeight: 500, maxWidth: 220 }}>{p.name}</td>
-                                        <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--danger)' }}>%{discountPercent}</td>
-                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                                            <div className="tooltip-container" style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}>
-                                                ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                                <div className="tooltip-content price-tooltip">
-                                                    <div style={{ textAlign: 'left', minWidth: 240, padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px' }}>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Liste Fiyatı:</span>
-                                                            <span style={{ fontSize: 12 }}>
-                                                                {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
-                                                                {p.currency && p.currency !== 'TRY' && <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>(₺{((Number(p.list_price) / 1.36) * (1 + (globalMargin / 100)) * rates[p.currency]).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})</span>}
-                                                            </span>
-                                                        </div>
-                                                        {Number(p.discount_rate) > 0 && (
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Ürün İskontosu ({p.discount_rate}%):</span>
-                                                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
-                                                                    -₺{(getBaseTryPrice(p) * Number(p.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        {discountPercent > 0 && (
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Grup İskontosu ({discountPercent}%):</span>
-                                                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
-                                                                    -₺{(getBaseTryPrice(p) * (1 - Number(p.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>İskontolu Fiyat:</span>
-                                                            <span style={{ fontWeight: 600, fontSize: 13 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                                        </div>
-                                                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--primary)', paddingTop: 8, marginTop: 4 }}>
-                                                            <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>KDV Dahil (%20):</span>
-                                                            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                                        </div>
-                                                    </div>
+                                        <td style={{ fontWeight: 600, fontSize: 13, color: p.is_campaign ? '#000' : 'inherit' }}>{p.brand || '-'}</td>
+                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: p.is_campaign ? '#1e40af' : 'var(--primary)', fontWeight: p.is_campaign ? 700 : 400 }}>{p.code}</td>
+                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: p.is_campaign ? 'rgba(0,0,0,0.7)' : 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
+                                        <td style={{ fontWeight: 600, maxWidth: 220, color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            {p.image_url ? (
+                                                <div 
+                                                    style={{ cursor: 'pointer', color: 'var(--primary)', display: 'flex', justifyContent: 'center' }}
+                                                    onMouseEnter={(e) => {
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setHoveredImage({ url: p.image_url, x: rect.left, y: rect.top });
+                                                    }}
+                                                    onMouseLeave={() => setHoveredImage(null)}
+                                                >
+                                                    <PhotoIcon style={{ width: 20, height: 20 }} />
                                                 </div>
+                                            ) : '-'}
+                                        </td>
+                                        <td style={{ fontSize: 12, color: p.is_campaign ? '#000' : 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
+                                        <td style={{ textAlign: 'center', fontWeight: 800, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>%{discountPercent}</td>
+                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
+                                            <div 
+                                                style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}
+                                                onMouseEnter={(e) => {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    setHoveredPriceTooltip({ product: p, x: rect.left, y: rect.top });
+                                                }}
+                                                onMouseLeave={() => setHoveredPriceTooltip(null)}
+                                            >
+                                                ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                                             </div>
                                         </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_merkez > 15 ? '#16a34a' : p.stock_merkez > 0 ? 'conic-gradient(#16a34a 0deg, #16a34a 180deg, rgba(255,255,255,0.15) 180deg, rgba(255,255,255,0.15) 360deg)' : '#dc2626', margin: '0 auto', boxShadow: '0 0 6px rgba(0,0,0,0.2)', border: p.stock_merkez > 0 && p.stock_merkez <= 15 ? '1px solid rgba(22,163,74,0.4)' : 'none' }} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
+                                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                                            <div style={getCircleStyle(p.stock_merkez || 0, 16)} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
                                         </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <div style={{ width: 12, height: 12, borderRadius: '50%', background: p.stock_depo > 15 ? '#16a34a' : p.stock_depo > 0 ? 'conic-gradient(#16a34a 0deg, #16a34a 180deg, rgba(255,255,255,0.15) 180deg, rgba(255,255,255,0.15) 360deg)' : '#dc2626', margin: '0 auto', boxShadow: '0 0 6px rgba(0,0,0,0.2)', border: p.stock_depo > 0 && p.stock_depo <= 15 ? '1px solid rgba(22,163,74,0.4)' : 'none' }} title={p.stock_depo > 15 ? 'Stokta' : p.stock_depo > 0 ? 'Az Kaldı' : 'Stok Yok'} />
+                                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
+                                            <div style={getCircleStyle(p.stock_depo || 0, 16)} title={p.stock_depo > 15 ? 'Stokta' : p.stock_depo > 0 ? 'Az Kaldı' : 'Stok Yok'} />
                                         </td>
-                                        <td style={{ textAlign: 'center', fontSize: 13, fontWeight: 500 }}>{p.box_quantity || 1}</td>
+                                        <td style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: p.is_campaign ? '#000' : 'inherit' }}>{p.box_quantity || 1}</td>
                                         <td>
-                                            <input
-                                                type="number" min="0"
-                                                value={safeCartQtys[p.id]?.qty || ''}
-                                                onChange={e => setQty(p, e.target.value)}
-                                                style={{ width: 60, padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, textAlign: 'center', fontSize: 13 }}
-                                            />
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 36 }}>
+                                                <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
+                                                    onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '1', 10); setPending(p.id, Math.max(1, (isNaN(cur) ? 1 : cur) - 1)); }}
+                                                >−</button>
+                                                <input
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    value={getPending(p.id)}
+                                                    onChange={e => setPending(p.id, e.target.value)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    placeholder="Ad."
+                                                    style={{ width: 45, textAlign: 'center', fontSize: 14, fontWeight: 800, border: 'none', background: 'transparent', outline: 'none', color: '#000' }}
+                                                />
+                                                <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
+                                                    onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '0', 10); setPending(p.id, (isNaN(cur) ? 1 : cur) + 1); }}
+                                                    disabled={isOutOfStock}
+                                                >+</button>
+                                            </div>
                                         </td>
                                         <td>
-                                            <button
-                                                className="btn btn-primary btn-sm"
-                                                onClick={() => { if ((safeCartQtys[p.id]?.qty || 0) === 0) setQty(p, 1); else addToCart(p); }}
-                                                disabled={isOutOfStock}
-                                                style={{ opacity: isOutOfStock ? 0.4 : 1, whiteSpace: 'nowrap' }}
-                                            >
-                                                {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
-                                            </button>
+                                            {(() => {
+                                                const pVal = getPending(p.id);
+                                                // "Hiç sayı yazılı değilse veya 0 ise basılamasın"
+                                                const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
+                                                return (
+                                                    <button
+                                                        className="btn btn-primary btn-sm"
+                                                        onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
+                                                        disabled={isOutOfStock || isPendingEmpty}
+                                                        style={{ 
+                                                            opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1, 
+                                                            whiteSpace: 'nowrap',
+                                                            cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
+                                                            filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
+                                                    </button>
+                                                );
+                                            })()}
                                         </td>
                                     </tr>
                                 );
@@ -672,54 +793,83 @@ export default function DealerCatalog() {
                 </div>
             )}
 
-            {hoveredRow && hoveredRow.product && (
+            {hoveredImage && (
                 <div style={{
                     position: 'fixed',
-                    left: Math.min(hoveredRow.x + 15, typeof window !== 'undefined' ? window.innerWidth - 300 : 0),
-                    top: Math.min(hoveredRow.y + 15, typeof window !== 'undefined' ? window.innerHeight - 200 : 0),
-                    background: 'var(--bg-card)',
-                    border: '1px solid var(--border)',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
-                    padding: '16px',
-                    borderRadius: '8px',
-                    zIndex: 99999,
-                    minWidth: '260px',
-                    pointerEvents: 'none',
-                    fontSize: 13,
-                    color: 'var(--text-primary)'
+                    left: Math.max(20, hoveredImage.x - 320),
+                    top: Math.max(20, hoveredImage.y - 150),
+                    width: 300,
+                    background: '#fff',
+                    border: '1px solid #ddd',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                    borderRadius: '12px',
+                    zIndex: 999999,
+                    overflow: 'hidden',
+                    pointerEvents: 'none'
                 }}>
-                    {(() => {
-                        const hp = hoveredRow.product;
-                        const activeUsdRate = globalUsdActive && globalUsdRate > 0 ? globalUsdRate : (rates?.USD || 1);
-                        const netTl = getDiscountedPrice(hp);
-                        const netTlKdv = getKdvPrice(hp);
-                        const netUsd = netTl / activeUsdRate;
-                        const netUsdKdv = netTlKdv / activeUsdRate;
+                    <div style={{ background: '#f8fafc', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #eee' }}>
+                        <img src="/omi-logo-sidebar.png" alt="Omi Group" style={{ height: 24, objectFit: 'contain' }} />
+                    </div>
+                    <div style={{ padding: '12px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px' }}>
+                        <img 
+                            src={hoveredImage.url} 
+                            alt="Ürün" 
+                            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} 
+                            onError={(e) => {
+                                e.target.src = 'https://via.placeholder.com/300x200?text=G%C3%B6rsel+Bulunamad%C4%B1';
+                                e.target.style.opacity = '0.5';
+                            }}
+                        />
+                    </div>
+                </div>
+            )}
 
-                        return (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 600 }}>Net Fiyat ($)</span>
-                                    <span>: ${netUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 600 }}>Net Fiyat KDV Dahil ($)</span>
-                                    <span>: ${netUsdKdv.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 600 }}>Net Fiyat (₺)</span>
-                                    <span>: ₺{netTl.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <span style={{ fontWeight: 600 }}>Net Fiyat KDV Dahil (₺)</span>
-                                    <span>: ₺{netTlKdv.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                                </div>
-                                <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid var(--border-light)', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace', textAlign: 'center' }}>
-                                    {hp.id}
-                                </div>
+            {hoveredPriceTooltip && (
+                <div style={{
+                    position: 'fixed',
+                    left: Math.max(20, hoveredPriceTooltip.x - 260),
+                    top: Math.max(20, hoveredPriceTooltip.y - 120),
+                    zIndex: 999999,
+                    pointerEvents: 'none',
+                    animation: 'fadeIn 0.2s ease forwards'
+                }}>
+                    <div style={{ textAlign: 'left', minWidth: 260, padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-xl)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Liste Fiyatı:</span>
+                            <span style={{ fontSize: 12 }}>
+                                {Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency || 'TRY'}
+                                {hoveredPriceTooltip.product.currency && hoveredPriceTooltip.product.currency !== 'TRY' && (
+                                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>
+                                        (₺{((Number(hoveredPriceTooltip.product.list_price) / 1.36) * (1 + (globalMargin / 100)) * rates[hoveredPriceTooltip.product.currency]).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
+                                    </span>
+                                )}
+                            </span>
+                        </div>
+                        {Number(hoveredPriceTooltip.product.discount_rate) > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Ürün İskontosu ({hoveredPriceTooltip.product.discount_rate}%):</span>
+                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                    -₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                </span>
                             </div>
-                        );
-                    })()}
+                        )}
+                        {discountPercent > 0 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
+                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Grup İskontosu ({discountPercent}%):</span>
+                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
+                                    -₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>İskontolu Fiyat:</span>
+                            <span style={{ fontWeight: 600, fontSize: 13 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--primary)', paddingTop: 8, marginTop: 4 }}>
+                            <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>KDV Dahil (%20):</span>
+                            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                    </div>
                 </div>
             )}
 

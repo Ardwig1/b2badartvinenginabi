@@ -11,6 +11,7 @@ export const metadata = {
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { CartProvider } from '@/components/CartProvider';
 import PWAInstaller from '@/components/PWAInstaller';
+import { Analytics } from '@vercel/analytics/react';
 
 export default function RootLayout({ children }) {
   return (
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
           <CartProvider>
             {children}
             <PWAInstaller />
+            <Analytics />
           </CartProvider>
         </ThemeProvider>
         <script

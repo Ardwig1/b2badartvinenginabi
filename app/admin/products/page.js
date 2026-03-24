@@ -196,6 +196,23 @@ export default function AdminProducts() {
         fetchProducts();
     };
 
+    const deleteProduct = async (p) => {
+        if (!confirm(`"${p.name}" ürününü silmek istediğinize emin misiniz? Bu işlem geri alınamaz.`)) return;
+        
+        const { error } = await supabase.from('products').delete().eq('id', p.id);
+        
+        if (error) {
+            if (error.code === '23503') {
+                alert('Bu ürün silinemez çünkü bu ürüne ait siparişler veya stok hareketleri mevcut. Lütfen bunun yerine ürünü pasife alın.');
+            } else {
+                alert('Silme işlemi sırasında hata oluştu: ' + error.message);
+            }
+            return;
+        }
+        
+        fetchProducts();
+    };
+
     const saveStock = async (e) => {
         e.preventDefault();
         const qty = parseInt(stockQty);
@@ -357,8 +374,11 @@ export default function AdminProducts() {
                                             </button>
                                             <button className="btn btn-ghost btn-sm" onClick={() => openStock(p)} id={`stock-btn-${p.id}`}><ArchiveBoxIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Stok</button>
                                             <button className="btn btn-secondary btn-sm" onClick={() => openEdit(p)} id={`edit-btn-${p.id}`}><PencilSquareIcon style={{ width: 14, height: 14, marginRight: 4 }} /> Düzenle</button>
-                                            <button className={`btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleActive(p)} id={`toggle-btn-${p.id}`}>
+                                             <button className={`btn btn-sm ${p.is_active ? 'btn-danger' : 'btn-success'}`} onClick={() => toggleActive(p)} id={`toggle-btn-${p.id}`} title={p.is_active ? 'Pasife Al' : 'Aktifleştir'}>
                                                 {p.is_active ? 'Pasif' : 'Aktif'}
+                                            </button>
+                                            <button className="btn btn-danger btn-sm" onClick={() => deleteProduct(p)} style={{ padding: '4px 8px' }} title="Tamamen Sil">
+                                                Sil
                                             </button>
                                         </div>
                                     </td>

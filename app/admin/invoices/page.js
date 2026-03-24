@@ -8,13 +8,12 @@ export default function AdminInvoices() {
     const [companies, setCompanies] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showModal, setShowModal] = useState(false);
-    const [selected, setSelected] = useState(null);
+    const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ company_id: '', due_date: '', desc: '', amount: '', file: null });
     const [itemCount, setItemCount] = useState(0);
     const [oemInputs, setOemInputs] = useState([]);
-
     const [saving, setSaving] = useState(false);
+    
     const supabase = createClient();
 
     const fetchAll = useCallback(async () => {
@@ -30,17 +29,74 @@ export default function AdminInvoices() {
         setCompanies(comp || []);
         setProducts(prod || []);
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => { fetchAll(); }, [fetchAll]);
+
+    const deleteInvoice = async (inv) => {
+        if (!confirm('Bu kaydı silmek istediğinize emin misiniz?')) return;
+        
+        setLoading(true);
+        try {
+            // 1. Dosyayı R2'den sil (varsa)
+            let noteData = { desc: '', url: '' };
+            try { noteData = JSON.parse(inv.note || '{}'); } catch(e) {}
+            
+            if (noteData.url) {
+                await fetch('/api/admin/delete-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: noteData.url })
+                });
+            }
+
+            // 2. DB Kaydını sil
+            const { error } = await supabase.from('invoices').delete().eq('id', inv.id);
+            if (error) throw error;
+
+            fetchAll();
+        } catch (err) {
+            alert('Silme işlemi başarısız: ' + err.message);
+        }
+        setLoading(false);
+    };
+
+    const openEdit = (inv) => {
+        let noteData = { desc: '', url: '' };
+        try { noteData = JSON.parse(inv.note || '{}'); } catch(e) { noteData = { desc: inv.note, url: '' }; }
+        
+        setEditing(inv);
+        setForm({
+            company_id: inv.company_id,
+            due_date: inv.due_date ? new Date(inv.due_date).toISOString().split('T')[0] : '',
+            desc: noteData.desc || '',
+            amount: inv.total_amount,
+            file: null,
+            oldUrl: noteData.url
+        });
+        
+        const oems = inv.oem_nos ? inv.oem_nos.split(', ') : [];
+        setOemInputs(oems);
+        setItemCount(oems.length);
+        setShowModal(true);
+    };
 
     const saveInvoice = async (e) => {
         e.preventDefault();
         setSaving(true);
 
         // 1. Dosya Yükleme
-        let fileUrl = '';
+        let fileUrl = editing ? form.oldUrl : '';
         if (form.file) {
+            // Eğer eski dosya varsa onu sil (opsiyonel ama depolama temizliği için iyi olur)
+            if (editing && form.oldUrl) {
+                fetch('/api/admin/delete-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: form.oldUrl })
+                });
+            }
+
             const formData = new FormData();
             formData.append('file', form.file);
 
@@ -64,12 +120,12 @@ export default function AdminInvoices() {
         }
 
         // 2. Veritabanına Kayıt
-        const invoiceNo = `CH-${Date.now()}`;
+        const invoiceNo = editing ? editing.invoice_number : `CH-${Date.now()}`;
         const noteData = JSON.stringify({ desc: form.desc, url: fileUrl });
         const amount = parseFloat(form.amount) || 0;
-        const oemString = oemInputs.filter(o => o.trim()).join(', ');
+        const oemString = oemInputs.filter(o => o?.trim()).join(', ');
 
-        const { error } = await supabase.from('invoices').insert({
+        const payload = {
             company_id: form.company_id,
             invoice_number: invoiceNo,
             due_date: form.due_date || null,
@@ -80,17 +136,17 @@ export default function AdminInvoices() {
             note: noteData,
             status: 'unpaid',
             oem_nos: oemString
-        });
+        };
+
+        const { error } = editing 
+            ? await supabase.from('invoices').update(payload).eq('id', editing.id)
+            : await supabase.from('invoices').insert(payload);
 
         if (error) {
-            alert('Kayıt oluşturulurken hata oluştu: ' + error.message);
+            alert('Kayıt oluşturulurken/güncellenirken hata oluştu: ' + error.message);
             setSaving(false);
             return;
         }
-
-        // NOT: Cari hesap borcu sipariş anında place_b2b_order RPC'si tarafından
-        // otomatik oluşturuluyor. Burada ikinci kez borçlandırmak çift kayda yol açar.
-        // Bu sayfa sadece belge deposudur (PDF fatura arşivi).
 
         setSaving(false);
         setShowModal(false);
@@ -108,6 +164,7 @@ export default function AdminInvoices() {
                     <p className="page-subtitle">Firmalara ait PDF ekstre ve faturalarını yükleyin</p>
                 </div>
                 <button className="btn btn-primary" onClick={() => { 
+                    setEditing(null);
                     setForm({ company_id: '', due_date: new Date().toISOString().split('T')[0], desc: '', amount: '', file: null }); 
                     setItemCount(0);
                     setOemInputs([]);
@@ -120,7 +177,7 @@ export default function AdminInvoices() {
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead><tr><th>Tarih</th><th>Firma</th><th>Açıklama</th><th>OEM No</th><th style={{ textAlign: 'right' }}>Tutar</th><th>İşlem</th></tr></thead>
+                        <thead><tr><th>Tarih</th><th>Firma</th><th>Açıklama</th><th>OEM No</th><th style={{ textAlign: 'right' }}>Tutar</th><th>Dosya</th><th>İşlem</th></tr></thead>
                         <tbody>
                             {invoices.map(inv => {
                                 let noteData = { desc: '', url: '' };
@@ -141,6 +198,12 @@ export default function AdminInvoices() {
                                                 <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Dosya Yok</span>
                                             )}
                                         </td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => openEdit(inv)} style={{ color: 'var(--text-secondary)' }}>Düzenle</button>
+                                                <button className="btn btn-ghost btn-sm" onClick={() => deleteInvoice(inv)} style={{ color: 'var(--danger)' }}>Sil</button>
+                                            </div>
+                                        </td>
                                     </tr>
                                 )
                             })}
@@ -156,7 +219,7 @@ export default function AdminInvoices() {
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
                     <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
-                            <h3 className="modal-title">Yeni Cari Kayıt Ekle</h3>
+                            <h3 className="modal-title">{editing ? 'Kaydı Düzenle' : 'Yeni Cari Kayıt Ekle'}</h3>
                             <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
                         </div>
                         <form onSubmit={saveInvoice}>
@@ -221,7 +284,7 @@ export default function AdminInvoices() {
 
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24 }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Ekleniyor...' : 'Kayıt Ekle'}</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Kaydediliyor...' : (editing ? 'Güncelle' : 'Kayıt Ekle')}</button>
                             </div>
                         </form>
                     </div>

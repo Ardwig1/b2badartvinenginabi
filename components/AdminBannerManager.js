@@ -19,7 +19,8 @@ export default function AdminBannerManager() {
         
         if (error) {
             console.error('Banners fetch error:', error);
-            // If table doesn't exist, we might get an error here.
+            // Table might not exist yet, fallback to empty but we'll show defaults in UI
+            setBanners([]);
         } else {
             setBanners(data || []);
         }
@@ -142,23 +143,28 @@ export default function AdminBannerManager() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 400, overflowY: 'auto', paddingRight: 4 }}>
                                 {loading ? (
                                     <div className="loading-center" style={{ padding: 20 }}><div className="loading-spinner" /></div>
-                                ) : banners.length > 0 ? (
-                                    banners.map(b => (
-                                        <div key={b.id} style={{ 
-                                            display: 'flex', 
-                                            gap: 12, 
-                                            alignItems: 'center', 
-                                            padding: 12, 
-                                            background: 'var(--bg-surface)', 
-                                            border: '1px solid var(--border)',
-                                            borderRadius: 8
-                                        }}>
-                                            <div style={{ width: 120, height: 40, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
-                                                <img src={b.image_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                            </div>
-                                            <div style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {b.image_url.split('/').pop()}
-                                            </div>
+                                ) : (banners.length > 0 ? banners : [
+                                    { id: 'def1', image_url: '/banner1.jpg', is_static: true },
+                                    { id: 'def2', image_url: '/banner2.jpg', is_static: true },
+                                    { id: 'def3', image_url: '/banner3.jpg', is_static: true }
+                                ]).map(b => (
+                                    <div key={b.id} style={{ 
+                                        display: 'flex', 
+                                        gap: 12, 
+                                        alignItems: 'center', 
+                                        padding: 12, 
+                                        background: 'var(--bg-surface)', 
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 8,
+                                        opacity: b.is_static ? 0.7 : 1
+                                    }}>
+                                        <div style={{ width: 120, height: 40, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
+                                            <img src={b.image_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
+                                        <div style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {b.image_url.split('/').pop()}
+                                        </div>
+                                        {!b.is_static ? (
                                             <button 
                                                 className="btn btn-ghost btn-sm" 
                                                 onClick={() => deleteBanner(b.id, b.image_url)}
@@ -166,11 +172,14 @@ export default function AdminBannerManager() {
                                             >
                                                 <TrashIcon style={{ width: 18, height: 18 }} />
                                             </button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>
-                                        Henüz banner eklenmemiş.
+                                        ) : (
+                                            <div style={{ fontSize: 10, padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: 4, color: 'var(--text-muted)', fontWeight: 600 }}>Varsayılan</div>
+                                        )}
+                                    </div>
+                                ))}
+                                {banners.length === 0 && !loading && (
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8, background: '#fef3c7', padding: 8, borderRadius: 6, border: '1px solid #fde68a' }}>
+                                        ⚠️ Henüz özel banner eklemediniz. Sistem varsayılan bannerlar gösteriliyor. Bir adet eklediğinizde bunlar gizlenecektir.
                                     </div>
                                 )}
                             </div>

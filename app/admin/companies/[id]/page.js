@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { fetchCompanyDetail } from './actions';
+import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
 const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', rejected: 'badge-rejected' };
@@ -10,6 +10,7 @@ const statusBadge = { pending: 'badge-pending', approved: 'badge-approved', reje
 function ActivityIcon({ type }) {
     if (type === 'search') return <div style={{ background: '#e0f2fe', color: '#0284c7', padding: 6, borderRadius: '50%' }}><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></div>;
     if (type?.startsWith('cart_')) return <div style={{ background: '#fef3c7', color: '#d97706', padding: 6, borderRadius: '50%' }}><ShoppingCartIcon style={{ width: 14, height: 14 }} /></div>;
+    if (type === 'order_placed') return <div style={{ background: '#dcfce7', color: '#16a34a', padding: 6, borderRadius: '50%' }}><CheckCircleIcon style={{ width: 14, height: 14 }} /></div>;
     if (type === 'payment_init') return <div style={{ background: '#dcfce7', color: '#16a34a', padding: 6, borderRadius: '50%' }}><BanknotesIcon style={{ width: 14, height: 14 }} /></div>;
     if (type === 'payment_failed') return <div style={{ background: '#fee2e2', color: '#dc2626', padding: 6, borderRadius: '50%' }}><ExclamationCircleIcon style={{ width: 14, height: 14 }} /></div>;
     return <div style={{ background: '#f3f4f6', color: '#4b5563', padding: 6, borderRadius: '50%' }}><DocumentTextIcon style={{ width: 14, height: 14 }} /></div>;
@@ -20,6 +21,8 @@ function ActivityText({ act }) {
     if (act.action_type === 'cart_add') return <span>Sepete Eklendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.qty} adet)</span>;
     if (act.action_type === 'cart_update') return <span>Sepet Güncellendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.prevQty} → {act.details?.newQty} adet)</span>;
     if (act.action_type === 'cart_remove') return <span>Sepetten Silindi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''}</span>;
+    if (act.action_type === 'cart_clear') return <span>Sepet Temizlendi (Veya Sıfırlandı)</span>;
+    if (act.action_type === 'order_placed') return <span style={{ color: 'var(--success)', fontWeight: 600 }}>Sipariş Verildi! (Sepet Boşaltıldı) - Toplam: {act.details?.total ? `${act.details.total.toLocaleString('tr-TR')} TL` : 'Belirsiz'}</span>;
     if (act.action_type === 'payment_init') return <span>Ödeme İşlemi Başlatıldı (Tosla) - Tutar: <strong>{act.details?.amount ? `${(parseFloat(act.details.amount)/100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL` : 'Belirsiz'}</strong></span>;
     if (act.action_type === 'payment_failed') return <span>Ödeme Başarısız (Banka Reddetti) - Nedeni: <strong style={{color: 'var(--danger)'}}>{act.details?.errMsg || 'Bilinmiyor'}</strong></span>;
     return <span>{act.action_type}</span>;
@@ -46,38 +49,33 @@ export default function AdminCompanyDetail() {
     const [activities, setActivities] = useState([]);
     const [orders, setOrders] = useState([]);
     const [transactions, setTransactions] = useState([]);
+    const [cart, setCart] = useState([]);
     const [activeTab, setActiveTab] = useState('activity');
     const [errorMsg, setErrorMsg] = useState('');
     const [showTxModal, setShowTxModal] = useState(false);
     const [txForm, setTxForm] = useState({ type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
     const [txSaving, setTxSaving] = useState(false);
-    const supabase = createClient();
 
     const fetchDetails = useCallback(async () => {
         if (!params.id) return;
         setLoading(true);
 
-        const [compRes, actRes, ordRes, invRes] = await Promise.all([
-            supabase.from('companies').select('*, profiles(*), price_group:price_groups(name, discount_percent)').eq('id', params.id).single(),
-            supabase.from('user_activities').select('*').eq('company_id', params.id).order('created_at', { ascending: false }).limit(200),
-            supabase.from('orders').select('*').eq('company_id', params.id).order('created_at', { ascending: false }),
-            supabase.from('account_transactions').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
-        ]);
+        try {
+            const res = await fetchCompanyDetail(params.id);
+            if (!res.success) throw new Error(res.error);
 
-        if (compRes.error) {
-            console.error('Company Fetch Error:', compRes.error);
-            setErrorMsg(compRes.error.message || JSON.stringify(compRes.error));
+            setCompany(res.data.company);
+            setActivities(res.data.activities);
+            setOrders(res.data.orders);
+            setTransactions(res.data.transactions);
+            setCart(res.data.cart || []);
+        } catch (e) {
+            console.error('Fetch Error:', e);
+            setErrorMsg(e.message);
         }
-        if (compRes.data) {
-            console.log('Firma verisi:', compRes.data);
-            setCompany(compRes.data);
-        }
-        if (actRes.data) setActivities(actRes.data);
-        if (ordRes.data) setOrders(ordRes.data);
-        if (invRes.data) setTransactions(invRes.data);
 
         setLoading(false);
-    }, [params.id, supabase]);
+    }, [params.id]);
 
     useEffect(() => { fetchDetails(); }, [fetchDetails]);
 
@@ -151,16 +149,22 @@ export default function AdminCompanyDetail() {
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{company.email || '-'}</div>
                     </div>
                     <div style={{ background: 'var(--bg-card)', padding: '20px 24px' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Adres ve İskonto Grubu</div>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--brand)', marginBottom: 8, textTransform: 'uppercase' }}>📍 Adres & İskonto Grubu</div>
                         <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
                             {company.address ? `${company.address}${company.district ? `, ${company.district}` : ''}${company.city ? ` / ${company.city}` : ''}` : 'Adres bilgisi yok'}
                         </div>
-                        {company.price_group && (
-                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
-                                <span style={{ color: 'var(--text-secondary)' }}>Fiyat Grubu:</span>{' '}
-                                <strong style={{ color: 'var(--brand)' }}>{company.price_group.name} (%{company.price_group.discount_percent} İskonto)</strong>
-                            </div>
-                        )}
+                        {(() => {
+                            const pg = Array.isArray(company.price_group) ? company.price_group[0] : company.price_group;
+                            if (!pg) return null;
+                            return (
+                                <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Fiyat Grubu:</span>{' '}
+                                    <strong style={{ color: 'var(--brand)' }}>
+                                        {pg.name} {pg.discount_percent !== undefined ? `(%${pg.discount_percent} İskonto)` : ''}
+                                    </strong>
+                                </div>
+                            );
+                        })()}
                     </div>
                     <div style={{ background: 'var(--bg-card)', padding: '20px 24px' }}>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Sistem Bilgileri</div>
@@ -174,11 +178,45 @@ export default function AdminCompanyDetail() {
 
             <div className="tabs" style={{ marginBottom: 24 }}>
                 <button className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Son Hareketler (Arama & Sepet)</button>
+                <button className={`tab ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => setActiveTab('cart')}>Güncel Sepeti ({cart.length})</button>
                 <button className={`tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Sipariş Geçmişi ({orders.length})</button>
                 <button className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>Cari Hesap Hareketleri ({transactions.length})</button>
             </div>
 
             {/* TAB CONTENT */}
+            {activeTab === 'cart' && (
+                <div className="card" style={{ padding: 0 }}>
+                    {(!cart || cart.length === 0) ? (
+                        <div className="empty-state" style={{ padding: 40 }}>Müşterinin sepeti şu anda boş.</div>
+                    ) : (
+                        <div className="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ürün</th>
+                                        <th>OEM No</th>
+                                        <th style={{ textAlign: 'center' }}>Adet</th>
+                                        <th style={{ textAlign: 'right' }}>Son İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cart.map((item, idx) => (
+                                        <tr key={idx}>
+                                            <td style={{ fontWeight: 600 }}>{item.product?.name || 'Bilinmeyen Ürün'}</td>
+                                            <td style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{item.product?.oem_no || '-'}</td>
+                                            <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--brand)' }}>{item.qty}</td>
+                                            <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)' }}>Müşterinin sepetinde aktif</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'rgba(15, 23, 42, 0.01)', fontSize: 13, color: 'var(--text-muted)' }}>
+                                * Bu bilgiler müşterinin en son alışverişinden sonraki log kayıtlarından anlık olarak oluşturulmuştur.
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
             {activeTab === 'activity' && (
                 <div className="card">
                     <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, paddingBottom: 16, borderBottom: '1px solid var(--border)' }}>Müşterinin Son İşlemleri</h3>

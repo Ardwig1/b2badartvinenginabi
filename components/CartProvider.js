@@ -108,6 +108,15 @@ export function CartProvider({ children }) {
 
     const clearCart = () => {
         setCartItems({});
+        
+        const cid = typeof window !== 'undefined' ? localStorage.getItem('b2b_company_id') : null;
+        if (cid) {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ company_id: cid, action_type: 'cart_clear', details: {} })
+            }).catch(e => console.error(e));
+        }
     };
 
     return (

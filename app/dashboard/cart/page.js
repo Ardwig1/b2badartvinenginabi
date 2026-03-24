@@ -101,9 +101,25 @@ export default function CartPage() {
 
             if (orderError) throw orderError;
 
-            setSuccess(true);
-            clearCart();
-            setTimeout(() => router.push('/dashboard/orders'), 2000);
+            if (orderResponse.success) {
+                // Log order placement
+                const cid = typeof window !== 'undefined' ? localStorage.getItem('b2b_company_id') : null;
+                if (cid) {
+                    fetch('/api/log-activity', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            company_id: cid,
+                            action_type: 'order_placed',
+                            details: { order_id: orderResponse.id, total: cartTotal }
+                        })
+                    }).catch(e => console.error(e));
+                }
+
+                setSuccess(true);
+                clearCart();
+                setTimeout(() => router.push('/dashboard/orders'), 2000);
+            }
         } catch (err) {
             console.error('Order error:', err);
             setError(err.message || 'Sipariş oluşturulurken bir hata oluştu');

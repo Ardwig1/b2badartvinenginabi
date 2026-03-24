@@ -8,6 +8,7 @@ export default function AdminInvoices() {
     const [companies, setCompanies] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form, setForm] = useState({ company_id: '', due_date: '', desc: '', amount: '', file: null });
     const [itemCount, setItemCount] = useState(0);

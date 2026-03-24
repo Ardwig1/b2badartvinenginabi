@@ -14,13 +14,16 @@ export default function AdminProducts() {
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [showStockModal, setShowStockModal] = useState(false);
+    const [showCampaignModal, setShowCampaignModal] = useState(false);
     const [editing, setEditing] = useState(null);
     const [stockTarget, setStockTarget] = useState(null);
+    const [campaignTarget, setCampaignTarget] = useState(null);
+    const [campaignRate, setCampaignRate] = useState('10');
     const [stockQty, setStockQty] = useState('');
     const [stockNote, setStockNote] = useState('');
     const [stockLocation, setStockLocation] = useState('merkez');
     const [stockType, setStockType] = useState('in');
-    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false });
+    const [form, setForm] = useState({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false, supplier_brand: '' });
     const [saving, setSaving] = useState(false);
     const [uploadingImage, setUploadingImage] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
@@ -70,18 +73,36 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false, supplier_brand: '' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1', is_campaign: !!p.is_campaign });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1', is_campaign: !!p.is_campaign, supplier_brand: p.supplier_brand || '' });
         setShowModal(true);
     };
 
     const toggleCampaign = async (p) => {
-        await supabase.from('products').update({ is_campaign: !p.is_campaign }).eq('id', p.id);
+        if (!p.is_campaign) {
+            setCampaignTarget(p);
+            setCampaignRate('10');
+            setShowCampaignModal(true);
+        } else {
+            await supabase.from('products').update({ is_campaign: false }).eq('id', p.id);
+            fetchProducts();
+        }
+    };
+
+    const saveCampaign = async (e) => {
+        e.preventDefault();
+        const numRate = Number(campaignRate);
+        if (isNaN(numRate) || numRate <= 0 || numRate > 100) {
+            alert("Geçersiz bir indirim oranı girdiniz!");
+            return;
+        }
+        await supabase.from('products').update({ is_campaign: true, discount_rate: numRate }).eq('id', campaignTarget.id);
+        setShowCampaignModal(false);
         fetchProducts();
     };
 
@@ -278,7 +299,7 @@ export default function AdminProducts() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Kategori</th>
+                                <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Alnan M.</th><th>Kategori</th>
                                 <th>Liste Fiyatı</th><th>İskonto %</th><th style={{ textAlign: 'center' }}>Koli</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
@@ -296,6 +317,7 @@ export default function AdminProducts() {
                                     <td style={{ fontFamily: 'monospace', color: 'var(--info)', fontWeight: 600 }}>{p.oem_no || '-'}</td>
                                     <td style={{ fontWeight: 600 }}>{p.name}</td>
                                     <td>{p.brand || '-'}</td>
+                                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{p.supplier_brand || '-'}</td>
                                     <td>{p.category || '-'}</td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>
@@ -377,6 +399,7 @@ export default function AdminProducts() {
                                 <div className="form-group"><label className="form-label">OEM No</label><input className="form-input" value={form.oem_no} onChange={up('oem_no')} id="prod-oem" placeholder="Örn: 12345-ABC" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Adı *</label><input className="form-input" value={form.name} onChange={up('name')} required id="prod-name" /></div>
                                 <div className="form-group"><label className="form-label">Marka</label><input className="form-input" value={form.brand} onChange={up('brand')} id="prod-brand" /></div>
+                                <div className="form-group"><label className="form-label" style={{ color: 'var(--danger)', fontWeight: 700 }}>Ürünün Alındığı Marka (GİZLİ)</label><input className="form-input" style={{ borderColor: 'var(--danger)' }} value={form.supplier_brand} onChange={up('supplier_brand')} id="prod-supplier-brand" placeholder="Örn: X Tedarikçisi" /></div>
                                 <div className="form-group"><label className="form-label">Araç Markası</label><input className="form-input" value={form.car_brand} onChange={up('car_brand')} id="prod-car-brand" placeholder="Örn: RENAULT" /></div>
                                 <div className="form-group"><label className="form-label">Araç Modeli</label><input className="form-input" value={form.car_model} onChange={up('car_model')} id="prod-car-model" placeholder="Örn: CLIO 5" /></div>
                                 <div className="form-group"><label className="form-label">Kategori</label><input className="form-input" value={form.category} onChange={up('category')} id="prod-category" /></div>
@@ -547,6 +570,41 @@ export default function AdminProducts() {
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowStockModal(false)}>İptal</button>
                                 <button type="submit" className="btn btn-primary" id="save-stock-btn">Kaydet</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Campaign Modal */}
+            {showCampaignModal && campaignTarget && (
+                <div className="modal-overlay" onClick={() => setShowCampaignModal(false)}>
+                    <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Kampanya Tanımla</h3>
+                            <button className="modal-close" onClick={() => setShowCampaignModal(false)}>✕</button>
+                        </div>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: 16, fontSize: 14 }}>
+                            <strong style={{ color: 'var(--text-primary)' }}>{campaignTarget.name}</strong> ürünü için kampanya indirim oranını belirleyin.
+                        </p>
+                        <form onSubmit={saveCampaign}>
+                            <div className="form-group">
+                                <label className="form-label">İndirim Oranı (%) *</label>
+                                <input 
+                                    className="form-input" 
+                                    type="number" 
+                                    min="1" 
+                                    max="100" 
+                                    step="0.1"
+                                    value={campaignRate} 
+                                    onChange={e => setCampaignRate(e.target.value)} 
+                                    required 
+                                    autoFocus
+                                    id="campaign-rate" 
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowCampaignModal(false)}>İptal</button>
+                                <button type="submit" className="btn btn-primary" style={{ background: '#eab308', borderColor: '#eab308' }} id="save-campaign-btn">Kampanyayı Başlat ⭐</button>
                             </div>
                         </form>
                     </div>

@@ -156,6 +156,69 @@ export default function AdminOrders() {
         executeStatusUpdate(id, status);
     };
 
+    const downloadOrderExcel = (order) => {
+        if (!order || !order.items) return;
+        
+        const dateStr = new Date(order.created_at).toLocaleString('tr-TR');
+        const companyName = order.company?.name || '';
+        
+        let html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    table { border-collapse: collapse; }
+                    th { background: #f3f4f6; font-weight: bold; border: 1px solid #ccc; text-align: left; }
+                    td { border: 1px solid #ccc; }
+                </style>
+            </head>
+            <body>
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="150">Tarih</th>
+                            <th width="200">Satın Alan Firma</th>
+                            <th width="250">Ürün Adı</th>
+                            <th width="120">Ürün Kodu</th>
+                            <th width="120">OEM No</th>
+                            <th width="80">Miktar</th>
+                            <th width="120">Birim Fiyat</th>
+                            <th width="120">Toplam Fiyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${order.items.map(item => `
+                            <tr>
+                                <td>${dateStr}</td>
+                                <td>${companyName}</td>
+                                <td>${item.product?.name || ''}</td>
+                                <td>${item.product?.code || ''}</td>
+                                <td>${item.product?.oem_no || ''}</td>
+                                <td>${item.quantity}</td>
+                                <td>₺${Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                <td>₺${Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                            </tr>
+                        `).join('')}
+                        <tr>
+                            <td colspan="7" style="text-align: right; font-weight: bold;">GENEL TOPLAM</td>
+                            <td style="font-weight: bold;">₺${Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `;
+        
+        let blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        let url = URL.createObjectURL(blob);
+        let link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Siparis_${order.id.split('-')[0]}_${companyName}.xls`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="page-wrapper">
             <div className="page-header">
@@ -213,9 +276,14 @@ export default function AdminOrders() {
 
                 {selected && (
                     <div className="card" style={{ alignSelf: 'start', position: 'sticky', top: 20 }}>
-                        <div className="card-header">
+                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <h3 className="card-title">Sipariş Detayı</h3>
-                            <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button className="btn btn-ghost btn-sm" onClick={() => downloadOrderExcel(selected)} title="Excel olarak indir">
+                                    <DocumentTextIcon style={{ width: 18, height: 18, marginRight: 4 }} /> Excel
+                                </button>
+                                <button className="modal-close" onClick={() => setSelected(null)}>✕</button>
+                            </div>
                         </div>
                         <div style={{ marginBottom: 16 }}>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>Firma</div>

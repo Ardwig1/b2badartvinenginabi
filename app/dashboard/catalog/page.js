@@ -22,18 +22,18 @@ function getStockStatus(qty) {
 
 const getCircleStyle = (qty, size = 16) => {
     let bg, border, boxShadow;
-    if (qty > 15) { 
+    if (qty > 15) {
         bg = 'linear-gradient(135deg, #22c55e, #15803d)';
         border = '1px solid #14532d';
-        boxShadow = `0 0 ${size/2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
-    } else if (qty > 0) { 
-        bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; 
+        boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
+    } else if (qty > 0) {
+        bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)';
         border = '1px solid #1e293b';
-        boxShadow = `0 0 ${size/2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`;
-    } else { 
+        boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`;
+    } else {
         bg = 'linear-gradient(135deg, #ef4444, #991b1b)';
         border = '1px solid #7f1d1d';
-        boxShadow = `0 0 ${size/2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
+        boxShadow = `0 0 ${size / 2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
     }
     return {
         width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0
@@ -122,10 +122,6 @@ export default function DealerCatalog() {
             setDiscount(disc || 0);
         }
 
-        // Fetch just the distinct brands and car_brands/car_models for the dropdowns
-        // Because Supabase 'distinct' isn't natively supported, we'll fetch a lightweight list
-        // of unique brands from a custom RPC or just limit the columns if the table isn't massive.
-        // For now, let's fetch a list of distinct metadata to populate the dropdowns.
         const { data: metaData } = await supabase
             .from('products')
             .select('brand, car_brand, car_model')
@@ -134,7 +130,6 @@ export default function DealerCatalog() {
         if (metaData) {
             setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
             setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
-            // We'll set all possible car models for the current filter down below
         }
 
         try {
@@ -171,7 +166,6 @@ export default function DealerCatalog() {
 
     useEffect(() => { fetchSettingsAndFilters(); }, [fetchSettingsAndFilters]);
 
-    // This fetching only happens on manual search.
     const searchProducts = async (e) => {
         if (e && e.key && e.key !== 'Enter') return;
 
@@ -186,25 +180,21 @@ export default function DealerCatalog() {
         setCurrentPage(1);
 
         try {
-            let query = supabase.from('products').select('*').eq('is_active', true);
+            const productColumns = 'id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at';
+            let query = supabase.from('products').select(productColumns).eq('is_active', true);
 
-            // Text search
             if (filterText.trim()) {
                 const term = `%${filterText.trim()}%`;
                 query = query.or(`name.ilike.${term},code.ilike.${term},product_number.ilike.${term},oem_no.ilike.${term},brand.ilike.${term}`);
             }
 
-            // Dropdown filters
             if (filterBrand) query = query.eq('brand', filterBrand);
             if (filterCarBrand) query = query.eq('car_brand', filterCarBrand);
             if (filterCarModel) query = query.eq('car_model', filterCarModel);
 
-            // Note: We'll fetch the matching set, then apply the client-side checkboxes in the `filtered` variable,
-            // because querying custom dynamic stock logic in Supabase directly via REST filter is tricky (e.g., checkIn, checkWay).
             const { data, error } = await query.order('brand').order('name');
             if (error) throw error;
 
-            // Log activity asynchronously if there is a search term and company is identified
             if (companyId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
                 fetch('/api/log-activity', {
                     method: 'POST',
@@ -231,10 +221,8 @@ export default function DealerCatalog() {
         }
     };
 
-    // Update car models when car brand changes based on API fetch (or skip for now, since we don't have all data. We'll use a hack to fetch car models when carbrand is selected)
     useEffect(() => {
         if (!filterCarBrand) { setCarModels([]); setFilterCarModel(''); return; }
-        // Fetch model list for this car brand directly
         supabase.from('products')
             .select('car_model')
             .eq('car_brand', filterCarBrand)
@@ -247,13 +235,9 @@ export default function DealerCatalog() {
 
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
-        // The list_price natively includes a 36% margin. We reverse it out, and apply the new dynamic margin.
         let rawCost = initialPrice / 1.36;
         let currentPrice = rawCost * (1 + (globalMargin / 100));
 
-        // B2B USD Mantığı:
-        // Eğer global olarak USD Sabitleme açıksa ve geçerli bir kur varsa (sıfır dahil),
-        // SADECE USD bazlı ürünlerin fiyatını adminin belirlediği kurla TRY olarak renderla.
         if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0 && p.currency === 'USD') {
             currentPrice = currentPrice * globalUsdRate;
         } else {
@@ -268,7 +252,6 @@ export default function DealerCatalog() {
         const basePrice = getBaseTryPrice(p);
         const productDiscount = Number(p.discount_rate) || 0;
         const groupDiscount = discountPercent || 0;
-        // Apply product discount first, then group discount
         const afterProductDiscount = basePrice * (1 - productDiscount / 100);
         const afterGroupDiscount = afterProductDiscount * (1 - groupDiscount / 100);
         return afterGroupDiscount;
@@ -279,23 +262,17 @@ export default function DealerCatalog() {
     };
 
     const filtered = products.filter(p => {
-        // "Stokta Olanlar": İstanbul veya Depo'da stoku olan tüm ürünler (Tam yeşil + Yarım yeşil)
         if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
-
-        // "Az Olanlar": İstanbul veya Depo'da sadece Yarım Yeşil olanlar (1-15 arası)
         if (checkLow) {
             const isMerkezLow = p.stock_merkez > 0 && p.stock_merkez <= 15;
             const isDepoLow = p.stock_depo > 0 && p.stock_depo <= 15;
             if (!isMerkezLow && !isDepoLow) return false;
         }
-
-        // "Yeni Ürün": Son 1 hafta (7 gün) içinde eklenenler
         if (checkNew) {
             const oneWeekAgo = new Date();
             oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
             if (new Date(p.created_at) < oneWeekAgo) return false;
         }
-
         if (checkCampaign && !p.is_campaign) return false;
         return true;
     });
@@ -310,9 +287,7 @@ export default function DealerCatalog() {
             setPageImagesLoading(false);
             return;
         }
-
         setPageImagesLoading(true);
-
         Promise.all(urls.map(url => {
             return new Promise(resolve => {
                 const loadImg = (attempts) => {
@@ -320,48 +295,41 @@ export default function DealerCatalog() {
                     img.onload = () => resolve(true);
                     img.onerror = () => {
                         if (attempts > 0) {
-                            setTimeout(() => loadImg(attempts - 1), 1000); // retry aggressively
+                            setTimeout(() => loadImg(attempts - 1), 1000);
                         } else {
                             resolve(false);
                         }
                     };
                     img.src = url;
                 };
-                loadImg(5); // 5 retries per image
+                loadImg(5);
             });
         })).then(() => {
             if (!isCancelled) {
                 setPageImagesLoading(false);
             }
         });
-
         return () => { isCancelled = true; };
     }, [chunkUrlHash]);
 
     const handleAddToCart = (p) => {
         const raw = getPending(p.id);
         if (!raw || raw === '0') return;
-        
         const n = parseInt(raw, 10);
         if (isNaN(n) || n < 1) return;
-        
         const currentQty = safeCartQtys[p.id]?.qty || 0;
         ctxSetQty(p.id, p, currentQty + n);
-        
-        // Clear pending qtys for this product
-        setPendingQtys(prev => { 
-            const next = { ...prev }; 
-            delete next[p.id]; 
-            return next; 
+        setPendingQtys(prev => {
+            const next = { ...prev };
+            delete next[p.id];
+            return next;
         });
         showToast(`${p.name} sepete eklendi (${n} adet)`);
     };
 
-    // Pending (local input) quantity helpers — sepete sadece Ekle butonuyla eklenir
     const getPending = (id) => pendingQtys[id] ?? '';
     const setPending = (id, val) => {
         const raw = String(val);
-        // Sadece rakam girişine izin ver, boş string de geçerli
         if (raw === '' || /^\d+$/.test(raw)) {
             setPendingQtys(prev => ({ ...prev, [id]: raw }));
         }
@@ -370,7 +338,6 @@ export default function DealerCatalog() {
     const totalCartItems = Object.values(safeCartQtys).reduce((a, b) => a + (b.qty || 0), 0);
 
     useEffect(() => {
-        // Bug Fix: If all filters are cleared, return to "Arama Yapın" state
         if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
             setProducts([]);
             setHasSearched(false);
@@ -437,11 +404,8 @@ export default function DealerCatalog() {
                 </a>
             </div>
 
-            {/* Search Panel */}
             <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'hidden' }}>
-                {/* Filter Grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid var(--border)' }}>
-                    {/* Left: dropdowns */}
                     <div style={{ borderRight: '1px solid var(--border)' }}>
                         {[
                             { label: 'Marka', value: filterBrand, set: setFilterBrand, opts: brands },
@@ -450,11 +414,11 @@ export default function DealerCatalog() {
                         ].map(({ label, value, set, opts }) => (
                             <div key={label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>{label}</div>
-                                 <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', background: '#fff' }}>
-                                    <select 
-                                        className="form-select" 
-                                        style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1, color: '#000' }} 
-                                        value={value} 
+                                <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', background: '#fff' }}>
+                                    <select
+                                        className="form-select"
+                                        style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1, color: '#000' }}
+                                        value={value}
                                         onChange={e => set(e.target.value)}
                                     >
                                         <option value="" style={{ color: '#000', background: '#fff' }}>HEPSİ</option>
@@ -463,8 +427,6 @@ export default function DealerCatalog() {
                                 </div>
                             </div>
                         ))}
-
-                        {/* Genel Arama */}
                         <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr' }}>
                             <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>Genel Arama</div>
                             <div style={{ background: '#fef08a', padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
@@ -479,8 +441,6 @@ export default function DealerCatalog() {
                             </div>
                         </div>
                     </div>
-
-                    {/* Right: checkboxes */}
                     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
                         {[
                             { label: 'Kampanya', val: checkCampaign, set: setCheckCampaign },
@@ -495,8 +455,6 @@ export default function DealerCatalog() {
                         ))}
                     </div>
                 </div>
-
-                {/* Action bar */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', background: 'var(--bg-secondary)' }}>
                     <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => searchProducts()} id="search-btn">Ara</button>
                     <button className="btn btn-danger" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={clearFilters} id="clear-btn">Temizle</button>
@@ -507,7 +465,6 @@ export default function DealerCatalog() {
                 </div>
             </div>
 
-            {/* Results Table */}
             {loading || pageImagesLoading ? (
                 <div className="card" style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
@@ -530,14 +487,13 @@ export default function DealerCatalog() {
             ) : filtered.length === 0 ? (
                 <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
             ) : viewMode === 'list' ? (
-                /* ========== LİSTE MODU: Trendyol-style Card Grid ========== */
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
                     {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
                         const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                         return (
                             <div key={p.id} style={{
-                                background: p.is_campaign ? '#fef08a' : 'var(--bg-card)', 
-                                border: p.is_campaign ? '1px solid #eab308' : '1px solid var(--border)', 
+                                background: p.is_campaign ? '#fef08a' : 'var(--bg-card)',
+                                border: p.is_campaign ? '1px solid #eab308' : '1px solid var(--border)',
                                 color: p.is_campaign ? '#000' : 'inherit',
                                 borderRadius: 12,
                                 overflow: 'hidden', display: 'flex', flexDirection: 'column',
@@ -548,7 +504,6 @@ export default function DealerCatalog() {
                                 onMouseMove={e => handleRowMouseMove(e, p)}
                                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; handleRowMouseLeave(); }}
                             >
-                                {/* Ürün Görseli */}
                                 <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
                                     {p.image_url ? (
                                         <img src={p.image_url} alt={p.name || 'Ürün'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
@@ -556,25 +511,17 @@ export default function DealerCatalog() {
                                         <CubeIcon style={{ width: 48, height: 48, color: '#ccc' }} />
                                     )}
                                 </div>
-
-                                {/* Stok Kodu */}
                                 <div style={{ padding: '8px 10px 0', fontSize: 11, fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {p.code || '-'}
                                 </div>
-
-                                {/* Ürün Adı */}
                                 <div style={{ padding: '4px 10px 0', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minHeight: 34, lineHeight: '17px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                     {p.name}
                                 </div>
-
-                                {/* Marka + Birim */}
                                 <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>
                                     <span style={{ fontWeight: 600, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>{p.brand || '-'}</span>
                                     <span style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.unit || 'AD'}</span>
                                 </div>
-
-                                {/* Fiyat */}
-                                <div 
+                                <div
                                     style={{ padding: '6px 10px 0', fontSize: 16, fontWeight: 800, color: p.is_campaign ? '#1e40af' : 'var(--primary)', fontFamily: 'monospace', cursor: 'grab' }}
                                     onMouseEnter={(e) => {
                                         const rect = e.currentTarget.getBoundingClientRect();
@@ -585,8 +532,6 @@ export default function DealerCatalog() {
                                     ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                                 </div>
                                 <div style={{ padding: '0 10px', fontSize: 10, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>KDV Dahil</div>
-
-                                {/* Stok durumu */}
                                 <div style={{ padding: '6px 10px 0', display: 'flex', gap: 8, fontSize: 11, color: p.is_campaign ? '#000' : 'inherit' }}>
                                     <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                                         <div style={getCircleStyle(p.stock_merkez || 0, 12)} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
@@ -597,7 +542,6 @@ export default function DealerCatalog() {
                                         Depo
                                     </span>
                                 </div>
-
                                 <div style={{ padding: '8px 10px 10px', marginTop: 'auto', display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 36 }}>
                                         <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
@@ -619,17 +563,16 @@ export default function DealerCatalog() {
                                     </div>
                                     {(() => {
                                         const pVal = getPending(p.id);
-                                        // "Hiç sayı yazılı değilse veya 0 ise basılamasın"
                                         const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
                                         return (
                                             <button
                                                 className="btn btn-primary btn-sm"
                                                 onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
                                                 disabled={isOutOfStock || isPendingEmpty}
-                                                style={{ 
-                                                    flex: 1, 
-                                                    opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1, 
-                                                    fontSize: 12, 
+                                                style={{
+                                                    flex: 1,
+                                                    opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
+                                                    fontSize: 12,
                                                     padding: '6px 0',
                                                     cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
                                                     filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
@@ -646,7 +589,6 @@ export default function DealerCatalog() {
                     })}
                 </div>
             ) : (
-                /* ========== KATALOG MODU: Kompakt Tablo (görselsiz) ========== */
                 <div className="table-wrapper">
                     <table>
                         <thead>
@@ -682,7 +624,7 @@ export default function DealerCatalog() {
                                         <td style={{ fontWeight: 600, maxWidth: 220, color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</td>
                                         <td style={{ textAlign: 'center' }}>
                                             {p.image_url ? (
-                                                <div 
+                                                <div
                                                     style={{ cursor: 'pointer', color: 'var(--primary)', display: 'flex', justifyContent: 'center' }}
                                                     onMouseEnter={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect();
@@ -697,7 +639,7 @@ export default function DealerCatalog() {
                                         <td style={{ fontSize: 12, color: p.is_campaign ? '#000' : 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
                                         <td style={{ textAlign: 'center', fontWeight: 800, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>%{discountPercent}</td>
                                         <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                                            <div 
+                                            <div
                                                 style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}
                                                 onMouseEnter={(e) => {
                                                     const rect = e.currentTarget.getBoundingClientRect();
@@ -738,15 +680,14 @@ export default function DealerCatalog() {
                                         <td>
                                             {(() => {
                                                 const pVal = getPending(p.id);
-                                                // "Hiç sayı yazılı değilse veya 0 ise basılamasın"
                                                 const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
                                                 return (
                                                     <button
                                                         className="btn btn-primary btn-sm"
                                                         onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
                                                         disabled={isOutOfStock || isPendingEmpty}
-                                                        style={{ 
-                                                            opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1, 
+                                                        style={{
+                                                            opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
                                                             whiteSpace: 'nowrap',
                                                             cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
                                                             filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
@@ -766,7 +707,6 @@ export default function DealerCatalog() {
                 </div>
             )}
 
-            {/* Pagination Controls */}
             {!loading && hasSearched && filtered.length > perPage && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button
@@ -777,11 +717,9 @@ export default function DealerCatalog() {
                     >
                         Önceki
                     </button>
-
                     <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
                         Sayfa {currentPage} / {Math.ceil(filtered.length / perPage)}
                     </span>
-
                     <button
                         className="btn btn-ghost"
                         disabled={currentPage === Math.ceil(filtered.length / perPage)}
@@ -811,10 +749,10 @@ export default function DealerCatalog() {
                         <img src="/omi-logo-sidebar.png" alt="Omi Group" style={{ height: 24, objectFit: 'contain' }} />
                     </div>
                     <div style={{ padding: '12px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px' }}>
-                        <img 
-                            src={hoveredImage.url} 
-                            alt="Ürün" 
-                            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} 
+                        <img
+                            src={hoveredImage.url}
+                            alt="Ürün"
+                            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }}
                             onError={(e) => {
                                 e.target.src = 'https://via.placeholder.com/300x200?text=G%C3%B6rsel+Bulunamad%C4%B1';
                                 e.target.style.opacity = '0.5';

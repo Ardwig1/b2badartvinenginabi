@@ -10,14 +10,30 @@ export default function HomeBanner() {
     useEffect(() => {
         const fetchBanners = async () => {
             const supabase = createClient();
+            
+            // 1. Fetch custom banners
             const { data, error } = await supabase
                 .from('banners')
                 .select('image_url')
                 .eq('is_active', true)
                 .order('created_at', { ascending: false });
             
+            // 2. Fetch hidden defaults
+            const { data: hiddenData } = await supabase
+                .from('price_groups')
+                .select('name')
+                .eq('discount_percent', -999);
+            
+            const hiddenIds = hiddenData ? hiddenData.map(d => d.name.replace('HIDDEN_BANNER_', '')) : [];
+
             if (!error && data && data.length > 0) {
                 setBanners(data.map(b => b.image_url));
+            } else {
+                // Filter the default set
+                const defaults = ['/banner1.jpg', '/banner2.jpg', '/banner3.jpg'];
+                const filtered = defaults.filter((_, i) => !hiddenIds.includes(`def${i + 1}`));
+                if (filtered.length > 0) setBanners(filtered);
+                else setBanners([]); // No banners at all
             }
         };
         fetchBanners();

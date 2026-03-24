@@ -8,21 +8,27 @@ export default function AdminBannerManager() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [uploading, setUploading] = useState(false);
+    const [hiddenDefaults, setHiddenDefaults] = useState([]);
     const supabase = createClient();
 
     const fetchBanners = async () => {
         setLoading(true);
+        // 1. Fetch custom banners
         const { data, error } = await supabase
             .from('banners')
             .select('*')
             .order('created_at', { ascending: false });
         
-        if (error) {
-            console.error('Banners fetch error:', error);
-            // Table might not exist yet, fallback to empty but we'll show defaults in UI
-            setBanners([]);
-        } else {
-            setBanners(data || []);
+        if (!error) setBanners(data || []);
+
+        // 2. Fetch hidden defaults from price_groups (our settings hack)
+        const { data: hiddenData } = await supabase
+            .from('price_groups')
+            .select('name')
+            .eq('discount_percent', -999); // Use -999 as a special marker for hidden default banners
+            
+        if (hiddenData) {
+            setHiddenDefaults(hiddenData.map(d => d.name));
         }
         setLoading(false);
     };
@@ -63,24 +69,33 @@ export default function AdminBannerManager() {
         }
     };
 
-    const deleteBanner = async (id, url) => {
-        if (!confirm('Bu bannerı kaldırmak istediğinize emin misiniz?')) return;
+    const deleteBanner = async (id, url, isStatic = false) => {
+        if (!confirm(isStatic ? 'Bu varsayılan bannerı gizlemek istediğinize emin misiniz?' : 'Bu bannerı kaldırmak istediğinize emin misiniz?')) return;
 
         try {
-            // 1. Storage'dan sil
-            await fetch('/api/admin/delete-file', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url })
-            });
+            if (isStatic) {
+                // Gizleme işlemini price_groups tablosuna kaydet (Marker: -999)
+                const { error } = await supabase.from('price_groups').insert({
+                    name: `HIDDEN_BANNER_${id}`,
+                    discount_percent: -999
+                });
+                if (error) throw error;
+            } else {
+                // 1. Storage'dan sil
+                await fetch('/api/admin/delete-file', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
 
-            // 2. DB'den sil
-            const { error } = await supabase.from('banners').delete().eq('id', id);
-            if (error) throw error;
+                // 2. DB'den sil
+                const { error } = await supabase.from('banners').delete().eq('id', id);
+                if (error) throw error;
+            }
 
             fetchBanners();
         } catch (err) {
-            alert('Silme hatası: ' + err.message);
+            alert('Silme/Gizleme hatası: ' + err.message);
         }
     };
 
@@ -147,7 +162,7 @@ export default function AdminBannerManager() {
                                     { id: 'def1', image_url: '/banner1.jpg', is_static: true },
                                     { id: 'def2', image_url: '/banner2.jpg', is_static: true },
                                     { id: 'def3', image_url: '/banner3.jpg', is_static: true }
-                                ]).map(b => (
+                                ].filter(b => !hiddenDefaults.includes(`HIDDEN_BANNER_${b.id}`))).map(b => (
                                     <div key={b.id} style={{ 
                                         display: 'flex', 
                                         gap: 12, 
@@ -164,17 +179,13 @@ export default function AdminBannerManager() {
                                         <div style={{ flex: 1, fontSize: 13, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {b.image_url.split('/').pop()}
                                         </div>
-                                        {!b.is_static ? (
-                                            <button 
-                                                className="btn btn-ghost btn-sm" 
-                                                onClick={() => deleteBanner(b.id, b.image_url)}
-                                                style={{ color: 'var(--danger)', padding: 6 }}
-                                            >
-                                                <TrashIcon style={{ width: 18, height: 18 }} />
-                                            </button>
-                                        ) : (
-                                            <div style={{ fontSize: 10, padding: '4px 8px', background: 'var(--bg-secondary)', borderRadius: 4, color: 'var(--text-muted)', fontWeight: 600 }}>Varsayılan</div>
-                                        )}
+                                        <button 
+                                            className="btn btn-ghost btn-sm" 
+                                            onClick={() => deleteBanner(b.id, b.image_url, b.is_static)}
+                                            style={{ color: 'var(--danger)', padding: 6 }}
+                                        >
+                                            <TrashIcon style={{ width: 18, height: 18 }} />
+                                        </button>
                                     </div>
                                 ))}
                                 {banners.length === 0 && !loading && (

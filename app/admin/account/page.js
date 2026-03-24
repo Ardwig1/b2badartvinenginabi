@@ -68,6 +68,88 @@ export default function AdminAccountLedger() {
     const [txSaving, setTxSaving] = useState(false);
     const [companies, setCompanies] = useState([]);
     
+
+
+    const fetchTransactions = useCallback(async () => {
+        setLoading(true);
+
+        let startDate, endDate;
+        if (selectedMonth) {
+            startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+            endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
+        } else {
+            startDate = `${selectedYear}-01-01`;
+            endDate = `${selectedYear}-12-31T23:59:59`;
+        }
+
+        const { data, error } = await supabase.from('account_transactions')
+            .select('*, company:companies(name)')
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Transactions fetch error:', error);
+            if (error.code === '42P01') setDbError(true);
+        } else {
+            setTransactions(data || []);
+            const tDebt = (data || []).reduce((acc, r) => acc + Number(r.debt || 0), 0);
+            const tCredit = (data || []).reduce((acc, r) => acc + Number(r.credit || 0), 0);
+            setTotals({ debt: tDebt, credit: tCredit });
+        }
+        setLoading(false);
+    }, [selectedYear, selectedMonth]);
+
+    useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+
+    const openTxModal = async () => {
+        setShowTxModal(true);
+        if (companies.length === 0) {
+            const { data } = await supabase.from('companies').select('id, name').order('name');
+            if (data) setCompanies(data);
+        }
+    };
+
+    const handleAddTx = async (e) => {
+        e.preventDefault();
+        setTxSaving(true);
+        try {
+            const res = await fetch('/api/admin/transactions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: txForm.companyId,
+                    type: txForm.type,
+                    amount: txForm.amount,
+                    description: txForm.description === 'Diğer' ? txForm.customDescription : txForm.description,
+                    documentNo: txForm.documentNo
+                })
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'İşlem başarısız');
+            setShowTxModal(false);
+            setTxForm({ companyId: '', type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
+            fetchTransactions(); // Reload data immediately
+        } catch(err) {
+            alert('Hata: ' + err.message);
+        }
+        setTxSaving(false);
+    };
+
+    const handleExpand = async (tx) => {
+        if (expandedRow === tx.id) { setExpandedRow(null); return; }
+        setExpandedRow(tx.id);
+        if (tx.transaction_type === 'TOPTAN SATIŞ' && tx.document_no && !orderDetails[tx.id]) {
+            setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
+            const { data } = await supabase.from('order_items')
+                .select('*, product:products(name, code, oem_no)')
+                .eq('order_id', tx.document_no);
+            setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
+            setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
+        }
+    };
+
     // --- NOTIFICATION SYSTEM ---
     const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
     const [lastCheck, setLastCheck] = useState(null);
@@ -155,86 +237,6 @@ export default function AdminAccountLedger() {
         return () => clearInterval(interval);
     }, [isNotificationsEnabled, lastCheck, supabase, fetchTransactions, playNotificationSound]);
     // --- END NOTIFICATION SYSTEM ---
-
-    const fetchTransactions = useCallback(async () => {
-        setLoading(true);
-
-        let startDate, endDate;
-        if (selectedMonth) {
-            startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-            endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
-        } else {
-            startDate = `${selectedYear}-01-01`;
-            endDate = `${selectedYear}-12-31T23:59:59`;
-        }
-
-        const { data, error } = await supabase.from('account_transactions')
-            .select('*, company:companies(name)')
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Transactions fetch error:', error);
-            if (error.code === '42P01') setDbError(true);
-        } else {
-            setTransactions(data || []);
-            const tDebt = (data || []).reduce((acc, r) => acc + Number(r.debt || 0), 0);
-            const tCredit = (data || []).reduce((acc, r) => acc + Number(r.credit || 0), 0);
-            setTotals({ debt: tDebt, credit: tCredit });
-        }
-        setLoading(false);
-    }, [selectedYear, selectedMonth]);
-
-    useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
-
-    const openTxModal = async () => {
-        setShowTxModal(true);
-        if (companies.length === 0) {
-            const { data } = await supabase.from('companies').select('id, name').order('name');
-            if (data) setCompanies(data);
-        }
-    };
-
-    const handleAddTx = async (e) => {
-        e.preventDefault();
-        setTxSaving(true);
-        try {
-            const res = await fetch('/api/admin/transactions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    companyId: txForm.companyId,
-                    type: txForm.type,
-                    amount: txForm.amount,
-                    description: txForm.description === 'Diğer' ? txForm.customDescription : txForm.description,
-                    documentNo: txForm.documentNo
-                })
-            });
-            const data = await res.json();
-            if (!data.success) throw new Error(data.error || 'İşlem başarısız');
-            setShowTxModal(false);
-            setTxForm({ companyId: '', type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
-            fetchTransactions(); // Reload data immediately
-        } catch(err) {
-            alert('Hata: ' + err.message);
-        }
-        setTxSaving(false);
-    };
-
-    const handleExpand = async (tx) => {
-        if (expandedRow === tx.id) { setExpandedRow(null); return; }
-        setExpandedRow(tx.id);
-        if (tx.transaction_type === 'TOPTAN SATIŞ' && tx.document_no && !orderDetails[tx.id]) {
-            setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
-            const { data } = await supabase.from('order_items')
-                .select('*, product:products(name, code, oem_no)')
-                .eq('order_id', tx.document_no);
-            setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
-            setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
-        }
-    };
 
     if (dbError) {
         return (

@@ -58,7 +58,7 @@ export default function AdminCompanyDetail() {
         setLoading(true);
 
         const [compRes, actRes, ordRes, invRes] = await Promise.all([
-            supabase.from('companies').select('*, profiles(*)').eq('id', params.id).single(),
+            supabase.from('companies').select('*, profiles(*), price_groups(name, discount_percent)').eq('id', params.id).single(),
             supabase.from('user_activities').select('*').eq('company_id', params.id).order('created_at', { ascending: false }).limit(200),
             supabase.from('orders').select('*').eq('company_id', params.id).order('created_at', { ascending: false }),
             supabase.from('account_transactions').select('*').eq('company_id', params.id).order('created_at', { ascending: false })
@@ -148,10 +148,16 @@ export default function AdminCompanyDetail() {
                         <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{company.email || '-'}</div>
                     </div>
                     <div style={{ background: 'var(--bg-card)', padding: '20px 24px' }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Adres</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Adres & İskonto</div>
                         <div style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.5 }}>
                             {company.address ? `${company.address}${company.district ? `, ${company.district}` : ''}${company.city ? ` / ${company.city}` : ''}` : 'Adres bilgisi yok'}
                         </div>
+                        {company.price_groups && (
+                            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', fontSize: 13 }}>
+                                <span style={{ color: 'var(--text-secondary)' }}>Fiyat Grubu:</span>{' '}
+                                <strong style={{ color: 'var(--brand)' }}>{company.price_groups.name} (%{company.price_groups.discount_percent} İskonto)</strong>
+                            </div>
+                        )}
                     </div>
                     <div style={{ background: 'var(--bg-card)', padding: '20px 24px' }}>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>Sistem Bilgileri</div>

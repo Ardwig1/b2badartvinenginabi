@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { DocumentTextIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { DocumentTextIcon, BanknotesIcon, BellAlertIcon, BellSlashIcon } from '@heroicons/react/24/outline';
 
 const START_YEAR = 2026;
 const currentYear = new Date().getFullYear();
@@ -66,6 +66,94 @@ export default function AdminAccountLedger() {
     const [txForm, setTxForm] = useState({ companyId: '', type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
     const [txSaving, setTxSaving] = useState(false);
     const [companies, setCompanies] = useState([]);
+    
+    // --- NOTIFICATION SYSTEM ---
+    const [isNotificationsEnabled, setIsNotificationsEnabled] = useState(false);
+    const [lastCheck, setLastCheck] = useState(null);
+
+    useEffect(() => {
+        const saved = localStorage.getItem('admin_payment_notifications');
+        if (saved === 'true') setIsNotificationsEnabled(true);
+        setLastCheck(new Date().toISOString());
+    }, []);
+
+    const playNotificationSound = useCallback(() => {
+        try {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return;
+            const audioCtx = new AudioContextClass();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const playTone = (freq, startTime, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.5, startTime + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+
+            const now = audioCtx.currentTime;
+            playTone(600, now, 0.15);
+            playTone(800, now + 0.15, 0.3);
+        } catch(e) {
+            console.error("Audio play failed:", e);
+        }
+    }, []);
+
+    const toggleNotifications = async () => {
+        const newValue = !isNotificationsEnabled;
+        if (newValue && typeof Notification !== "undefined") {
+            let perm = Notification.permission;
+            if (perm !== "granted" && perm !== "denied") {
+                perm = await Notification.requestPermission();
+            }
+            if (perm === "granted") {
+                playNotificationSound();
+                new Notification('Ödeme Bildirimleri Aktif!', {
+                    body: 'Yeni bir tahsilat veya ödeme olduğunda size haber vereceğiz.',
+                    icon: '/icon.png'
+                });
+            } else {
+                alert("Uyarı: Tarayıcı bildirimlerine izin vermediniz, sadece ses duyabilirsiniz.");
+            }
+        }
+        setIsNotificationsEnabled(newValue);
+        localStorage.setItem('admin_payment_notifications', newValue ? 'true' : 'false');
+    };
+
+    useEffect(() => {
+        if (!isNotificationsEnabled || !lastCheck) return;
+        const interval = setInterval(async () => {
+            const { data, error } = await supabase.from('account_transactions')
+                .select('id, amount, credit, company:companies(name)')
+                .gt('created_at', lastCheck)
+                .gt('credit', 0) // Only notify on payments/credits
+                .order('created_at', { ascending: false });
+
+            if (!error && data && data.length > 0) {
+                setLastCheck(new Date().toISOString());
+                playNotificationSound();
+                if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+                    data.forEach(tx => {
+                        new Notification('B2B: Yeni Ödeme Alındı!', {
+                            body: `${tx.company?.name || 'Bir firma'} tarafından ${Number(tx.credit).toLocaleString('tr-TR')} TL ödeme yapıldı.`,
+                            icon: '/icon.png'
+                        });
+                    });
+                }
+                fetchTransactions();
+            }
+        }, 10000);
+
+        return () => clearInterval(interval);
+    }, [isNotificationsEnabled, lastCheck, supabase, fetchTransactions, playNotificationSound]);
+    // --- END NOTIFICATION SYSTEM ---
 
     const supabase = createClient();
 
@@ -170,6 +258,15 @@ export default function AdminAccountLedger() {
                     <p className="page-subtitle">Platformdaki tüm bayilerin borç, alacak ve toplam kâr dökümleri</p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
+                    <button 
+                        className={`btn ${isNotificationsEnabled ? 'btn-primary' : 'btn-ghost'}`} 
+                        onClick={toggleNotifications}
+                        title={isNotificationsEnabled ? "Ödeme Bildirimleri Açık" : "Ödeme Bildirimlerini Aç"}
+                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+                    >
+                        {isNotificationsEnabled ? <BellAlertIcon style={{ width: 20, height: 20 }} /> : <BellSlashIcon style={{ width: 20, height: 20 }} />}
+                        <span>Zil {isNotificationsEnabled ? 'Açık' : 'Kapalı'}</span>
+                    </button>
                     <button className="btn btn-primary" onClick={openTxModal} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <BanknotesIcon style={{ width: 18, height: 18 }} /> Bakiye İşlemi (Borç/Alacak)
                     </button>

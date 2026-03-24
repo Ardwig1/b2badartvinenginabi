@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { BuildingOfficeIcon, ClockIcon, CubeIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
+import AdminBannerManager from '@/components/AdminBannerManager';
 
 export default async function AdminDashboard() {
     const supabase = await createClient();
@@ -37,10 +38,12 @@ export default async function AdminDashboard() {
         <div className="page-wrapper">
             <div className="page-header">
                 <div>
-                    <h1 className="page-title">Dashboard</h1>
-                    <p className="page-subtitle">Platforma genel bakış</p>
+                    <h1 className="page-title">Ana Sayfa</h1>
+                    <p className="page-subtitle">Yönetim paneline hoş geldiniz</p>
                 </div>
             </div>
+
+            <AdminBannerManager />
 
             <div className="stats-grid">
                 {stats.map(s => (

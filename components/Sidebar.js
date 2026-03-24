@@ -13,7 +13,7 @@ import {
 import styles from './Sidebar.module.css';
 
 const adminNav = [
-    { label: 'Dashboard', href: '/admin', icon: <ChartBarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Ana Sayfa', href: '/admin', icon: <ChartBarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Firmalar', href: '/admin/companies', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
@@ -61,7 +61,7 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                 {isOpen && (
                     <div>
                         <div className={styles.logoText}>OMİ GROUP'S</div>
-                        <div className={styles.logoSub}>{isAdmin ? 'Admin Paneli' : 'B2B Bayi Paneli'}</div>
+                        <div className={styles.logoSub}>{isAdmin ? 'Yönetim Paneli' : 'B2B Bayi Paneli'}</div>
                     </div>
                 )}
                 <button className={styles.collapseBtn} onClick={() => setIsOpen(!isOpen)} title={isOpen ? "Menüyü Daralt" : "Menüyü Genişlet"}>

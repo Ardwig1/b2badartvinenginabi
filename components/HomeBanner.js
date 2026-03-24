@@ -1,12 +1,30 @@
 'use client';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { createClient } from '@/lib/supabase/client';
 
 export default function HomeBanner() {
-    const banners = ['/banner1.jpg', '/banner2.jpg', '/banner3.jpg'];
+    const [banners, setBanners] = useState(['/banner1.jpg', '/banner2.jpg', '/banner3.jpg']);
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
+        const fetchBanners = async () => {
+            const supabase = createClient();
+            const { data, error } = await supabase
+                .from('banners')
+                .select('image_url')
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
+            
+            if (!error && data && data.length > 0) {
+                setBanners(data.map(b => b.image_url));
+            }
+        };
+        fetchBanners();
+    }, []);
+
+    useEffect(() => {
+        if (banners.length <= 1) return;
         const timer = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % banners.length);
         }, 4000); // 4 seconds

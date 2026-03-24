@@ -25,6 +25,19 @@ function ActivityText({ act }) {
     return <span>{act.action_type}</span>;
 }
 
+const presetDescriptions = [
+    "YapıKredi Link Pos",
+    "Tosla Link Pos",
+    "QNB Link Pos",
+    "İş Bankası Link Pos",
+    "EnPara Pos",
+    "YapıKredi IBAN",
+    "İşBankası IBAN",
+    "Nakit",
+    "İade",
+    "Diğer"
+];
+
 export default function AdminCompanyDetail() {
     const params = useParams();
     const router = useRouter();
@@ -36,7 +49,7 @@ export default function AdminCompanyDetail() {
     const [activeTab, setActiveTab] = useState('activity');
     const [errorMsg, setErrorMsg] = useState('');
     const [showTxModal, setShowTxModal] = useState(false);
-    const [txForm, setTxForm] = useState({ type: 'debt', amount: '', description: '', documentNo: '' });
+    const [txForm, setTxForm] = useState({ type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
     const [txSaving, setTxSaving] = useState(false);
     const supabase = createClient();
 
@@ -76,14 +89,14 @@ export default function AdminCompanyDetail() {
                     companyId: company.id,
                     type: txForm.type,
                     amount: txForm.amount,
-                    description: txForm.description,
+                    description: txForm.description === 'Diğer' ? txForm.customDescription : txForm.description,
                     documentNo: txForm.documentNo
                 })
             });
             const data = await res.json();
             if (!data.success) throw new Error(data.error || 'İşlem başarısız');
             setShowTxModal(false);
-            setTxForm({ type: 'debt', amount: '', description: '', documentNo: '' });
+            setTxForm({ type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
             fetchDetails(); // Reload data immediately
         } catch(err) {
             alert('Hata: ' + err.message);
@@ -302,9 +315,29 @@ export default function AdminCompanyDetail() {
                                 <input className="form-input" type="number" step="0.01" min="0.01" value={txForm.amount} onChange={e => setTxForm(prev => ({ ...prev, amount: e.target.value }))} placeholder="Örn: 1500.50" required />
                             </div>
                             <div className="form-group">
-                                <label className="form-label">Açıklama *</label>
-                                <input className="form-input" type="text" value={txForm.description} onChange={e => setTxForm(prev => ({ ...prev, description: e.target.value }))} placeholder="Açıklama giriniz (EFT, Manuel Fatura vb.)" required />
+                                <label className="form-label">Açıklama Seçin *</label>
+                                <select 
+                                    className="form-select" 
+                                    value={txForm.description} 
+                                    onChange={e => setTxForm(prev => ({ ...prev, description: e.target.value }))} 
+                                    required
+                                >
+                                    {presetDescriptions.map(d => <option key={d} value={d}>{d}</option>)}
+                                </select>
                             </div>
+                            {txForm.description === 'Diğer' && (
+                                <div className="form-group">
+                                    <label className="form-label">Manuel Açıklama *</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="text" 
+                                        value={txForm.customDescription} 
+                                        onChange={e => setTxForm(prev => ({ ...prev, customDescription: e.target.value }))} 
+                                        placeholder="Kendi açıklamanızı yazın..." 
+                                        required 
+                                    />
+                                </div>
+                            )}
                             <div className="form-group">
                                 <label className="form-label">Evrak / İşlem No</label>
                                 <input className="form-input" type="text" value={txForm.documentNo} onChange={e => setTxForm(prev => ({ ...prev, documentNo: e.target.value }))} placeholder="(İsteğe bağlı)" />

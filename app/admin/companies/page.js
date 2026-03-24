@@ -46,7 +46,7 @@ const EMPTY_FORM = {
 };
 
 export default function CompaniesPage() {
-  const [filter, setFilter] = useState('pending');
+  const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [companies, setCompanies] = useState([]);
   const [activities, setActivities] = useState([]);

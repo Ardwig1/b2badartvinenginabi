@@ -216,56 +216,70 @@ export default function AdminCompanyDetail() {
                 </div>
             )}
 
-            {activeTab === 'transactions' && (
-                <div className="card" style={{ padding: 0 }}>
-                    {(!transactions || transactions.length === 0) ? (
-                        <div className="empty-state" style={{ padding: 40 }}>Cari işlem veya fatura bulunamadı.</div>
-                    ) : (
-                        <div className="table-wrapper">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Tarih</th>
-                                        <th>Vade Tarihi</th>
-                                        <th>Evrak No</th>
-                                        <th>İşlem Türü</th>
-                                        <th style={{ textAlign: 'right' }}>Borç</th>
-                                        <th style={{ textAlign: 'right' }}>Alacak</th>
-                                        <th style={{ textAlign: 'right' }}>Bakiye</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {transactions.map(tx => (
-                                        <tr key={tx.id}>
-                                            <td style={{ fontWeight: 500 }}>{formatDate(tx.created_at)}</td>
-                                            <td style={{ color: 'var(--text-secondary)' }}>{tx.due_date ? new Date(tx.due_date).toLocaleDateString('tr-TR') : '-'}</td>
-                                            <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tx.document_no ? tx.document_no.slice(0, 8).toUpperCase() : '-'}</td>
-                                            <td>
-                                                <span style={{
-                                                    fontWeight: 600,
-                                                    color: tx.transaction_type === 'KREDİ KARTI' || tx.transaction_type === 'HAVALE/EFT' || tx.transaction_type?.includes('TAHSİLAT') ? 'var(--success)' :
-                                                            tx.transaction_type === 'TOPTAN SATIŞ' ? 'var(--primary)' : 'var(--text-secondary)'
-                                                }}>
-                                                    {tx.transaction_type}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: tx.debt > 0 ? 600 : 400, color: tx.debt > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
-                                                {tx.debt > 0 ? formatCurrency(tx.debt) : '0,00'}
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
-                                                {tx.credit > 0 ? formatCurrency(tx.credit) : '0,00'}
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                                                {formatCurrency(tx.balance_after)}
-                                            </td>
+            {activeTab === 'transactions' && (() => {
+                const totalDebt = transactions.reduce((acc, tx) => acc + (Number(tx.debt) || 0), 0);
+                const totalCredit = transactions.reduce((acc, tx) => acc + (Number(tx.credit) || 0), 0);
+                const finalBalance = transactions.length > 0 ? (transactions[0].balance_after || 0) : 0;
+
+                return (
+                    <div className="card" style={{ padding: 0 }}>
+                        {(!transactions || transactions.length === 0) ? (
+                            <div className="empty-state" style={{ padding: 40 }}>Cari işlem veya fatura bulunamadı.</div>
+                        ) : (
+                            <div className="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Tarih</th>
+                                            <th>Vade Tarihi</th>
+                                            <th>Evrak No</th>
+                                            <th>İşlem Türü</th>
+                                            <th style={{ textAlign: 'right' }}>Borç</th>
+                                            <th style={{ textAlign: 'right' }}>Alacak</th>
+                                            <th style={{ textAlign: 'right' }}>Bakiye</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
-                </div>
-            )}
+                                    </thead>
+                                    <tbody>
+                                        {transactions.map(tx => (
+                                            <tr key={tx.id}>
+                                                <td style={{ fontWeight: 500 }}>{formatDate(tx.created_at)}</td>
+                                                <td style={{ color: 'var(--text-secondary)' }}>{tx.due_date ? new Date(tx.due_date).toLocaleDateString('tr-TR') : '-'}</td>
+                                                <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tx.document_no ? tx.document_no.slice(0, 8).toUpperCase() : '-'}</td>
+                                                <td>
+                                                    <span style={{
+                                                        fontWeight: 600,
+                                                        color: tx.transaction_type === 'KREDİ KARTI' || tx.transaction_type === 'HAVALE/EFT' || tx.transaction_type?.includes('TAHSİLAT') ? 'var(--success)' :
+                                                                tx.transaction_type === 'TOPTAN SATIŞ' ? 'var(--primary)' : 'var(--text-secondary)'
+                                                    }}>
+                                                        {tx.transaction_type}
+                                                    </span>
+                                                </td>
+                                                <td style={{ textAlign: 'right', fontWeight: tx.debt > 0 ? 600 : 400, color: tx.debt > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                                                    {tx.debt > 0 ? formatCurrency(tx.debt) : '0,00'}
+                                                </td>
+                                                <td style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
+                                                    {tx.credit > 0 ? formatCurrency(tx.credit) : '0,00'}
+                                                </td>
+                                                <td style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
+                                                    {formatCurrency(tx.balance_after)}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr style={{ background: 'var(--bg-secondary)', borderTop: '2px solid var(--border)' }}>
+                                            <td colspan="4" style={{ textAlign: 'right', fontWeight: 700, padding: 16 }}>GENEL TOPLAM</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--danger)', fontSize: 15 }}>{formatCurrency(totalDebt)}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)', fontSize: 15 }}>{formatCurrency(totalCredit)}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 900, fontSize: 16, color: finalBalance < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{formatCurrency(finalBalance)}</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                );
+            })()}
 
             {/* BALANCE ADJUSTMENT MODAL */}
             {showTxModal && (

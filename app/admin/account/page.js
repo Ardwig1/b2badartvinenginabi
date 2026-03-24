@@ -52,6 +52,7 @@ function fmtMoney(n, showSign = false) {
 }
 
 export default function AdminAccountLedger() {
+    const supabase = createClient();
     const [transactions, setTransactions] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedRow, setExpandedRow] = useState(null);
@@ -154,8 +155,6 @@ export default function AdminAccountLedger() {
         return () => clearInterval(interval);
     }, [isNotificationsEnabled, lastCheck, supabase, fetchTransactions, playNotificationSound]);
     // --- END NOTIFICATION SYSTEM ---
-
-    const supabase = createClient();
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);

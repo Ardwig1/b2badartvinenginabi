@@ -89,7 +89,8 @@ export default function AdminProducts() {
             setCampaignRate('10');
             setShowCampaignModal(true);
         } else {
-            await supabase.from('products').update({ is_campaign: false }).eq('id', p.id);
+            // When deactivating, reset is_campaign AND discount_rate
+            await supabase.from('products').update({ is_campaign: false, discount_rate: 0 }).eq('id', p.id);
             fetchProducts();
         }
     };
@@ -122,7 +123,17 @@ export default function AdminProducts() {
         const costPrice = Number(form.cost_price) || 0;
         const profitMargin = Number(form.profit_margin) || 0;
         const calculatedListPrice = costPrice * (1 + profitMargin / 100);
-        const payload = { ...form, cost_price: costPrice, profit_margin: profitMargin, list_price: calculatedListPrice, stock_merkez: merkez, stock_depo: depo, stock_quantity: merkez + depo, discount_rate: Number(form.discount_rate), box_quantity: Number(form.box_quantity) };
+        const payload = { 
+            ...form, 
+            cost_price: costPrice, 
+            profit_margin: profitMargin, 
+            list_price: calculatedListPrice, 
+            stock_merkez: merkez, 
+            stock_depo: depo, 
+            stock_quantity: merkez + depo, 
+            discount_rate: form.is_campaign ? Number(form.discount_rate) : 0, 
+            box_quantity: Number(form.box_quantity) 
+        };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
         } else {

@@ -1,6 +1,7 @@
 'use server';
 import { createClient } from '@supabase/supabase-js';
 import { getExchangeRates } from '@/lib/tcmb';
+import { revalidatePath } from 'next/cache';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -134,64 +135,102 @@ export async function addAdminCartItem(companyId, product, qty) {
     }
 }
 
-export async function placeAdminOrder(companyId, items, totals) {
+export async function placeAdminOrder(companyId, cartItems, pricing) {
     try {
-        if (!companyId || !items?.length) throw new Error('Sepet boş');
+        if (!companyId || !cartItems?.length) throw new Error('Sepet boş');
 
-        // Check company profile
-        const { data: company } = await supabase.from('companies').select('profiles(id)').eq('id', companyId).single();
-        if (!company?.profiles) throw new Error('Firma profili bulunamadı');
+        // 1. Get Company and Risk Info
+        const { data: company, error: cErr } = await supabase
+            .from('companies')
+            .select('name, risk_limit, is_prepayment_locked, profiles(id)')
+            .eq('id', companyId)
+            .single();
+        if (cErr) throw cErr;
+        
+        const userId = company.profiles?.id || (Array.isArray(company.profiles) ? company.profiles[0]?.id : null);
+        if (!userId) throw new Error('Firma yetkilisi bulunamadı.');
 
-        // 1. Create Order
-        const { data: order, error: orderErr } = await supabase.from('orders').insert({
-            company_id: companyId,
-            user_id: company.profiles.id,
-            status: 'pending',
-            items: items.map(item => ({
-                id: item.fullProduct.id,
-                name: item.fullProduct.name,
-                qty: item.qty,
-                price: item.price,
-                total: item.total,
-                oem_no: item.fullProduct.oem_no,
-                brand: item.fullProduct.brand
-            })),
-            total_amount: totals.total,
-            subtotal: totals.subtotal,
-            tax_total: totals.tax,
-            currency: 'TRY',
-            payment_method: 'Cari Hesap (Admin)'
-        }).select().single();
+        // 2. Get Current Balance
+        const { data: txs, error: tErr } = await supabase
+            .from('account_transactions')
+            .select('debt, credit')
+            .eq('company_id', companyId);
+        if (tErr) throw tErr;
+
+        const balance = (txs || []).reduce((acc, tx) => acc + (Number(tx.debt) || 0) - (Number(tx.credit) || 0), 0);
+        const orderTotal = pricing.total;
+
+        // 3. Risk Checks (only if admin wants to enforce them, which the user requested)
+        if (company.is_prepayment_locked) {
+            if (balance + orderTotal > 0) {
+                return { success: false, error: 'Bu firma "Peşin Çalışma" grubundadır. Borçlanarak sipariş verilemez.' };
+            }
+        }
+
+        if (company.risk_limit > 0 && (balance + orderTotal > company.risk_limit)) {
+            return { success: false, error: `Sipariş tutarı risk limitini aşıyor. Limit: ${company.risk_limit.toLocaleString('tr-TR')} ₺, Güncel Bakiye: ${balance.toLocaleString('tr-TR')} ₺` };
+        }
+
+        // 4. Insert Order Header
+        const { data: order, error: orderErr } = await supabase
+            .from('orders')
+            .insert({
+                company_id: companyId,
+                user_id: userId,
+                status: 'pending',
+                total_amount: pricing.total,
+                payment_type: 'bank_transfer',
+                note: 'Admin tarafından sepete müdahale edilerek oluşturuldu.',
+                document_no: `ADM-${Date.now().toString().slice(-6)}`
+            })
+            .select()
+            .single();
 
         if (orderErr) throw orderErr;
 
-        // 2. Add Transaction
-        const { error: txErr } = await supabase.from('account_transactions').insert({
-            company_id: companyId,
-            transaction_type: 'TOPTAN SATIŞ',
-            description: `Sipariş #${order.order_number || order.id.toString().slice(0, 8).toUpperCase()} (Admin tarafından oluşturuldu)`,
-            debt: totals.total,
-            credit: 0,
-            document_no: order.order_number || `ORD-${order.id.toString().slice(0, 8).toUpperCase()}`
-        });
+        // 5. Insert Order Items
+        const orderItems = cartItems.map(item => ({
+            order_id: order.id,
+            product_id: item.fullProduct.id,
+            quantity: item.qty,
+            unit_price: item.price,
+            total_price: item.total
+        }));
 
+        const { error: itemsErr } = await supabase
+            .from('order_items')
+            .insert(orderItems);
+        if (itemsErr) throw itemsErr;
+
+        // 6. Create Account Transaction (Debt)
+        const { error: txErr } = await supabase
+            .from('account_transactions')
+            .insert({
+                company_id: companyId,
+                transaction_type: 'TOPTAN SATIŞ',
+                description: `Sipariş No: ${order.document_no} (Admin Onaylı)`,
+                debt: pricing.total,
+                credit: 0,
+                created_at: new Date().toISOString()
+            });
         if (txErr) throw txErr;
 
-        // 3. Log Activity
+        // 7. Log Activity
         await supabase.from('user_activities').insert({
             company_id: companyId,
             action_type: 'order_placed',
-            details: {
-                order_id: order.id,
-                total_amount: totals.total,
-                item_count: items.length,
-                admin_placed: true
+            details: { 
+                order_id: order.id, 
+                total: pricing.total,
+                note: 'Yönetici siparişi sisteme işledi.'
             }
         });
 
-        return { success: true, orderId: order.id };
+        revalidatePath(`/admin/companies/${companyId}`);
+        return { success: true, data: order };
+
     } catch (e) {
-        console.error('placeAdminOrder Error:', e);
+        console.error('placeAdminOrder error:', e);
         return { success: false, error: e.message };
     }
 }

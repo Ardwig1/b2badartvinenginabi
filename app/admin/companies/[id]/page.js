@@ -327,7 +327,47 @@ export default function AdminCompanyDetail() {
                             </table>
                             
                             <div style={{ padding: '24px', borderTop: '2px solid var(--border)', background: 'rgba(15, 23, 42, 0.02)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40, alignItems: 'center' }}>
+                                    <div style={{ flex: 1, maxWidth: 400 }}>
+                                        {(() => {
+                                            const balance = transactions.reduce((acc, tx) => acc + (Number(tx.debt) || 0) - (Number(tx.credit) || 0), 0);
+                                            const riskLimit = Number(company.risk_limit) || 0;
+                                            const isPrepayment = company.is_prepayment_locked;
+                                            const orderTotal = calculateTotals().total;
+                                            const newBalance = balance + orderTotal;
+                                            const overLimit = riskLimit > 0 && newBalance > riskLimit;
+                                            const prepayProblem = isPrepayment && newBalance > 0;
+
+                                            return (
+                                                <div style={{ 
+                                                    padding: '12px 16px', 
+                                                    borderRadius: 12, 
+                                                    background: (overLimit || prepayProblem) ? 'rgba(239, 68, 68, 0.05)' : 'rgba(59, 130, 246, 0.05)',
+                                                    border: `1px solid ${(overLimit || prepayProblem) ? 'rgba(239, 68, 68, 0.2)' : 'rgba(59, 130, 246, 0.2)'}`,
+                                                    fontSize: 13
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <span style={{ color: 'var(--text-muted)' }}>Mevcut Bakiye:</span>
+                                                        <span style={{ fontWeight: 600, color: balance > 0 ? 'var(--danger)' : 'var(--success)' }}>{formatCurrency(balance)}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                                                        <span style={{ color: 'var(--text-muted)' }}>Risk Limiti:</span>
+                                                        <span style={{ fontWeight: 600 }}>{riskLimit > 0 ? formatCurrency(riskLimit) : 'Limit Yok'}</span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, paddingTop: 4, borderTop: '1px solid var(--border)' }}>
+                                                        <span style={{ color: 'var(--text-primary)' }}>Sipariş Sonrası:</span>
+                                                        <span style={{ color: (overLimit || prepayProblem) ? 'var(--danger)' : 'var(--text-primary)' }}>{formatCurrency(newBalance)}</span>
+                                                    </div>
+                                                    {overLimit && (
+                                                        <div style={{ color: 'var(--danger)', fontSize: 11, fontWeight: 700, marginTop: 8 }}>⚠️ RİSK LİMİTİ AŞILIYOR!</div>
+                                                    )}
+                                                    {prepayProblem && (
+                                                        <div style={{ color: 'var(--danger)', fontSize: 11, fontWeight: 700, marginTop: 8 }}>⚠️ PEŞİN ÇALIŞAN FİRMA (BORÇLANAMAZ)!</div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-muted)' }}>
                                             <span>Ara Toplam:</span>
@@ -343,14 +383,31 @@ export default function AdminCompanyDetail() {
                                         </div>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                                        <button 
-                                            className="btn btn-primary" 
-                                            style={{ height: 48, padding: '0 32px', fontSize: 15, fontWeight: 700 }}
-                                            onClick={() => setShowOrderModal(true)}
-                                        >
-                                            <ShoppingCartIcon style={{ width: 20, height: 20, marginRight: 8 }} />
-                                            Siparişi Oluştur
-                                        </button>
+                                        {(() => {
+                                            const balance = transactions.reduce((acc, tx) => acc + (Number(tx.debt) || 0) - (Number(tx.credit) || 0), 0);
+                                            const riskLimit = Number(company.risk_limit) || 0;
+                                            const isPrepayment = company.is_prepayment_locked;
+                                            const orderTotal = calculateTotals().total;
+                                            const overLimit = riskLimit > 0 && (balance + orderTotal) > riskLimit;
+                                            const prepayProblem = isPrepayment && (balance + orderTotal) > 0;
+                                            const cannotOrder = overLimit || prepayProblem;
+
+                                            return (
+                                                <button 
+                                                    className={`btn ${cannotOrder ? 'btn-ghost' : 'btn-primary'}`}
+                                                    style={{ 
+                                                        height: 48, padding: '0 32px', fontSize: 15, fontWeight: 700,
+                                                        opacity: cannotOrder ? 0.5 : 1,
+                                                        cursor: cannotOrder ? 'not-allowed' : 'pointer'
+                                                    }}
+                                                    onClick={() => !cannotOrder && setShowOrderModal(true)}
+                                                    disabled={cannotOrder}
+                                                >
+                                                    <ShoppingCartIcon style={{ width: 20, height: 20, marginRight: 8 }} />
+                                                    {cannotOrder ? 'Risk Engeline Takıldı' : 'Siparişi Oluştur'}
+                                                </button>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
                             </div>

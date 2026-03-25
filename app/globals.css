@@ -160,6 +160,20 @@ select {
   padding: 32px;
 }
 
+/* Showroom / Nested Layout Adjustments */
+.app-layout[data-nested="true"] .main-content {
+  padding-top: 0;
+}
+
+.app-layout[data-nested="true"] header {
+  padding: 8px 16px !important;
+  min-height: 50px !important;
+}
+
+.app-layout[data-nested="true"] .main-content > div {
+  padding: 0 12px !important;
+}
+
 /* ===== BUTTONS ===== */
 .btn {
   display: inline-flex;

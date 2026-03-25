@@ -42,9 +42,10 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
     const isShowroom = pathname.includes('/admin/showroom');
     const impersonated = isImpersonated || isShowroom || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
     const [isOpen, setIsOpen] = useState(!impersonated);
-    // If we're an admin in showroom mode, WE SHOULD NOT SHOW DEALER LINKS in the main sidebar
-    // Actually, show nothing in the collapsed sidebar for cleaner look, or just keep admin links.
-    const navItems = isShowroom ? [] : (isAdmin ? adminNav : dealerNav);
+    
+    // We strictly use the isAdmin prop to determine which menu to show.
+    // This ensures that an admin doesn't see dealer links in their main sidebar.
+    const navItems = isAdmin ? adminNav : dealerNav;
 
     const handleSignOut = async () => {
         const supabase = createClient();

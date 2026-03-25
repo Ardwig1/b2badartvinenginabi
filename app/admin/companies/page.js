@@ -1,6 +1,6 @@
+'use client';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  BuildingOfficeIcon, 
   MagnifyingGlassIcon, 
   ClockIcon, 
   TrashIcon, 

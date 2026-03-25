@@ -31,8 +31,8 @@ export default async function DashboardLayout({ children }) {
     }
 
     return (
-        <div className="app-layout">
-            <Sidebar isAdmin={false} userEmail={user.email} companyName={effectiveCompanyName} />
+        <div className="app-layout" data-nested={isImpersonating}>
+            <Sidebar isAdmin={false} userEmail={user.email} companyName={effectiveCompanyName} isImpersonated={isImpersonating} />
             <script dangerouslySetInnerHTML={{ __html: `localStorage.setItem('storedCompanyName', '${(effectiveCompanyName).replace(/'/g, "\\'")}');` }} />
             <main className="main-content">
                 <TopHeader />

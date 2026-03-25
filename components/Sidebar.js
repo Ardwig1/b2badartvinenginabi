@@ -36,12 +36,13 @@ const dealerNav = [
     { label: 'İletişim', href: '/dashboard/contact', icon: <PhoneIcon style={{ width: 20, height: 20 }} /> },
 ];
 
-export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '' }) {
-    const [isOpen, setIsOpen] = useState(true);
+export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '', isImpersonated = false }) {
+    const [isOpen, setIsOpen] = useState(!isImpersonated); // Collapse by default in showroom
     const { theme, toggleTheme, mounted } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
-    const navItems = isAdmin ? adminNav : dealerNav;
+    const impersonated = isImpersonated || pathname.includes('/admin/showroom') || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
+    const navItems = (isAdmin && !impersonated) ? adminNav : dealerNav;
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -106,10 +107,12 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                         </div>
                     )}
                 </div>
-                <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
-                    <ArrowRightOnRectangleIcon style={{ width: 20, height: 20, marginRight: isOpen ? 6 : 0, transition: 'all 0.2s' }} />
-                    {isOpen && 'Çıkış'}
-                </button>
+                {!pathname.includes('/admin/showroom') && (
+                    <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
+                        <ArrowRightOnRectangleIcon style={{ width: 20, height: 20, marginRight: isOpen ? 6 : 0, transition: 'all 0.2s' }} />
+                        {isOpen && 'Çıkış'}
+                    </button>
+                )}
             </div>
         </aside>
     );

@@ -1,5 +1,6 @@
 'use server';
 import { createClient } from '@supabase/supabase-js';
+import { getExchangeRates } from '@/lib/tcmb';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -8,12 +9,15 @@ const supabase = createClient(
 
 export async function fetchCompanyDetail(id) {
     try {
-        const [compRes, actRes, cartActRes, ordRes, txRes] = await Promise.all([
+        const [compRes, actRes, cartActRes, ordRes, txRes, settingsRes, usdRes, rates] = await Promise.all([
             supabase.from('companies').select('*, profiles(*), price_group:price_groups(name, discount_percent)').eq('id', id).single(),
             supabase.from('user_activities').select('*').eq('company_id', id).order('created_at', { ascending: false }).limit(200),
             supabase.from('user_activities').select('*').eq('company_id', id).in('action_type', ['cart_add', 'cart_update', 'cart_remove', 'cart_clear', 'order_placed']).order('created_at', { ascending: false }).limit(500),
             supabase.from('orders').select('*').eq('company_id', id).order('created_at', { ascending: false }).limit(1),
-            supabase.from('account_transactions').select('*').eq('company_id', id).order('created_at', { ascending: false })
+            supabase.from('account_transactions').select('*').eq('company_id', id).order('created_at', { ascending: false }),
+            supabase.from('settings').select('*').eq('id', 1).single(),
+            supabase.from('usd_rates').select('*').eq('id', 1).single(),
+            getExchangeRates()
         ]);
 
         if (compRes.error) throw compRes.error;
@@ -54,7 +58,18 @@ export async function fetchCompanyDetail(id) {
         });
 
         // Convert cart map to array
-        const cartItems = Object.values(reconstructedCart).filter(item => item.qty > 0);
+        const cartItemMap = Object.values(reconstructedCart).filter(item => item.qty > 0);
+
+        // Fetch full product details for accurate pricing
+        const productIds = cartItemMap.map(item => item.product.id);
+        let cartItems = [];
+        if (productIds.length > 0) {
+            const { data: fullProducts } = await supabase.from('products').select('*').in('id', productIds);
+            cartItems = cartItemMap.map(item => {
+                const fullProd = fullProducts?.find(p => p.id === item.product.id);
+                return { ...item, fullProduct: fullProd || item.product };
+            });
+        }
 
         return {
             success: true,
@@ -63,7 +78,10 @@ export async function fetchCompanyDetail(id) {
                 activities: actRes.data || [],
                 orders: ordRes.data || [],
                 transactions: txRes.data || [],
-                cart: cartItems
+                cart: cartItems,
+                settings: settingsRes.data,
+                usdSettings: usdRes.data,
+                marketRates: rates
             }
         };
     } catch (e) {
@@ -112,6 +130,68 @@ export async function addAdminCartItem(companyId, product, qty) {
         return { success: true };
     } catch (e) {
         console.error('addAdminCartItem Error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function placeAdminOrder(companyId, items, totals) {
+    try {
+        if (!companyId || !items?.length) throw new Error('Sepet boş');
+
+        // Check company profile
+        const { data: company } = await supabase.from('companies').select('profiles(id)').eq('id', companyId).single();
+        if (!company?.profiles) throw new Error('Firma profili bulunamadı');
+
+        // 1. Create Order
+        const { data: order, error: orderErr } = await supabase.from('orders').insert({
+            company_id: companyId,
+            user_id: company.profiles.id,
+            status: 'pending',
+            items: items.map(item => ({
+                id: item.fullProduct.id,
+                name: item.fullProduct.name,
+                qty: item.qty,
+                price: item.price,
+                total: item.total,
+                oem_no: item.fullProduct.oem_no,
+                brand: item.fullProduct.brand
+            })),
+            total_amount: totals.total,
+            subtotal: totals.subtotal,
+            tax_total: totals.tax,
+            currency: 'TRY',
+            payment_method: 'Cari Hesap (Admin)'
+        }).select().single();
+
+        if (orderErr) throw orderErr;
+
+        // 2. Add Transaction
+        const { error: txErr } = await supabase.from('account_transactions').insert({
+            company_id: companyId,
+            transaction_type: 'TOPTAN SATIŞ',
+            description: `Sipariş #${order.order_number || order.id.toString().slice(0, 8).toUpperCase()} (Admin tarafından oluşturuldu)`,
+            debt: totals.total,
+            credit: 0,
+            document_no: order.order_number || `ORD-${order.id.toString().slice(0, 8).toUpperCase()}`
+        });
+
+        if (txErr) throw txErr;
+
+        // 3. Log Activity
+        await supabase.from('user_activities').insert({
+            company_id: companyId,
+            action_type: 'order_placed',
+            details: {
+                order_id: order.id,
+                total_amount: totals.total,
+                item_count: items.length,
+                admin_placed: true
+            }
+        });
+
+        return { success: true, orderId: order.id };
+    } catch (e) {
+        console.error('placeAdminOrder Error:', e);
         return { success: false, error: e.message };
     }
 }

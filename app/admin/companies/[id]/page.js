@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchCompanyDetail, searchAdminProducts, addAdminCartItem } from './actions';
+import { fetchCompanyDetail, searchAdminProducts, addAdminCartItem, placeAdminOrder } from './actions';
 import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
@@ -62,6 +62,9 @@ export default function AdminCompanyDetail() {
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [addQty, setAddQty] = useState(1);
     const [adding, setAdding] = useState(false);
+    const [extraData, setExtraData] = useState({ settings: null, usdSettings: null, marketRates: { USD: 1, EUR: 1 } });
+    const [showOrderModal, setShowOrderModal] = useState(false);
+    const [orderSaving, setOrderSaving] = useState(false);
 
     const fetchDetails = useCallback(async () => {
         if (!params.id) return;
@@ -76,6 +79,11 @@ export default function AdminCompanyDetail() {
             setOrders(res.data.orders);
             setTransactions(res.data.transactions);
             setCart(res.data.cart || []);
+            setExtraData({
+                settings: res.data.settings,
+                usdSettings: res.data.usdSettings,
+                marketRates: res.data.marketRates || { USD: 1, EUR: 1 }
+            });
         } catch (e) {
             console.error('Fetch Error:', e);
             setErrorMsg(e.message);
@@ -143,6 +151,66 @@ export default function AdminCompanyDetail() {
             alert('Hata: ' + e.message);
         }
         setAdding(false);
+    };
+
+    // PRICING LOGIC (Matching Catalog)
+    const getBaseTryPrice = (p) => {
+        if (!p) return 0;
+        const globalMargin = extraData.settings?.margin || 36;
+        const usdActive = extraData.usdSettings?.is_active;
+        const usdRate = Number(extraData.usdSettings?.usd_rate);
+        
+        let initialPrice = Number(p.list_price) || 0;
+        let rawCost = initialPrice / 1.36;
+        let currentPrice = rawCost * (1 + (globalMargin / 100));
+
+        if (usdActive && usdRate !== null && usdRate >= 0 && p.currency === 'USD') {
+            currentPrice = currentPrice * usdRate;
+        } else {
+            if (p.currency === 'USD') currentPrice = currentPrice * extraData.marketRates.USD;
+            else if (p.currency === 'EUR') currentPrice = currentPrice * extraData.marketRates.EUR;
+        }
+        return currentPrice;
+    };
+
+    const getDiscountedPrice = (p) => {
+        const basePrice = getBaseTryPrice(p);
+        const productDiscount = Number(p.discount_rate) || 0;
+        const pg = Array.isArray(company?.price_group) ? company.price_group[0] : company?.price_group;
+        const groupDiscount = pg?.discount_percent || 0;
+        
+        const afterProductDiscount = basePrice * (1 - productDiscount / 100);
+        const afterGroupDiscount = afterProductDiscount * (1 - groupDiscount / 100);
+        return afterGroupDiscount;
+    };
+
+    const getKdvPrice = (p) => getDiscountedPrice(p) * 1.20;
+
+    const calculateTotals = () => {
+        let subtotal = 0;
+        const processedItems = cart.map(item => {
+            const price = getDiscountedPrice(item.fullProduct);
+            const total = price * item.qty;
+            subtotal += total;
+            return { ...item, price, total };
+        });
+        const tax = subtotal * 0.20;
+        const total = subtotal + tax;
+        return { items: processedItems, subtotal, tax, total };
+    };
+
+    const handlePlaceOrder = async () => {
+        const totals = calculateTotals();
+        setOrderSaving(true);
+        const res = await placeAdminOrder(company.id, totals.items, totals);
+        if (res.success) {
+            setShowOrderModal(false);
+            fetchDetails(); // Refresh all
+            alert('Sipariş başarıyla oluşturuldu!');
+        } else {
+            alert('Hata: ' + res.error);
+        }
+        setOrderSaving(false);
     };
 
     if (loading) return <div className="page-wrapper"><div className="loading-center"><div className="loading-spinner" /></div></div>;
@@ -231,7 +299,9 @@ export default function AdminCompanyDetail() {
                 <div className="card" style={{ padding: 0 }}>
                     {(!cart || cart.length === 0) ? (
                         <div className="empty-state" style={{ padding: 40 }}>Müşterinin sepeti şu anda boş.</div>
-                    ) : (
+                    ) : (() => {
+                        const { items: processedItems, subtotal, tax, total } = calculateTotals();
+                        return (
                         <div className="table-wrapper">
                             <table>
                                 <thead>
@@ -239,25 +309,58 @@ export default function AdminCompanyDetail() {
                                         <th>Ürün</th>
                                         <th>OEM No</th>
                                         <th style={{ textAlign: 'center' }}>Adet</th>
-                                        <th style={{ textAlign: 'right' }}>Son İşlem</th>
+                                        <th style={{ textAlign: 'right' }}>Birim Fiyat</th>
+                                        <th style={{ textAlign: 'right' }}>Ara Toplam</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cart.map((item, idx) => (
+                                    {processedItems.map((item, idx) => (
                                         <tr key={idx}>
-                                            <td style={{ fontWeight: 600 }}>{item.product?.name || 'Bilinmeyen Ürün'}</td>
-                                            <td style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{item.product?.oem_no || '-'}</td>
+                                            <td style={{ fontWeight: 600 }}>{item.fullProduct?.name || 'Bilinmeyen Ürün'}</td>
+                                            <td style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>{item.fullProduct?.oem_no || '-'}</td>
                                             <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--brand)' }}>{item.qty}</td>
-                                            <td style={{ textAlign: 'right', fontSize: 12, color: 'var(--text-muted)' }}>Müşterinin sepetinde aktif</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 500 }}>{formatCurrency(item.price)}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.total)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
                             </table>
-                            <div style={{ padding: '16px 24px', borderTop: '1px solid var(--border)', background: 'rgba(15, 23, 42, 0.01)', fontSize: 13, color: 'var(--text-muted)' }}>
-                                * Bu bilgiler müşterinin en son alışverişinden sonraki log kayıtlarından anlık olarak oluşturulmuştur.
+                            
+                            <div style={{ padding: '24px', borderTop: '2px solid var(--border)', background: 'rgba(15, 23, 42, 0.02)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 40 }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 200 }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-muted)' }}>
+                                            <span>Ara Toplam:</span>
+                                            <span>{formatCurrency(subtotal)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: 'var(--text-muted)' }}>
+                                            <span>KDV (%20):</span>
+                                            <span>{formatCurrency(tax)}</span>
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                                            <span>GENEL TOPLAM:</span>
+                                            <span>{formatCurrency(total)}</span>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                        <button 
+                                            className="btn btn-primary" 
+                                            style={{ height: 48, padding: '0 32px', fontSize: 15, fontWeight: 700 }}
+                                            onClick={() => setShowOrderModal(true)}
+                                        >
+                                            <ShoppingCartIcon style={{ width: 20, height: 20, marginRight: 8 }} />
+                                            Siparişi Oluştur
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div style={{ padding: '12px 24px', borderTop: '1px solid var(--border)', background: 'rgba(15, 23, 42, 0.01)', fontSize: 12, color: 'var(--brand)', fontWeight: 500 }}>
+                                * Birim fiyatlar; firmanın iskonto grubu, ürünün kampanya durumu ve güncel kur oranları dahil edilerek hesaplanmıştır.
                             </div>
                         </div>
-                    )}
+                        );
+                    })()}
                 </div>
             )}
             {activeTab === 'activity' && (
@@ -539,6 +642,47 @@ export default function AdminCompanyDetail() {
                 </div>
             )}
 
+            {showOrderModal && (
+                <div className="modal-overlay" onClick={() => setShowOrderModal(false)}>
+                    <div className="modal" style={{ maxWidth: 450 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Sipariş Onayı</h3>
+                            <button className="modal-close" onClick={() => setShowOrderModal(false)}>✕</button>
+                        </div>
+                        <div style={{ padding: 24, textAlign: 'center' }}>
+                            <div style={{ 
+                                width: 64, height: 64, borderRadius: '50%', background: 'rgba(59, 130, 246, 0.1)', 
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px',
+                                color: 'var(--brand)'
+                            }}>
+                                <ShoppingCartIcon style={{ width: 32, height: 32 }} />
+                            </div>
+                            
+                            <h4 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Siparişi oluşturmak istiyor musunuz?</h4>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.5, marginBottom: 24 }}>
+                                <strong>{company.name}</strong> firması adına <strong>{cart.length} kalem</strong> üründen oluşan 
+                                <br />
+                                <strong style={{ color: 'var(--text-primary)', fontSize: 20, display: 'block', marginTop: 8 }}>
+                                    {formatCurrency(calculateTotals().total)}
+                                </strong>
+                                tutarındaki sipariş sisteme kaydedilecek ve cari hesaba borç olarak işlenecektir.
+                            </p>
+
+                            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+                                <button className="btn btn-ghost" onClick={() => setShowOrderModal(false)} style={{ minWidth: 120 }}>Vazgeç</button>
+                                <button 
+                                    className="btn btn-primary" 
+                                    onClick={handlePlaceOrder} 
+                                    disabled={orderSaving}
+                                    style={{ minWidth: 160 }}
+                                >
+                                    {orderSaving ? 'Oluşturuluyor...' : 'Siparişi Tamamla'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

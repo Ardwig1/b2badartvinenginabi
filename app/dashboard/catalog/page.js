@@ -180,7 +180,7 @@ export default function DealerCatalog() {
         setCurrentPage(1);
 
         try {
-            const productColumns = 'id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at';
+            const productColumns = 'id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price';
             let query = supabase.from('products').select(productColumns).eq('is_active', true);
 
             if (filterText.trim()) {
@@ -235,7 +235,8 @@ export default function DealerCatalog() {
 
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
-        let rawCost = initialPrice / 1.36;
+        let marginBase = (Number(p.profit_margin) || 36) / 100;
+        let rawCost = initialPrice / (1 + marginBase);
         let currentPrice = rawCost * (1 + (globalMargin / 100));
 
         if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0 && p.currency === 'USD') {

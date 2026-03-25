@@ -10,8 +10,6 @@ const supabase = createClient(
 
 export async function GET() {
     try {
-        const user = await verifyAdmin();
-        if (!user) return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
         const { data: rateData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE').single();
         const { data: activeData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE_ACTIVE').single();
 

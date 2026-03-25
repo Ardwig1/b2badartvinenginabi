@@ -35,13 +35,13 @@ const dealerNav = [
     { label: 'Öneri ve Şikayet', href: '/dashboard/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'İletişim', href: '/dashboard/contact', icon: <PhoneIcon style={{ width: 20, height: 20 }} /> },
 ];
-
 export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '', isImpersonated = false }) {
-    const [isOpen, setIsOpen] = useState(!isImpersonated); // Collapse by default in showroom
     const { theme, toggleTheme, mounted } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
     const impersonated = isImpersonated || pathname.includes('/admin/showroom') || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
+    const isShowroom = pathname.includes('/admin/showroom');
+    const [isOpen, setIsOpen] = useState(!impersonated && !isShowroom); // Collapse in showroom/impersonation
     const navItems = (isAdmin && !impersonated) ? adminNav : dealerNav;
 
     const handleSignOut = async () => {

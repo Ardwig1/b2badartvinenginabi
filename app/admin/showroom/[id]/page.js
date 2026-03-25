@@ -34,25 +34,26 @@ export default function AdminShowroom() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 80px)', margin: '-24px -24px 0 -24px', overflow: 'hidden' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', overflow: 'hidden', padding: '0px' }}>
             <div style={{ 
-                padding: '8px 24px', 
+                padding: '12px 24px', 
                 background: 'var(--bg-card)', 
                 borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                zIndex: 10,
+                zIndex: 20,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <div style={{ 
                         background: 'rgba(59, 130, 246, 0.1)', 
                         color: 'var(--primary)', 
-                        padding: '4px 12px', 
-                        borderRadius: 6,
-                        fontSize: 12,
-                        fontWeight: 600
+                        padding: '6px 16px', 
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        border: '1px solid rgba(59, 130, 246, 0.2)'
                     }}>
                         Görüntülenen Firma: {companyName}
                     </div>
@@ -60,21 +61,28 @@ export default function AdminShowroom() {
 
                 <button 
                     onClick={exitShowroom}
-                    className="btn btn-ghost"
-                    style={{ fontSize: 12, gap: 6, color: 'var(--danger)', padding: '4px 12px' }}
+                    className="btn btn-primary"
+                    style={{ fontSize: 13, gap: 8, padding: '8px 20px' }}
                 >
-                    <ArrowLeftIcon style={{ width: 14, height: 14 }} />
-                    Admin Paneline Dön
+                    <ArrowLeftIcon style={{ width: 16, height: 16 }} />
+                    Showroom Modundan Çık
                 </button>
             </div>
 
-            <div style={{ flex: 1, position: 'relative', background: 'var(--bg-card)' }}>
+            <div style={{ 
+                flex: 1, 
+                position: 'relative', 
+                background: 'var(--bg-primary)',
+                overflow: 'hidden'
+            }}>
                 <iframe 
                     src="/dashboard/catalog" 
                     style={{ 
-                        width: '100%', 
-                        height: '100%',
-                        border: 'none'
+                        width: '117.6%', 
+                        height: '117.6%',
+                        border: 'none',
+                        transform: 'scale(0.85)',
+                        transformOrigin: 'top left'
                     }} 
                     title="User Dashboard Showroom"
                 />

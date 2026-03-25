@@ -39,10 +39,12 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
     const { theme, toggleTheme, mounted } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
-    const impersonated = isImpersonated || pathname.includes('/admin/showroom') || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
     const isShowroom = pathname.includes('/admin/showroom');
-    const [isOpen, setIsOpen] = useState(!impersonated && !isShowroom); // Collapse in showroom/impersonation
-    const navItems = (isAdmin && !impersonated) ? adminNav : dealerNav;
+    const impersonated = isImpersonated || isShowroom || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
+    const [isOpen, setIsOpen] = useState(!impersonated);
+    // If we're an admin in showroom mode, WE SHOULD NOT SHOW DEALER LINKS in the main sidebar
+    // Actually, show nothing in the collapsed sidebar for cleaner look, or just keep admin links.
+    const navItems = isShowroom ? [] : (isAdmin ? adminNav : dealerNav);
 
     const handleSignOut = async () => {
         const supabase = createClient();

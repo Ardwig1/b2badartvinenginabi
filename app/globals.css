@@ -144,6 +144,11 @@ select {
   min-height: 100vh;
 }
 
+.app-layout:has(.collapsed), 
+.app-layout:has([class*="collapsed"]) {
+  --current-sidebar-width: 80px;
+}
+
 .main-content {
   flex: 1;
   margin-left: var(--sidebar-width);
@@ -152,7 +157,8 @@ select {
   transition: margin-left 0.3s ease;
 }
 
-.app-layout:has(.collapsed) .main-content {
+.app-layout:has(.collapsed) .main-content,
+.app-layout:has([class*="collapsed"]) .main-content {
   margin-left: 80px;
 }
 

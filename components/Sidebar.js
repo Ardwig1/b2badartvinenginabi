@@ -110,7 +110,8 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                         </div>
                     )}
                 </div>
-                {!pathname.includes('/admin/showroom') && (
+                {/* Admin always sees their logout. Dealer only sees it if NOT impersonated by Admin. */}
+                {(isAdmin || !impersonated) && (
                     <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
                         <ArrowRightOnRectangleIcon style={{ width: 20, height: 20, marginRight: isOpen ? 6 : 0, transition: 'all 0.2s' }} />
                         {isOpen && 'Çıkış'}

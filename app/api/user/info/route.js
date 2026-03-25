@@ -23,7 +23,7 @@ export async function GET() {
         // Fetch profile and company info
         const { data: profile, error: profileError } = await adminSupabase
             .from('profiles')
-            .select('company_id, full_name, company:companies(name, current_balance, phone)')
+            .select('company_id, full_name, is_admin, company:companies(id, name, current_balance, phone)')
             .eq('id', user.id)
             .maybeSingle();
 
@@ -32,29 +32,43 @@ export async function GET() {
             return NextResponse.json({ error: 'Profil bilgileri alınamadı.', details: profileError?.message }, { status: 404 });
         }
 
-        let companyName = '';
-        let companyBalance = 0;
-        let companyPhone = '';
+        // --- Impersonation Logic ---
+        const cookieStore = await cookies();
+        const impId = cookieStore.get('impersonate_company_id')?.value;
+        let effectiveCompanyId = profile.company_id;
+        let effectiveCompanyName = profile.company?.name || '';
+        let effectiveBalance = Number(profile.company?.current_balance) || 0;
+        let effectivePhone = profile.company?.phone || '';
 
-        if (profile?.company) {
-            const comp = profile.company;
-            companyName = comp?.name || '';
-            companyBalance = Number(comp?.current_balance) || 0;
-            companyPhone = comp?.phone || '';
+        if (profile.is_admin && impId) {
+            const { data: impCompany } = await adminSupabase
+                .from('companies')
+                .select('id, name, current_balance, phone')
+                .eq('id', impId)
+                .single();
+
+            if (impCompany) {
+                effectiveCompanyId = impCompany.id;
+                effectiveCompanyName = impCompany.name;
+                effectiveBalance = Number(impCompany.current_balance) || 0;
+                effectivePhone = impCompany.phone || '';
+            }
         }
+        // --- End Impersonation Logic ---
 
-        // Fallback to full_name if company name is missing
-        if (!companyName && profile?.full_name) {
-            companyName = profile.full_name;
+        // Fallback to full_name if company name is still missing (for admins without specific company)
+        if (!effectiveCompanyName && profile?.full_name) {
+            effectiveCompanyName = profile.full_name;
         }
 
         return NextResponse.json({
             email: user.email,
-            phone: companyPhone || '',
-            companyId: profile.company_id,
-            companyName: companyName,
+            phone: effectivePhone || '',
+            companyId: effectiveCompanyId,
+            companyName: effectiveCompanyName,
             fullName: profile.full_name || '',
-            currentBalance: companyBalance
+            currentBalance: effectiveBalance,
+            isImpersonating: Boolean(profile.is_admin && impId)
         });
 
     } catch (err) {

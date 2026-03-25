@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import Sidebar from '@/components/Sidebar';
 import TopHeader from '@/components/TopHeader';
 
@@ -11,17 +12,28 @@ export default async function DashboardLayout({ children }) {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('is_admin, full_name, company:companies(name, status)')
+        .select('is_admin, full_name, company:companies(id, name, status)')
         .eq('id', user.id)
         .single();
 
-    if (profile?.is_admin) redirect('/admin');
-    if (profile?.company?.status !== 'approved') redirect('/pending');
+    const cookieStore = await cookies();
+    const isImpersonating = profile?.is_admin && cookieStore.get('impersonate_company_id')?.value;
+
+    if (profile?.is_admin && !isImpersonating) redirect('/admin');
+    if (!isImpersonating && profile?.company?.status !== 'approved') redirect('/pending');
+
+    // If impersonating, we might want to fetch that company's name for the sidebar
+    let effectiveCompanyName = profile?.company?.name || '';
+    if (isImpersonating) {
+        const impId = cookieStore.get('impersonate_company_id')?.value;
+        const { data: impCompany } = await supabase.from('companies').select('name').eq('id', impId).single();
+        if (impCompany) effectiveCompanyName = impCompany.name;
+    }
 
     return (
         <div className="app-layout">
-            <Sidebar isAdmin={false} userEmail={user.email} companyName={profile?.company?.name || ''} />
-            <script dangerouslySetInnerHTML={{ __html: `localStorage.setItem('storedCompanyName', '${(profile?.company?.name || '').replace(/'/g, "\\'")}');` }} />
+            <Sidebar isAdmin={false} userEmail={user.email} companyName={effectiveCompanyName} />
+            <script dangerouslySetInnerHTML={{ __html: `localStorage.setItem('storedCompanyName', '${(effectiveCompanyName).replace(/'/g, "\\'")}');` }} />
             <main className="main-content">
                 <TopHeader />
                 <div style={{ padding: '0 24px' }}>

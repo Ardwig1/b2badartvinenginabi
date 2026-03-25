@@ -1,6 +1,4 @@
-'use client';
-import { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { 
   BuildingOfficeIcon, 
   MagnifyingGlassIcon, 
@@ -10,7 +8,8 @@ import {
   XCircleIcon,
   ExclamationCircleIcon,
   LockClosedIcon,
-  LockOpenIcon
+  LockOpenIcon,
+  ArrowLeftStartOnRectangleIcon
 } from '@heroicons/react/24/outline';
 
 const statusMap = {
@@ -51,6 +50,7 @@ export default function CompaniesPage() {
   const [companies, setCompanies] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
@@ -123,6 +123,24 @@ export default function CompaniesPage() {
       alert(`İletişim Hatası: ${e.message}`);
     }
     fetchData(); // refresh UI
+  };
+
+  const enterShowroom = async (companyId) => {
+    try {
+      const res = await fetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyId })
+      });
+      if (res.ok) {
+        router.push(`/admin/showroom/${companyId}`);
+      } else {
+        const d = await res.json();
+        alert('Showroom başlatılamadı: ' + d.error);
+      }
+    } catch (e) {
+      alert('İletişim hatası: ' + e.message);
+    }
   };
 
   const updatePriceGroup = async (id, price_group_id) => {
@@ -400,6 +418,22 @@ export default function CompaniesPage() {
                             title={`Risk Limitini Düzenle (Şu an: PŞ${Number(c.risk_limit || 0).toLocaleString('tr-TR')})`}
                           >
                             <ExclamationCircleIcon style={{ width: 16, height: 16 }} />
+                          </button>
+                          <button 
+                            className="btn btn-sm"
+                            style={{ 
+                              backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                              borderColor: 'rgba(59, 130, 246, 0.3)',
+                              color: '#2563eb',
+                              padding: '4px 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onClick={() => enterShowroom(c.id)}
+                            title="Firmaya Giriş Yap (Showroom)"
+                          >
+                            <ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} />
                           </button>
                           <button className="btn btn-ghost btn-sm" onClick={() => setEditModal({ show: true, company: c, value: '' })}>✎</button>
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteModal({ show: true, company: c, step: 1 })}>🗑</button>

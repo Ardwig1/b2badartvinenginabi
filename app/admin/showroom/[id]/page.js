@@ -10,12 +10,18 @@ export default function AdminShowroom() {
 
     useEffect(() => {
         const fetchCompany = async () => {
-            const res = await fetch(`/api/admin/companies?id=${id}`);
-            if (res.ok) {
-                const data = await res.json();
-                if (data.company) {
-                    setCompanyName(data.company.name);
+            if (!id) return;
+            try {
+                const res = await fetch(`/api/admin/companies?id=${id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.company) {
+                        setCompanyName(data.company.name);
+                    }
                 }
+            } catch (err) {
+                console.error('Fetch company name failed:', err);
+                setCompanyName('Firma Bilgisi Alınamadı');
             }
         };
         fetchCompany();

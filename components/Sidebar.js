@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useTheme } from '@/components/ThemeProvider';
 import {
@@ -80,14 +81,14 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                         ? pathname === item.href
                         : pathname.startsWith(item.href);
                     return (
-                        <a
+                        <Link
                             key={item.href}
                             href={item.href}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                         >
                             <span className={styles.navIcon}>{item.icon}</span>
                             {isOpen && <span>{item.label}</span>}
-                        </a>
+                        </Link>
                     );
                 })}
             </nav>

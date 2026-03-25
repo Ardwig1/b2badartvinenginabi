@@ -17,7 +17,8 @@ export default async function DashboardLayout({ children }) {
         .single();
 
     const cookieStore = await cookies();
-    const isImpersonating = profile?.is_admin && cookieStore.get('impersonate_company_id')?.value;
+    const impersonatedId = cookieStore.get('impersonate_company_id')?.value;
+    const isImpersonating = profile?.is_admin && impersonatedId;
 
     if (profile?.is_admin && !isImpersonating) redirect('/admin');
     if (!isImpersonating && profile?.company?.status !== 'approved') redirect('/pending');

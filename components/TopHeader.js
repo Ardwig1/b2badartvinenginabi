@@ -1,7 +1,8 @@
-'use client';
-import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function TopHeader() {
+    const pathname = usePathname();
+    const isShowroom = pathname?.includes('/admin/showroom') || (typeof window !== 'undefined' && window.location.pathname.includes('/admin/showroom'));
     const [rates, setRates] = useState({ USD: null, EUR: null });
 
     useEffect(() => {
@@ -28,13 +29,14 @@ export default function TopHeader() {
             display: 'flex',
             justifyContent: 'flex-end',
             alignItems: 'center',
-            padding: '12px 24px',
+            padding: isShowroom ? '6px 16px' : '12px 24px',
             background: 'var(--bg-card)',
             borderBottom: '1px solid var(--border-light)',
             gap: '16px',
             position: 'sticky',
             top: 0,
-            zIndex: 10
+            zIndex: 10,
+            minHeight: isShowroom ? '40px' : 'auto'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: '500' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>TCMB Kurları:</span>

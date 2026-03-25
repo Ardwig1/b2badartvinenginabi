@@ -1,7 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function AdminCurrencyHeader() {
+    const pathname = usePathname();
     const [rates, setRates] = useState({ USD: null, EUR: null });
 
     useEffect(() => {
@@ -20,6 +22,8 @@ export default function AdminCurrencyHeader() {
         const interval = setInterval(fetchRates, 1000 * 60 * 15); // Update every 15 mins
         return () => clearInterval(interval);
     }, []);
+
+    if (pathname?.includes('/admin/showroom')) return null;
 
     return (
         <div style={{

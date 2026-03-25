@@ -17,13 +17,11 @@ export default async function AdminLayout({ children }) {
 
     if (!profile?.is_admin) redirect('/dashboard');
 
-    const isShowroom = pathname?.includes('/admin/showroom');
-
     return (
         <div className="app-layout">
             <Sidebar isAdmin={true} userEmail={user.email} companyName={profile.full_name || 'Admin'} />
-            {!isShowroom && <AdminCurrencyHeader />}
-            <main className="main-content" style={{ paddingTop: isShowroom ? '0' : '80px' }}>
+            <AdminCurrencyHeader />
+            <main className="main-content">
                 {children}
             </main>
         </div>

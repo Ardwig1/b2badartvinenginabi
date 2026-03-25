@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { fetchCompanyDetail } from './actions';
+import { fetchCompanyDetail, searchAdminProducts, addAdminCartItem } from './actions';
 import { ArrowLeftIcon, BuildingOfficeIcon, ShoppingCartIcon, MagnifyingGlassIcon, DocumentTextIcon, BanknotesIcon, ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const statusMap = { pending: 'Bekliyor', approved: 'Onaylı', rejected: 'Reddedildi' };
@@ -55,6 +55,13 @@ export default function AdminCompanyDetail() {
     const [showTxModal, setShowTxModal] = useState(false);
     const [txForm, setTxForm] = useState({ type: 'debt', amount: '', description: presetDescriptions[0], customDescription: '', documentNo: '' });
     const [txSaving, setTxSaving] = useState(false);
+    const [showAddModal, setShowAddModal] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState(null);
+    const [addQty, setAddQty] = useState(1);
+    const [adding, setAdding] = useState(false);
 
     const fetchDetails = useCallback(async () => {
         if (!params.id) return;
@@ -103,6 +110,39 @@ export default function AdminCompanyDetail() {
             alert('Hata: ' + err.message);
         }
         setTxSaving(false);
+    };
+
+    const handleSearch = async (val) => {
+        setSearchTerm(val);
+        if (val.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+        setSearching(true);
+        const res = await searchAdminProducts(val);
+        if (res.success) setSearchResults(res.data);
+        setSearching(false);
+    };
+
+    const handleAddCartItem = async () => {
+        if (!selectedProduct) return;
+        setAdding(true);
+        try {
+            const res = await addAdminCartItem(company.id, selectedProduct, addQty);
+            if (res.success) {
+                setShowAddModal(false);
+                setSearchTerm('');
+                setSearchResults([]);
+                setSelectedProduct(null);
+                setAddQty(1);
+                fetchDetails(); // Refresh cart
+            } else {
+                alert('Hata: ' + res.error);
+            }
+        } catch (e) {
+            alert('Hata: ' + e.message);
+        }
+        setAdding(false);
     };
 
     if (loading) return <div className="page-wrapper"><div className="loading-center"><div className="loading-spinner" /></div></div>;
@@ -179,6 +219,9 @@ export default function AdminCompanyDetail() {
             <div className="tabs" style={{ marginBottom: 24 }}>
                 <button className={`tab ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>Son Hareketler (Arama & Sepet)</button>
                 <button className={`tab ${activeTab === 'cart' ? 'active' : ''}`} onClick={() => setActiveTab('cart')}>Güncel Sepeti ({cart.length})</button>
+                <div style={{ marginLeft: 'auto', display: activeTab === 'cart' ? 'block' : 'none' }}>
+                    <button className="btn btn-primary btn-sm" onClick={() => setShowAddModal(true)}>+ Ürün Ekle</button>
+                </div>
                 <button className={`tab ${activeTab === 'orders' ? 'active' : ''}`} onClick={() => setActiveTab('orders')}>Sipariş Geçmişi ({orders.length})</button>
                 <button className={`tab ${activeTab === 'transactions' ? 'active' : ''}`} onClick={() => setActiveTab('transactions')}>Cari Hesap Hareketleri ({transactions.length})</button>
             </div>
@@ -394,6 +437,104 @@ export default function AdminCompanyDetail() {
                                 <button type="submit" className="btn btn-primary" disabled={txSaving}>{txSaving ? 'İşleniyor...' : 'İşlemi Kaydet'}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {showAddModal && (
+                <div className="modal-overlay" onClick={() => { setShowAddModal(false); setSelectedProduct(null); setSearchResults([]); setSearchTerm(''); }}>
+                    <div className="modal" style={{ maxWidth: 500 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">Sepete Ürün Ekle</h3>
+                            <button className="modal-close" onClick={() => { setShowAddModal(false); setSelectedProduct(null); setSearchResults([]); setSearchTerm(''); }}>✕</button>
+                        </div>
+                        <div style={{ padding: 20 }}>
+                            <div className="form-group" style={{ marginBottom: 16 }}>
+                                <label className="form-label">Ürün Ara (İsim, Kod veya OEM)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="Ürün adı, kod veya OEM yazın..." 
+                                        value={searchTerm} 
+                                        onChange={e => handleSearch(e.target.value)}
+                                        autoFocus
+                                        style={{ paddingRight: 40 }}
+                                    />
+                                    {searching && <div style={{ position: 'absolute', right: 12, top: 11 }}><div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /></div>}
+                                </div>
+                                
+                                {searchResults.length > 0 && !selectedProduct && (
+                                    <div style={{ 
+                                        marginTop: 8, 
+                                        maxHeight: 250, 
+                                        overflowY: 'auto', 
+                                        border: '1px solid var(--border)', 
+                                        borderRadius: 10,
+                                        background: 'var(--bg-card)',
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                                        zIndex: 10
+                                    }}>
+                                        {searchResults.map(p => (
+                                            <div 
+                                                key={p.id} 
+                                                onClick={() => { setSelectedProduct(p); setSearchTerm(p.name); setSearchResults([]); }}
+                                                style={{ 
+                                                    padding: '12px 16px', 
+                                                    cursor: 'pointer', 
+                                                    borderBottom: '1px solid var(--border)',
+                                                    transition: 'all 0.2s',
+                                                    backgroundColor: 'transparent'
+                                                }}
+                                                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(15, 23, 42, 0.05)'}
+                                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                            >
+                                                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{p.name}</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 12, marginTop: 4 }}>
+                                                    <span>Kod: <strong style={{ color: 'var(--text-secondary)' }}>{p.code}</strong></span>
+                                                    <span>Marka: <strong style={{ color: 'var(--text-secondary)' }}>{p.brand}</strong></span>
+                                                    <span>OEM: <strong style={{ color: 'var(--text-secondary)' }}>{p.oem_no}</strong></span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {selectedProduct && (
+                                <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 16, borderRadius: 12, marginBottom: 20, border: '1px solid var(--brand)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--brand)' }}>{selectedProduct.name}</div>
+                                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', height: 'auto', padding: '2px 8px' }} onClick={() => { setSelectedProduct(null); setSearchTerm(''); }}>Değiştir</button>
+                                    </div>
+                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{selectedProduct.brand} | {selectedProduct.oem_no}</div>
+                                    
+                                    <div className="form-group" style={{ marginTop: 20, maxWidth: 140 }}>
+                                        <label className="form-label">Eklenecek Adet</label>
+                                        <input 
+                                            type="number" 
+                                            className="form-input" 
+                                            min="1" 
+                                            value={addQty} 
+                                            onChange={e => setAddQty(e.target.value)} 
+                                            style={{ fontSize: 16, fontWeight: 700, textAlign: 'center' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 10 }}>
+                                <button className="btn btn-ghost" onClick={() => { setShowAddModal(false); setSelectedProduct(null); setSearchResults([]); setSearchTerm(''); }}>İptal</button>
+                                <button 
+                                    className="btn btn-primary" 
+                                    disabled={!selectedProduct || adding}
+                                    onClick={handleAddCartItem}
+                                    style={{ minWidth: 120 }}
+                                >
+                                    {adding ? 'Ekleniyor...' : 'Sepete Ekle'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

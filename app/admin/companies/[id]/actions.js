@@ -71,3 +71,47 @@ export async function fetchCompanyDetail(id) {
         return { success: false, error: e.message };
     }
 }
+
+export async function searchAdminProducts(term) {
+    try {
+        if (!term || term.trim().length < 2) return { success: true, data: [] };
+        
+        const safeTerm = `%${term.trim()}%`;
+        const { data, error } = await supabase
+            .from('products')
+            .select('id, code, oem_no, name, brand, list_price, currency')
+            .eq('is_active', true)
+            .or(`name.ilike.${safeTerm},code.ilike.${safeTerm},oem_no.ilike.${safeTerm},brand.ilike.${safeTerm}`)
+            .limit(20);
+
+        if (error) throw error;
+        return { success: true, data: data || [] };
+    } catch (e) {
+        console.error('searchAdminProducts Error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function addAdminCartItem(companyId, product, qty) {
+    try {
+        if (!companyId || !product?.id || !qty) throw new Error('Eksik bilgi');
+
+        const { error } = await supabase.from('user_activities').insert({
+            company_id: companyId,
+            action_type: 'cart_add',
+            details: {
+                id: product.id,
+                name: product.name,
+                oem_no: product.oem_no,
+                qty: parseInt(qty),
+                admin_added: true // Flag to distinguish admin action
+            }
+        });
+
+        if (error) throw error;
+        return { success: true };
+    } catch (e) {
+        console.error('addAdminCartItem Error:', e);
+        return { success: false, error: e.message };
+    }
+}

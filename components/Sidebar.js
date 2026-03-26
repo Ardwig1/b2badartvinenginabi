@@ -80,10 +80,16 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                     const isActive = item.href === '/admin' || item.href === '/dashboard'
                         ? pathname === item.href
                         : pathname.startsWith(item.href);
+                    
+                    // If in showroom mode, preserve the showroom=true query param for all internal links
+                    const finalHref = isShowroom 
+                        ? (item.href.includes('?') ? `${item.href}&showroom=true` : `${item.href}?showroom=true`)
+                        : item.href;
+
                     return (
                         <Link
                             key={item.href}
-                            href={item.href}
+                            href={finalHref}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
                         >
                             <span className={styles.navIcon}>{item.icon}</span>

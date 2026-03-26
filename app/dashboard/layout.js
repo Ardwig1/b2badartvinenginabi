@@ -20,7 +20,10 @@ export default async function DashboardLayout({ children }) {
     const impersonatedId = cookieStore.get('impersonate_company_id')?.value;
     const isImpersonating = profile?.is_admin && impersonatedId;
 
-    if (profile?.is_admin && !isImpersonating) redirect('/admin');
+    const { searchParams } = new URL(request.url, `http://${request.headers.get('host')}`);
+    const isShowroomParam = searchParams.get('showroom') === 'true';
+
+    if (profile?.is_admin && !isImpersonating && !isShowroomParam) redirect('/admin');
     if (!isImpersonating && profile?.company?.status !== 'approved') redirect('/pending');
 
     // If impersonating, we might want to fetch that company's name for the sidebar

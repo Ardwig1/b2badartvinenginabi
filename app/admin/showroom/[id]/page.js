@@ -12,7 +12,8 @@ export default function AdminShowroom() {
         const fetchCompany = async () => {
             if (!id) return;
             try {
-                const res = await fetch(`/api/admin/create-company?id=${id}`);
+                // Use cache-busting to ensure we get the latest name
+                const res = await fetch(`/api/admin/create-company?id=${id}&t=${Date.now()}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.company) {
@@ -82,7 +83,7 @@ export default function AdminShowroom() {
                 overflow: 'hidden'
             }}>
                 <iframe 
-                    src="/dashboard/catalog" 
+                    src="/dashboard" 
                     style={{ 
                         width: '117.6%', 
                         height: '117.6%',

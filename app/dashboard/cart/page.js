@@ -157,49 +157,39 @@ export default function DealerCart() {
         const finalNote = `[${shippingMethod}] ${note}`;
 
         try {
-            const { data: order, error: orderError } = await supabase.from('orders').insert({
-                company_id: companyId,
-                shipping_address: finalAddress,
-                note: finalNote,
-                total_amount: grandTotal,
-                status: 'pending',
-            }).select().single();
+            // Prepare items for the RPC
+            const p_items = selectedCartItems.map(i => ({
+                product_id: i.product.id,
+                quantity: i.qty,
+                unit_price: getDiscountedPrice(i.product),
+                total_price: getDiscountedPrice(i.product) * i.qty
+            }));
 
-            if (orderError) throw orderError;
+            // Call the secure RPC
+            const { data, error } = await supabase.rpc('place_b2b_order', {
+                p_company_id: companyId,
+                p_shipping_address: finalAddress,
+                p_note: finalNote,
+                p_total_amount: grandTotal,
+                p_items: p_items
+            });
 
-            if (order) {
-                const { error: itemsError } = await supabase.from('order_items').insert(selectedCartItems.map(i => ({
-                    order_id: order.id,
-                    product_id: i.product.id,
-                    quantity: i.qty,
-                    unit_price: getDiscountedPrice(i.product),
-                    total_price: getDiscountedPrice(i.product) * i.qty,
-                })));
+            if (error) throw error;
 
-                if (itemsError) throw itemsError;
-
-                // Reduce stock
+            if (data?.success) {
+                // Only remove ordered (selected) items from cart context, keep the rest
                 for (const item of selectedCartItems) {
-                    const { error: rpcError } = await supabase.rpc('decrement_stock', { product_id: item.product.id, qty: item.qty });
-                    if (rpcError) {
-                        const { data } = await supabase.from('products').select('stock_quantity').eq('id', item.product.id).single();
-                        if (data !== null && data !== undefined) {
-                            await supabase.from('products').update({ stock_quantity: Math.max(0, (data.stock_quantity || 0) - item.qty) }).eq('id', item.product.id);
-                        }
-                    }
+                    ctxSetQty(item.product.id, item.product, 0);
                 }
+                setSuccess(true);
+            } else {
+                throw new Error(data?.error || 'Sipariş oluşturulamadı');
             }
-
-            // Only remove ordered (selected) items from cart, keep the rest
-            for (const item of selectedCartItems) {
-                ctxSetQty(item.product.id, item.product, 0);
-            }
-
-            setSuccess(true);
 
         } catch (error) {
             console.error("Order placement failed:", error);
-            alert("Sipariş verilirken bir hata oluştu: " + (error.message || "Lütfen tekrar deneyin."));
+            // Graceful error message (e.g. from the Postgres RAISE EXCEPTION)
+            alert("HATA: " + (error.message || "Sipariş verilirken bir sorun oluştu."));
         } finally {
             setSubmitting(false);
         }

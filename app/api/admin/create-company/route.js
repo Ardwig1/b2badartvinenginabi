@@ -37,7 +37,14 @@ export async function GET(request) {
 
     const { searchParams } = new URL(request.url);
     const filter = searchParams.get('filter');
+    const id = searchParams.get('id');
     const adminSupabase = await getAdminClient();
+
+    if (id) {
+        const { data, error } = await adminSupabase.from('companies').select('*, price_group:price_groups(name)').eq('id', id).single();
+        if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+        return NextResponse.json({ company: data });
+    }
 
     let query = adminSupabase.from('companies').select('*, price_group:price_groups(name)').order('created_at', { ascending: false });
     if (filter && filter !== 'all') query = query.eq('status', filter);

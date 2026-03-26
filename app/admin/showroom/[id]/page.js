@@ -12,7 +12,7 @@ export default function AdminShowroom() {
         const fetchCompany = async () => {
             if (!id) return;
             try {
-                const res = await fetch(`/api/admin/companies?id=${id}`);
+                const res = await fetch(`/api/admin/create-company?id=${id}`);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.company) {

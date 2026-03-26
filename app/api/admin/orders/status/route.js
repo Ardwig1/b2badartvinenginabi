@@ -38,8 +38,9 @@ export async function POST(req) {
             return NextResponse.json({ error: 'İptal edilmiş siparişin durumu bir daha değiştirilemez.' }, { status: 400 });
         }
 
-        // 2. Shipping & Stock Logic (Merkez / Depo)
-        const isShippingNow = (status === 'shipped' || status === 'delivered') && !order.is_stock_reduced;
+        // 2. Shipping & Stock Logic (Trigger on 'confirmed', 'shipped', or 'delivered')
+        // We reduce stock only once (is_stock_reduced track)
+        const isShippingNow = (status === 'confirmed' || status === 'shipped' || status === 'delivered') && !order.is_stock_reduced;
 
         if (isShippingNow) {
             if (!shippingOrigin) {

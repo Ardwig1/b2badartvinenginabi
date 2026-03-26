@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { getExchangeRates } from '@/lib/tcmb';
+import { cookies } from 'next/headers';
 import {
     UserIcon, ChatBubbleBottomCenterTextIcon, CurrencyDollarIcon, PresentationChartLineIcon,
     ShieldCheckIcon, TagIcon, ShoppingCartIcon, ChatBubbleLeftEllipsisIcon
@@ -13,12 +14,31 @@ export default async function DealerDashboard() {
 
     const { data: profile } = await supabase
         .from('profiles')
-        .select('full_name, company_id, company:companies(name, current_balance, risk_limit, price_group:price_groups(name, discount_percent))')
+        .select('full_name, is_admin, company_id, company:companies(id, name, current_balance, risk_limit, price_group:price_groups(name, discount_percent))')
         .eq('id', user.id)
         .single();
 
-    const companyId = profile?.company_id;
+    // Impersonation Support
+    const cookieStore = await cookies();
+    const impersonatedId = cookieStore.get('impersonate_company_id')?.value;
+    const isImpersonating = profile?.is_admin && impersonatedId && impersonatedId !== 'undefined';
 
+    let effectiveCompanyId = profile?.company_id;
+    let company = profile?.company;
+
+    if (isImpersonating) {
+        effectiveCompanyId = impersonatedId;
+        const { data: impCompany } = await supabase
+            .from('companies')
+            .select('name, current_balance, risk_limit, price_group:price_groups(name, discount_percent)')
+            .eq('id', effectiveCompanyId)
+            .single();
+        if (impCompany) {
+            company = impCompany;
+        }
+    }
+
+    const companyId = effectiveCompanyId;
     let rates = await getExchangeRates();
 
     const [
@@ -31,9 +51,7 @@ export default async function DealerDashboard() {
         supabase.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
     ]);
 
-    const company = profile?.company;
     const pg = company?.price_group;
-
     const orderStatusMap = { pending: 'Bekliyor', confirmed: 'Onaylandı', preparing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal' };
 
     return (
@@ -42,8 +60,14 @@ export default async function DealerDashboard() {
                 <div>
                     <h1 className="page-title">Hoş Geldiniz, {company?.name} 👋</h1>
                     <div className="page-subtitle" style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><UserIcon style={{ width: 16, height: 16 }} /> Yetkili: {profile?.full_name || 'Standart Kullanıcı'}</span>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> M. Temsilcisi: B2B Destek Ekibi</span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <UserIcon style={{ width: 16, height: 16 }} /> 
+                            Yetkili: {isImpersonating ? 'Admin (Showroom)' : (profile?.full_name || 'Standart Kullanıcı')}
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> 
+                            M. Temsilcisi: B2B Destek Ekibi
+                        </span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>

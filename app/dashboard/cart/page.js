@@ -36,10 +36,25 @@ export default function DealerCart() {
         const { data: { user } } = await supabase.auth.getUser();
         const { data: profile } = await supabase
             .from('profiles')
-            .select('company_id')
+            .select('company_id, is_admin')
             .eq('id', user.id)
             .single();
-        setCompanyId(profile?.company_id || '');
+        
+        // Impersonation detection for admins
+        let targetCompanyId = profile?.company_id || '';
+        if (profile?.is_admin) {
+            const getCookie = (name) => {
+                const value = `; ${document.cookie}`;
+                const parts = value.split(`; ${name}=`);
+                if (parts.length === 2) return parts.pop().split(';').shift();
+            };
+            const impId = getCookie('impersonate_company_id');
+            if (impId && impId !== 'undefined') {
+                console.log("Showroom Modu Aktif (Cart):", impId);
+                targetCompanyId = impId;
+            }
+        }
+        setCompanyId(targetCompanyId);
 
         if (user?.id) {
             const disc = await getUserDiscount(user.id);
@@ -166,6 +181,12 @@ export default function DealerCart() {
             }));
 
             // Call the secure RPC
+            console.log("RPC Çağrılıyor (place_b2b_order):", {
+                p_company_id: companyId,
+                p_total_amount: grandTotal,
+                items_count: p_items.length
+            });
+
             const { data, error } = await supabase.rpc('place_b2b_order', {
                 p_company_id: companyId,
                 p_shipping_address: finalAddress,
@@ -174,7 +195,12 @@ export default function DealerCart() {
                 p_items: p_items
             });
 
-            if (error) throw error;
+            if (error) {
+                console.error("RPC Hatası (Supabase):", error);
+                throw error;
+            }
+
+            console.log("RPC Yanıtı:", data);
 
             if (data?.success) {
                 // Only remove ordered (selected) items from cart context, keep the rest

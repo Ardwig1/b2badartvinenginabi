@@ -20,8 +20,11 @@ DECLARE
     v_current_balance NUMERIC(15,2);
     v_risk_limit NUMERIC(15,2);
 BEGIN
-    -- Verify user
-    IF NOT EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND company_id = p_company_id) THEN
+    -- Verify user (Allow Admins to bypass for showroom mode)
+    IF NOT EXISTS (
+        SELECT 1 FROM public.profiles 
+        WHERE id = auth.uid() AND (company_id = p_company_id OR is_admin = true)
+    ) THEN
         RAISE EXCEPTION 'Unauthorized company order';
     END IF;
 

@@ -181,12 +181,6 @@ export default function DealerCart() {
             }));
 
             // Call the secure RPC
-            console.log("RPC Çağrılıyor (place_b2b_order):", {
-                p_company_id: companyId,
-                p_total_amount: grandTotal,
-                items_count: p_items.length
-            });
-
             const { data, error } = await supabase.rpc('place_b2b_order', {
                 p_company_id: companyId,
                 p_shipping_address: finalAddress,
@@ -195,12 +189,7 @@ export default function DealerCart() {
                 p_items: p_items
             });
 
-            if (error) {
-                console.error("RPC Hatası (Supabase):", error);
-                throw error;
-            }
-
-            console.log("RPC Yanıtı:", data);
+            if (error) throw error;
 
             if (data?.success) {
                 // Only remove ordered (selected) items from cart context, keep the rest

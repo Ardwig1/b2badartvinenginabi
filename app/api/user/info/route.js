@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,69 +11,78 @@ export async function GET() {
         const { data: { user }, error: authError } = await supabase.auth.getUser();
 
         if (authError || !user) {
-            console.error('Auth Error:', authError);
             return NextResponse.json({ error: 'Oturum açılmamış.' }, { status: 401 });
         }
 
-        // Use service role to bypass potential RLS issues in API context
         const adminSupabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        // Fetch profile and company info
-        const { data: profile, error: profileError } = await adminSupabase
+        // 1. Fetch Profile
+        const { data: profile } = await adminSupabase
             .from('profiles')
-            .select('company_id, full_name, is_admin, company:companies(id, name, current_balance, phone)')
+            .select('*')
             .eq('id', user.id)
             .maybeSingle();
 
-        if (profileError || !profile) {
-            console.error('Profile/Company Error for user', user.id, ':', profileError);
-            return NextResponse.json({ error: 'Profil bilgileri alınamadı.', details: profileError?.message }, { status: 404 });
-        }
+        if (!profile) return NextResponse.json({ error: 'Profil bulunamadı' }, { status: 404 });
 
-        // --- Impersonation Logic ---
+        // 2. Impersonation (Showroom) Logic
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
-        let effectiveCompanyId = profile.company_id;
-        let effectiveCompanyName = profile.company?.name || '';
-        let effectiveBalance = Number(profile.company?.current_balance) || 0;
-        let effectivePhone = profile.company?.phone || '';
+        
+        let targetCompanyId = profile.company_id;
+        let isImpersonating = false;
 
-        if (profile.is_admin && impId) {
-            const { data: impCompany } = await adminSupabase
+        if (profile.is_admin && impId && impId !== 'undefined') {
+            targetCompanyId = impId;
+            isImpersonating = true;
+        }
+
+        // 3. Fetch Company Info (Garantici yöntem: join yerine düz çekim)
+        let discount = 0;
+        let companyData = null;
+
+        if (targetCompanyId) {
+            const { data: company } = await adminSupabase
                 .from('companies')
-                .select('id, name, current_balance, phone')
-                .eq('id', impId)
+                .select('*')
+                .eq('id', targetCompanyId)
                 .single();
-
-            if (impCompany) {
-                effectiveCompanyId = impCompany.id;
-                effectiveCompanyName = impCompany.name;
-                effectiveBalance = Number(impCompany.current_balance) || 0;
-                effectivePhone = impCompany.phone || '';
+            
+            if (company) {
+                companyData = company;
+                // 4. Fetch Price Group Discount
+                if (company.price_group_id) {
+                    const { data: pg } = await adminSupabase
+                        .from('price_groups')
+                        .select('discount_percent')
+                        .eq('id', company.price_group_id)
+                        .single();
+                    if (pg) discount = Number(pg.discount_percent) || 0;
+                }
             }
         }
-        // --- End Impersonation Logic ---
 
-        // Fallback to full_name if company name is still missing (for admins without specific company)
-        if (!effectiveCompanyName && profile?.full_name) {
-            effectiveCompanyName = profile.full_name;
+        // 5. Fallback to profile discount if no company discount
+        if (discount === 0) {
+            discount = Number(profile.discount_rate) || 0;
         }
 
         return NextResponse.json({
             email: user.email,
-            phone: effectivePhone || '',
-            companyId: effectiveCompanyId,
-            companyName: effectiveCompanyName,
-            fullName: profile.full_name || '',
-            currentBalance: effectiveBalance,
-            isImpersonating: Boolean(profile.is_admin && impId)
+            phone: companyData?.phone || '',
+            companyId: targetCompanyId,
+            companyName: companyData?.name || profile.full_name,
+            fullName: profile.full_name,
+            currentBalance: Number(companyData?.current_balance) || 0,
+            discountPercent: discount,
+            isImpersonating
         });
 
     } catch (err) {
         console.error('API-level Error in /api/user/info:', err);
-        return NextResponse.json({ error: 'Sunucu hatası: ' + err.message }, { status: 500 });
+        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
     }
 }

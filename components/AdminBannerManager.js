@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { PhotoIcon, TrashIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PhotoIcon, TrashIcon, PlusIcon, XMarkIcon, ChevronUpIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export default function AdminBannerManager() {
     const [banners, setBanners] = useState([]);
@@ -13,19 +13,19 @@ export default function AdminBannerManager() {
 
     const fetchBanners = async () => {
         setLoading(true);
-        // 1. Fetch custom banners
+        // 1. Fetch custom banners - order by display_order
         const { data, error } = await supabase
             .from('banners')
             .select('*')
-            .order('created_at', { ascending: false });
+            .order('display_order', { ascending: true });
         
         if (!error) setBanners(data || []);
 
-        // 2. Fetch hidden defaults from price_groups (our settings hack)
+        // 2. Fetch hidden defaults
         const { data: hiddenData } = await supabase
             .from('price_groups')
             .select('name')
-            .eq('discount_percent', -999); // Use -999 as a special marker for hidden default banners
+            .eq('discount_percent', -999);
             
         if (hiddenData) {
             setHiddenDefaults(hiddenData.map(d => d.name));
@@ -53,9 +53,15 @@ export default function AdminBannerManager() {
             const data = await res.json();
 
             if (data.success) {
+                // Put new banner at the end
+                const maxOrder = banners.reduce((max, b) => Math.max(max, b.display_order || 0), 0);
                 const { error } = await supabase
                     .from('banners')
-                    .insert([{ image_url: data.url, is_active: true }]);
+                    .insert([{ 
+                        image_url: data.url, 
+                        is_active: true,
+                        display_order: maxOrder + 1 
+                    }]);
                 
                 if (error) throw error;
                 fetchBanners();
@@ -69,35 +75,57 @@ export default function AdminBannerManager() {
         }
     };
 
+    const moveBanner = async (index, direction) => {
+        const newIndex = direction === 'up' ? index - 1 : index + 1;
+        if (newIndex < 0 || newIndex >= banners.length) return;
+
+        const currentBanner = banners[index];
+        const targetBanner = banners[newIndex];
+
+        // If display_order is missing, use index as fallback
+        const currentOrder = currentBanner.display_order ?? index;
+        const targetOrder = targetBanner.display_order ?? newIndex;
+
+        await Promise.all([
+            supabase.from('banners').update({ display_order: targetOrder }).eq('id', currentBanner.id),
+            supabase.from('banners').update({ display_order: currentOrder }).eq('id', targetBanner.id)
+        ]);
+
+        fetchBanners();
+    };
+
     const deleteBanner = async (id, url, isStatic = false) => {
         if (!confirm(isStatic ? 'Bu varsayılan bannerı gizlemek istediğinize emin misiniz?' : 'Bu bannerı kaldırmak istediğinize emin misiniz?')) return;
 
         try {
             if (isStatic) {
-                // Gizleme işlemini price_groups tablosuna kaydet (Marker: -999)
                 const { error } = await supabase.from('price_groups').insert({
                     name: `HIDDEN_BANNER_${id}`,
                     discount_percent: -999
                 });
                 if (error) throw error;
             } else {
-                // 1. Storage'dan sil
                 await fetch('/api/admin/delete-file', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url })
                 });
-
-                // 2. DB'den sil
                 const { error } = await supabase.from('banners').delete().eq('id', id);
                 if (error) throw error;
             }
-
             fetchBanners();
         } catch (err) {
             alert('Silme/Gizleme hatası: ' + err.message);
         }
     };
+
+    const defaultBanners = [
+        { id: 'def1', image_url: '/banner1.jpg', is_static: true },
+        { id: 'def2', image_url: '/banner2.jpg', is_static: true },
+        { id: 'def3', image_url: '/banner3.jpg', is_static: true }
+    ].filter(b => !hiddenDefaults.includes(`HIDDEN_BANNER_${b.id}`));
+
+    const displayBanners = banners.length > 0 ? banners : defaultBanners;
 
     return (
         <div style={{ marginBottom: 24 }}>
@@ -158,11 +186,7 @@ export default function AdminBannerManager() {
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 400, overflowY: 'auto', paddingRight: 4 }}>
                                 {loading ? (
                                     <div className="loading-center" style={{ padding: 20 }}><div className="loading-spinner" /></div>
-                                ) : (banners.length > 0 ? banners : [
-                                    { id: 'def1', image_url: '/banner1.jpg', is_static: true },
-                                    { id: 'def2', image_url: '/banner2.jpg', is_static: true },
-                                    { id: 'def3', image_url: '/banner3.jpg', is_static: true }
-                                ].filter(b => !hiddenDefaults.includes(`HIDDEN_BANNER_${b.id}`))).map(b => (
+                                ) : displayBanners.map((b, idx) => (
                                     <div key={b.id} style={{ 
                                         display: 'flex', 
                                         gap: 12, 
@@ -173,6 +197,26 @@ export default function AdminBannerManager() {
                                         borderRadius: 8,
                                         opacity: b.is_static ? 0.7 : 1
                                     }}>
+                                        {/* Order Controls (Only for custom banners) */}
+                                        {!b.is_static && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                                <button 
+                                                    disabled={idx === 0}
+                                                    onClick={() => moveBanner(idx, 'up')}
+                                                    style={{ border: 'none', background: 'none', padding: 0, cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? '#ccc' : 'var(--primary)' }}
+                                                >
+                                                    <ChevronUpIcon style={{ width: 16, height: 16 }} />
+                                                </button>
+                                                <button 
+                                                    disabled={idx === banners.length - 1}
+                                                    onClick={() => moveBanner(idx, 'down')}
+                                                    style={{ border: 'none', background: 'none', padding: 0, cursor: idx === banners.length - 1 ? 'default' : 'pointer', color: idx === banners.length - 1 ? '#ccc' : 'var(--primary)' }}
+                                                >
+                                                    <ChevronDownIcon style={{ width: 16, height: 16 }} />
+                                                </button>
+                                            </div>
+                                        )}
+
                                         <div style={{ width: 120, height: 40, position: 'relative', borderRadius: 4, overflow: 'hidden' }}>
                                             <img src={b.image_url} alt="Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         </div>
@@ -190,7 +234,7 @@ export default function AdminBannerManager() {
                                 ))}
                                 {banners.length === 0 && !loading && (
                                     <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8, background: '#fef3c7', padding: 8, borderRadius: 6, border: '1px solid #fde68a' }}>
-                                        ⚠️ Henüz özel banner eklemediniz. Sistem varsayılan bannerlar gösteriliyor. Bir adet eklediğinizde bunlar gizlenecektir.
+                                        ⚠️ Henüz özel banner eklemediniz. Sistem varsayılan bannerlar gösteriliyor.
                                     </div>
                                 )}
                             </div>

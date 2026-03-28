@@ -349,13 +349,8 @@ export default function AdminProducts() {
                                     <td>{p.category || '-'}</td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>
-                                            {((Number(p.list_price) / 1.36) * (1 + (globalMargin / 100))).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                            {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
                                         </div>
-                                        {globalMargin !== 36 && (
-                                            <div style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
-                                                {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
-                                            </div>
-                                        )}
                                     </td>
                                     <td style={{ textAlign: 'center', color: Number(p.discount_rate) > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
                                     <td style={{ textAlign: 'center', fontWeight: 500 }}>{p.box_quantity || 1}</td>

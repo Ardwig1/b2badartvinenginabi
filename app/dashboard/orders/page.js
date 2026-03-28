@@ -21,23 +21,21 @@ export default function DealerOrders() {
 
     useEffect(() => {
         async function fetchOrders() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
-
-            const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
-            if (!profile?.company_id) return;
-
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*')
-                .eq('company_id', profile.company_id)
-                .order('created_at', { ascending: false });
-
-            if (!error) setOrders(data);
-            setLoading(false);
+            setLoading(true);
+            try {
+                const res = await fetch('/api/user/orders');
+                if (res.ok) {
+                    const data = await res.json();
+                    setOrders(data || []);
+                }
+            } catch (err) {
+                console.error('Fetch orders error:', err);
+            } finally {
+                setLoading(false);
+            }
         }
         fetchOrders();
-    }, [supabase]);
+    }, []);
 
     if (loading) {
         return (

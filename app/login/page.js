@@ -1,12 +1,14 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import styles from './auth.module.css';
 import Logo from '@/components/Logo';
 
-export default function LoginPage() {
+function LoginContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const isMaintenance = searchParams.get('maintenance') === 'true';
     const [dealerCode, setDealerCode] = useState('');
     const [userCode, setUserCode] = useState('');
     const [password, setPassword] = useState('');
@@ -83,7 +85,7 @@ export default function LoginPage() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
                 <div className={styles.authCard}>
                     <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <img src="/omi-logo.png" alt="Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
+                        <img src="/omi-logo_2.png" alt="Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
                     </div>
                     <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
                     <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
@@ -96,7 +98,7 @@ export default function LoginPage() {
                             <input
                                 className="form-input"
                                 type="text"
-                                placeholder="Örn: B-1001"
+                                placeholder="Bayi Kodunuz"
                                 value={dealerCode}
                                 onChange={e => setDealerCode(e.target.value.toUpperCase())}
                                 required
@@ -111,7 +113,7 @@ export default function LoginPage() {
                             <input
                                 className="form-input"
                                 type="text"
-                                placeholder="Örn: ADMIN"
+                                placeholder="Kullanıcı Kodunuz"
                                 value={userCode}
                                 onChange={e => setUserCode(e.target.value.toUpperCase())}
                                 required
@@ -219,5 +221,24 @@ export default function LoginPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LoginPage() {
+    return (
+        <Suspense fallback={
+            <div style={{ 
+                minHeight: '100vh', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)',
+                color: '#fff'
+            }}>
+                Yükleniyor...
+            </div>
+        }>
+            <LoginContent />
+        </Suspense>
     );
 }

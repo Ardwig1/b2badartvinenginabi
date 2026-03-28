@@ -9,11 +9,27 @@ export default function AdminOrders() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selected, setSelected] = useState(null);
+    const [itemShippingData, setItemShippingData] = useState({}); // { itemId: { company, tracking, origin } }
     const [filter, setFilter] = useState('all');
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelOrderId, setCancelOrderId] = useState(null);
     const [isShippingConfirm, setIsShippingConfirm] = useState(false);
-    const [shippingData, setShippingData] = useState({ company: '', tracking: '', origin: 'İstanbul' });
+    
+    // When selected order changes, initialize item shipping data
+    useEffect(() => {
+        if (selected && selected.items) {
+            const initialData = {};
+            selected.items.forEach(item => {
+                initialData[item.id] = {
+                    company: item.shipping_company || '',
+                    tracking: item.tracking_number || '',
+                    origin: item.shipping_origin || 'İstanbul'
+                };
+            });
+            setItemShippingData(initialData);
+        }
+    }, [selected]);
+
     const supabase = createClient();
 
     const fetchOrders = useCallback(async () => {
@@ -125,9 +141,7 @@ export default function AdminOrders() {
                 body: JSON.stringify({ 
                     orderId: id, 
                     status,
-                    shippingCompany: shippingData.company,
-                    trackingNumber: shippingData.tracking,
-                    shippingOrigin: shippingData.origin
+                    itemShippingData // Send the whole object
                 })
             });
             const result = await res.json();
@@ -150,6 +164,18 @@ export default function AdminOrders() {
             return;
         }
         if (status === 'shipped' || status === 'delivered') {
+            // Validation: Ensure all items have shipping details
+            const items = selected?.items || [];
+            const incomplete = items.some(item => {
+                const data = itemShippingData[item.id];
+                return !data || !data.company || !data.tracking || !data.origin;
+            });
+
+            if (incomplete) {
+                alert('Lütfen tüm ürünler için kargo firması, takip numarası ve çıkış yerini doldurun.');
+                return;
+            }
+
             setIsShippingConfirm(true);
             return;
         }
@@ -292,15 +318,68 @@ export default function AdminOrders() {
                         <div style={{ marginBottom: 16 }}>
                             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 8 }}>Ürünler</div>
                             {selected.items?.map(item => (
-                                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--border-light)', fontSize: 13 }}>
-                                    <div>
-                                        <div style={{ fontWeight: 500 }}>{item.product?.name}</div>
-                                        {item.product?.oem_no && (
-                                            <div style={{ color: 'var(--primary)', fontSize: 11, fontFamily: 'monospace', marginTop: 1 }}>OEM: {item.product.oem_no}</div>
-                                        )}
-                                        <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                <div key={item.id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
+                                            {item.product?.oem_no && (
+                                                <div style={{ color: 'var(--primary)', fontSize: 11, fontFamily: 'monospace' }}>OEM: {item.product.oem_no}</div>
+                                            )}
+                                            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                        </div>
+                                        <div style={{ fontWeight: 700 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                     </div>
-                                    <div style={{ fontWeight: 600 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                    
+                                    {/* Per-item Shipping Inputs */}
+                                    {(selected.status !== 'delivered' && selected.status !== 'cancelled') && (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8, padding: 8, background: 'rgba(37,99,235,0.03)', borderRadius: 8 }}>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <input 
+                                                    className="form-input" 
+                                                    style={{ height: 28, fontSize: 11, padding: '4px 8px' }} 
+                                                    placeholder="Kargo Firması" 
+                                                    value={itemShippingData[item.id]?.company || ''} 
+                                                    onChange={e => setItemShippingData({
+                                                        ...itemShippingData, 
+                                                        [item.id]: { ...itemShippingData[item.id], company: e.target.value }
+                                                    })} 
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0 }}>
+                                                <input 
+                                                    className="form-input" 
+                                                    style={{ height: 28, fontSize: 11, padding: '4px 8px' }} 
+                                                    placeholder="Takip No" 
+                                                    value={itemShippingData[item.id]?.tracking || ''} 
+                                                    onChange={e => setItemShippingData({
+                                                        ...itemShippingData, 
+                                                        [item.id]: { ...itemShippingData[item.id], tracking: e.target.value }
+                                                    })} 
+                                                />
+                                            </div>
+                                            <div className="form-group" style={{ marginBottom: 0, gridColumn: 'span 2' }}>
+                                                <select 
+                                                    className="form-input" 
+                                                    style={{ height: 28, fontSize: 11, padding: '0 8px' }} 
+                                                    value={itemShippingData[item.id]?.origin || 'İstanbul'} 
+                                                    onChange={e => setItemShippingData({
+                                                        ...itemShippingData, 
+                                                        [item.id]: { ...itemShippingData[item.id], origin: e.target.value }
+                                                    })}
+                                                >
+                                                    <option value="İstanbul">İstanbul (Merkez)</option>
+                                                    <option value="Depo">Depo</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Display saved shipping info if exists */}
+                                    {(item.shipping_company || item.tracking_number) && (
+                                        <div style={{ marginTop: 4, fontSize: 11, color: 'var(--primary)', fontWeight: 500 }}>
+                                            🚚 {item.shipping_company} - {item.tracking_number} ({item.shipping_origin})
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>
@@ -339,32 +418,10 @@ export default function AdminOrders() {
                             )}
                         </div>
                         
-                        {(selected.status === 'pending' || selected.status === 'confirmed' || selected.status === 'preparing') && (
-                            <div style={{ marginTop: 20, padding: 16, background: 'rgba(37,99,235,0.05)', borderRadius: 12, border: '1px solid rgba(37,99,235,0.1)' }}>
-                                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12, color: 'var(--primary)' }}>Kargo / Sevkiyat Bilgileri</div>
-                                <div className="form-group" style={{ marginBottom: 10 }}>
-                                    <label className="form-label" style={{ fontSize: 11 }}>Kargo Firması</label>
-                                    <input className="form-input" style={{ height: 32, fontSize: 13 }} placeholder="Örn: Aras Kargo" value={shippingData.company} onChange={e => setShippingData({...shippingData, company: e.target.value})} />
-                                </div>
-                                <div className="form-group" style={{ marginBottom: 10 }}>
-                                    <label className="form-label" style={{ fontSize: 11 }}>Takip No</label>
-                                    <input className="form-input" style={{ height: 32, fontSize: 13 }} placeholder="Kargo takip numarası" value={shippingData.tracking} onChange={e => setShippingData({...shippingData, tracking: e.target.value})} />
-                                </div>
-                                <div className="form-group">
-                                    <label className="form-label" style={{ fontSize: 11 }}>Çıkış Yeri (Stok Buradan Düşecek)</label>
-                                    <select className="form-input" style={{ height: 32, fontSize: 13 }} value={shippingData.origin} onChange={e => setShippingData({...shippingData, origin: e.target.value})}>
-                                        <option value="İstanbul">İstanbul (Merkez)</option>
-                                        <option value="Depo">Depo</option>
-                                    </select>
-                                </div>
-                            </div>
-                        )}
-
                         {selected.is_stock_reduced && (
                             <div style={{ marginTop: 16, padding: 12, background: 'var(--bg-surface)', borderRadius: 8, fontSize: 12, border: '1px solid var(--border)' }}>
-                                <div style={{ fontWeight: 600, marginBottom: 4 }}>Sevkiyat Bilgisi</div>
-                                <div style={{ color: 'var(--text-secondary)' }}>{selected.shipping_company} - {selected.tracking_number}</div>
-                                <div style={{ color: 'var(--primary)', fontWeight: 500 }}>Çıkış: {selected.shipping_origin}</div>
+                                <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Sipariş Onaylandı ve Sevk Edildi</div>
+                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>Ürün bazlı kargo bilgilerini yukarıdaki listede görebilirsiniz.</div>
                             </div>
                         )}
                     </div>
@@ -461,9 +518,9 @@ export default function AdminOrders() {
                         </div>
                         <h2 style={{ fontSize: 20, fontWeight: 800, color: '#111827', marginBottom: 12 }}>Siparişi Onaylıyor Musunuz?</h2>
                         <div style={{ textAlign: 'left', background: 'var(--bg-surface)', padding: 16, borderRadius: 12, marginBottom: 24, fontSize: 14 }}>
-                            <div style={{ marginBottom: 4 }}><strong>Kargo:</strong> {shippingData.company || '-'}</div>
-                            <div style={{ marginBottom: 4 }}><strong>Takip No:</strong> {shippingData.tracking || '-'}</div>
-                            <div style={{ color: '#b91c1c', fontWeight: 700 }}>⚠️ Stok {shippingData.origin} biriminden düşülecektir.</div>
+                            <div style={{ color: '#b91c1c', fontWeight: 700, textAlign: 'center' }}>
+                                ⚠️ Stoklar her ürün için seçilen birimlerden (İstanbul/Depo) düşülecektir.
+                            </div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                             <button 

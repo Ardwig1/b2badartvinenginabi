@@ -9,7 +9,7 @@ export async function POST(req) {
             return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
         }
 
-        const { orderId, status, shippingCompany, trackingNumber, shippingOrigin } = await req.json();
+        const { orderId, status, itemShippingData } = await req.json();
 
         if (!orderId || !status) {
             return NextResponse.json({ error: 'Sipariş ID veya Statü eksik' }, { status: 400 });
@@ -43,15 +43,23 @@ export async function POST(req) {
         const isShippingNow = (status === 'confirmed' || status === 'shipped' || status === 'delivered') && !order.is_stock_reduced;
 
         if (isShippingNow) {
-            if (!shippingOrigin) {
-                return NextResponse.json({ error: 'Lütfen çıkış yerini (İstanbul/Depo) seçin.' }, { status: 400 });
-            }
-
-            // Reduce product stocks from specific bin
+            // Update individual order items with shipping info and reduce stocks
             for (const item of order.order_items) {
+                const sData = itemShippingData?.[item.id] || {};
+                const shippingOrigin = sData.origin || 'İstanbul';
+                const shippingCompany = sData.company || '';
+                const trackingNumber = sData.tracking || '';
+
+                // A. Update order_item with shipping info
+                await supabase.from('order_items').update({
+                    shipping_company: shippingCompany,
+                    tracking_number: trackingNumber,
+                    shipping_origin: shippingOrigin
+                }).eq('id', item.id);
+
+                // B. Reduce product stocks from specific bin
                 const stockColumn = shippingOrigin === 'İstanbul' ? 'stock_merkez' : 'stock_depo';
                 
-                // Fetch current stock for that bin
                 const { data: prod } = await supabase.from('products').select(stockColumn).eq('id', item.product_id).single();
                 if (prod) {
                     await supabase.from('products').update({
@@ -93,8 +101,12 @@ export async function POST(req) {
                     const updateData = { stock_quantity: (prod.stock_quantity || 0) + item.quantity };
                     
                     // If stock was already reduced from a specific bin, restore that too
-                    if (order.is_stock_reduced && order.shipping_origin) {
-                        const stockColumn = order.shipping_origin === 'İstanbul' ? 'stock_merkez' : 'stock_depo';
+                    // We need to check the item's own shipping_origin now
+                    const { data: itemData } = await supabase.from('order_items').select('shipping_origin').eq('id', item.id).single();
+                    const itemOrigin = itemData?.shipping_origin;
+
+                    if (order.is_stock_reduced && itemOrigin) {
+                        const stockColumn = itemOrigin === 'İstanbul' ? 'stock_merkez' : 'stock_depo';
                         updateData[stockColumn] = (prod[stockColumn] || 0) + item.quantity;
                     }
 
@@ -103,15 +115,12 @@ export async function POST(req) {
             }
         }
 
-        // 4. Update Order Status and Shipping Info
+        // 4. Update Order Status
         const updatePayload = { 
             status, 
             updated_at: new Date().toISOString() 
         };
 
-        if (shippingCompany) updatePayload.shipping_company = shippingCompany;
-        if (trackingNumber) updatePayload.tracking_number = trackingNumber;
-        if (shippingOrigin) updatePayload.shipping_origin = shippingOrigin;
         if (isShippingNow) updatePayload.is_stock_reduced = true;
 
         const { error: updateErr } = await supabase

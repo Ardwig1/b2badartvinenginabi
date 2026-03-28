@@ -25,7 +25,11 @@ export default function DealerCart() {
     const [shippingMethod, setShippingMethod] = useState('Kargo');
     const [isDifferentAddress, setIsDifferentAddress] = useState(false);
     const [note, setNote] = useState('');
+    const [isPrepaymentLocked, setIsPrepaymentLocked] = useState(false);
+    const [companyBalance, setCompanyBalance] = useState(0);
+    const [companyRiskLimit, setCompanyRiskLimit] = useState(0);
     const [submitting, setSubmitting] = useState(false);
+
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
@@ -33,64 +37,59 @@ export default function DealerCart() {
 
     const fetchUser = useCallback(async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('company_id, is_admin')
-            .eq('id', user.id)
-            .single();
-        
-        // Impersonation detection for admins
-        let targetCompanyId = profile?.company_id || '';
-        if (profile?.is_admin) {
-            const getCookie = (name) => {
-                const value = `; ${document.cookie}`;
-                const parts = value.split(`; ${name}=`);
-                if (parts.length === 2) return parts.pop().split(';').shift();
-            };
-            const impId = getCookie('impersonate_company_id');
-            if (impId && impId !== 'undefined') {
-                console.log("Showroom Modu Aktif (Cart):", impId);
-                targetCompanyId = impId;
+        try {
+            // Use our smart info API that handles showroom and RLS correctly
+            const infoRes = await fetch('/api/user/info');
+            if (infoRes.ok) {
+                const infoData = await infoRes.json();
+                
+                setCompanyId(infoData.companyId || '');
+                setCompanyBalance(Number(infoData.currentBalance) || 0);
+                setDiscountPercent(Number(infoData.discountPercent) || 0);
+                
+                // Fetch extra company info like locks and risk limits
+                if (infoData.companyId) {
+                    const { data: comp } = await supabase
+                        .from('companies')
+                        .select('is_prepayment_locked, risk_limit')
+                        .eq('id', infoData.companyId)
+                        .single();
+                    if (comp) {
+                        setIsPrepaymentLocked(comp.is_prepayment_locked || false);
+                        setCompanyRiskLimit(Number(comp.risk_limit) || 0);
+                    }
+                }
             }
-        }
-        setCompanyId(targetCompanyId);
 
-        if (user?.id) {
-            const disc = await getUserDiscount(user.id);
-            setDiscountPercent(disc || 0);
-        }
-
-        try {
-            const res = await fetch('/api/rates');
-            const data = await res.json();
-            if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
-        } catch (e) {
-            console.error('Rates fetch error:', e);
-        }
-
-        try {
-            const [marginRes, usdRes] = await Promise.all([
+            // Fetch rates and other settings
+            const [ratesRes, marginRes, usdRes] = await Promise.all([
+                fetch('/api/rates'),
                 fetch('/api/admin/margin'),
                 fetch('/api/admin/usd-settings')
             ]);
-            const marginData = await marginRes.json();
-            const usdData = await usdRes.json();
 
-            if (marginData?.margin !== undefined) {
-                setGlobalMargin(marginData.margin);
+            if (ratesRes.ok) {
+                const data = await ratesRes.json();
+                if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
             }
-            if (usdData?.usd_rate !== undefined) {
-                setGlobalUsdRate(usdData.usd_rate);
+
+            if (marginRes.ok) {
+                const marginData = await marginRes.json();
+                if (marginData?.margin !== undefined) setGlobalMargin(marginData.margin);
             }
-            if (usdData?.is_active !== undefined) {
-                setGlobalUsdActive(usdData.is_active);
+
+            if (usdRes.ok) {
+                const usdData = await usdRes.json();
+                if (usdData?.usd_rate !== undefined) setGlobalUsdRate(usdData.usd_rate);
+                if (usdData?.is_active !== undefined) setGlobalUsdActive(usdData.is_active);
             }
+
         } catch (e) {
-            console.error('Settings fetch error:', e);
+            console.error('Fetch user/settings error:', e);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
@@ -165,8 +164,30 @@ export default function DealerCart() {
     const vat = totalAfterDiscount * 0.20;
     const grandTotal = totalAfterDiscount + vat;
 
+    // Risk Limit Logic:
+    // Balance is positive if dealer has credit, negative if dealer owes money.
+    // Total Liability = Grand Total (current cart) - Balance
+    // If Liability > Risk Limit, then risk is exceeded.
+    const totalLiability = grandTotal - companyBalance;
+    const isRiskExceeded = companyRiskLimit > 0 && totalLiability > companyRiskLimit;
+    const exceededAmount = isRiskExceeded ? (totalLiability - companyRiskLimit) : 0;
+
+    const needsPrepayment = (isPrepaymentLocked && companyBalance < grandTotal) || isRiskExceeded;
+
     const placeOrder = async () => {
         if (selectedCartItems.length === 0) return;
+
+        if (needsPrepayment) {
+            // Redirect to payment page
+            // If it's a risk limit issue, we need at least the exceeded amount, 
+            // but usually we redirect with the full grand total or the needed amount.
+            // Let's use the grand total as requested for "payment required".
+            const paymentAmount = isRiskExceeded ? exceededAmount : grandTotal;
+            sessionStorage.setItem('pendingCartTotal', grandTotal.toString());
+            window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
+            return;
+        }
+
         setSubmitting(true);
         const finalAddress = isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi';
         const finalNote = `[${shippingMethod}] ${note}`;
@@ -192,12 +213,32 @@ export default function DealerCart() {
             if (error) throw error;
 
             if (data?.success) {
+                // Log the order placement activity
+                try {
+                    await fetch('/api/log-activity', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            company_id: companyId, 
+                            action_type: 'order_placed', 
+                            details: { 
+                                order_id: data.order_id, 
+                                total_amount: grandTotal, 
+                                items_count: selectedCartItems.length 
+                            } 
+                        })
+                    });
+                } catch (logErr) {
+                    console.error("Order logging failed (non-critical):", logErr);
+                }
+
                 // Only remove ordered (selected) items from cart context, keep the rest
                 for (const item of selectedCartItems) {
                     ctxSetQty(item.product.id, item.product, 0);
                 }
                 setSuccess(true);
-            } else {
+            }
+ else {
                 throw new Error(data?.error || 'Sipariş oluşturulamadı');
             }
 
@@ -274,7 +315,7 @@ export default function DealerCart() {
                             </div>
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat (KDV'siz)</th><th>Miktar</th><th>Toplam (KDV'siz)</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
@@ -367,8 +408,24 @@ export default function DealerCart() {
                         <span>₺{grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                     </div>
 
-                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={selectedCartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
-                        {submitting ? 'Sipariş veriliyor...' : selectedCartItems.length === 0 ? 'Ürün seçin' : `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
+                    {isRiskExceeded && (
+                        <div style={{ 
+                            backgroundColor: 'rgba(239, 68, 68, 0.1)', 
+                            color: 'var(--danger)', 
+                            padding: '10px 12px', 
+                            borderRadius: 'var(--radius)', 
+                            fontSize: 13, 
+                            fontWeight: 600, 
+                            marginBottom: 16,
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            textAlign: 'center'
+                        }}>
+                            Risk limitini ₺{exceededAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} aşıyorsunuz (ödeme gerekli)
+                        </div>
+                    )}
+
+                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', backgroundColor: needsPrepayment && !submitting ? 'var(--danger)' : undefined, border: needsPrepayment && !submitting ? 'none' : undefined }} disabled={selectedCartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
+                        {submitting ? 'Sipariş veriliyor...' : selectedCartItems.length === 0 ? 'Ürün seçin' : isRiskExceeded ? 'LİMİT AŞILDI (ÖDEME YAP)' : needsPrepayment ? 'YETERSİZ BAKİYE (ÖN ÖDEME)' : `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
                     </button>
                 </div>
             </div>

@@ -72,6 +72,17 @@ export default function CompaniesPage() {
   const [riskModal, setRiskModal] = useState({ show: false, company: null, value: '' });
   const [riskLoading, setRiskLoading] = useState(false);
 
+  // Sorting State
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
@@ -252,11 +263,32 @@ export default function CompaniesPage() {
     setEditLoading(false);
   };
 
-  const filtered = companies.filter(c => 
-    c.name?.toLowerCase().includes(search.toLowerCase()) || 
-    c.tax_number?.includes(search) ||
-    c.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const sortedAndFiltered = useCallback(() => {
+    const list = companies.filter(c => 
+      c.name?.toLowerCase().includes(search.toLowerCase()) || 
+      c.tax_number?.includes(search) ||
+      c.email?.toLowerCase().includes(search.toLowerCase()) ||
+      c.city?.toLowerCase().includes(search.toLowerCase()) ||
+      c.dealer_code?.toLowerCase().includes(search.toLowerCase())
+    );
+
+    if (sortConfig.key) {
+      list.sort((a, b) => {
+        let aVal = a[sortConfig.key] || '';
+        let bVal = b[sortConfig.key] || '';
+        
+        if (typeof aVal === 'string') aVal = aVal.toLocaleLowerCase('tr-TR');
+        if (typeof bVal === 'string') bVal = bVal.toLocaleLowerCase('tr-TR');
+
+        if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    return list;
+  }, [companies, search, sortConfig]);
+
+  const displayList = sortedAndFiltered();
 
   return (
     <div className="page-wrapper">
@@ -282,7 +314,7 @@ export default function CompaniesPage() {
       {filter !== 'history' && (
         <div className="search-bar">
           <MagnifyingGlassIcon style={{ width: 14, height: 14 }} />
-          <input placeholder="Firma adı, vergi no, e-posta..." value={search} onChange={e => setSearch(e.target.value)} id="companies-search" />
+          <input placeholder="Firma adı, vergi no, şehir, bayi kodu..." value={search} onChange={e => setSearch(e.target.value)} id="companies-search" />
         </div>
       )}
 
@@ -330,24 +362,40 @@ export default function CompaniesPage() {
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          {filtered.length === 0 ? (
+          {displayList.length === 0 ? (
             <div className="empty-state" style={{ padding: 40 }}><BuildingOfficeIcon style={{ width: 32, height: 32 }} /></div>
           ) : (
             <div className="table-wrapper">
               <table>
                 <thead>
                   <tr>
-                    <th>Firma Adı</th>
-                    <th>Vergi No</th>
-                    <th>Yetkili</th>
-                    <th>E-posta</th>
+                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Firma Adı {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th onClick={() => requestSort('dealer_code')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Bayi Kodu {sortConfig.key === 'dealer_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th onClick={() => requestSort('city')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Şehir {sortConfig.key === 'city' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th onClick={() => requestSort('tax_number')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Vergi No {sortConfig.key === 'tax_number' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th onClick={() => requestSort('contact_person')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Yetkili {sortConfig.key === 'contact_person' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
+                    <th onClick={() => requestSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      E-posta {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th>Fiyat Grubu</th>
-                    <th>Durum</th>
+                    <th onClick={() => requestSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Durum {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th>İşlemler</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(c => (
+                  {displayList.map(c => (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600 }}>
                         <Link href={`/admin/companies/${c.id}`} className="btn btn-ghost btn-sm" style={{ 
@@ -364,6 +412,8 @@ export default function CompaniesPage() {
                           <span style={{ fontSize: 16 }}>›</span>
                         </Link>
                       </td>
+                      <td style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{c.dealer_code || '-'}</td>
+                      <td>{c.city || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
                       <td>{c.contact_person || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{c.email}</td>

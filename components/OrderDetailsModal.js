@@ -104,6 +104,20 @@ export default function OrderDetailsModal({ isOpen, onClose, orderId, isAdmin = 
                                                 <span style={{ fontSize: 11, color: 'var(--primary)', fontFamily: 'monospace' }}>KOD: {item.product?.code}</span>
                                                 {item.product?.oem_no && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>OEM: {item.product.oem_no}</span>}
                                             </div>
+                                            
+                                            {/* Per-item Shipping Display */}
+                                            {(item.shipping_company || item.tracking_number) && (
+                                                <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(37,99,235,0.05)', borderRadius: 6, fontSize: 11, border: '1px solid rgba(37,99,235,0.1)' }}>
+                                                    <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 2 }}>Sevkiyat Bilgisi:</div>
+                                                    <div style={{ color: 'var(--text-secondary)' }}>
+                                                        🚚 {item.shipping_company} - <strong>{item.tracking_number}</strong>
+                                                    </div>
+                                                    <div style={{ marginTop: 2, color: 'var(--text-muted)' }}>
+                                                        Çıkış: {item.shipping_origin}
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
                                                 <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                                     {item.quantity} adet × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}

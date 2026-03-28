@@ -46,60 +46,59 @@ export default function DealerAccountLedger() {
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { setLoading(false); return; }
+        
+        try {
+            // Fetch balance and other info from our smart user info API
+            const infoRes = await fetch('/api/user/info');
+            if (infoRes.ok) {
+                const infoData = await infoRes.json();
+                setTotals(prev => ({ ...prev, balance: infoData.currentBalance || 0 }));
+            }
 
-        const { data: profile } = await supabase.from('profiles')
-            .select('company_id, company:companies(current_balance, credit_limit)')
-            .eq('id', user.id).single();
+            let startDate, endDate;
+            if (selectedMonth) {
+                startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
+                const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+                endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
+            } else {
+                startDate = `${selectedYear}-01-01`;
+                endDate = `${selectedYear}-12-31T23:59:59`;
+            }
 
-        if (profile?.company?.current_balance !== undefined) {
-            setTotals(prev => ({ ...prev, balance: profile.company.current_balance || 0 }));
+            const res = await fetch(`/api/user/account/transactions?startDate=${startDate}&endDate=${endDate}`);
+            if (res.ok) {
+                const data = await res.json();
+                setTransactions(data || []);
+                const tDebt = (data || []).reduce((acc, r) => acc + Number(r.debt || 0), 0);
+                const tCredit = (data || []).reduce((acc, r) => acc + Number(r.credit || 0), 0);
+                setTotals(prev => ({ ...prev, debt: tDebt, credit: tCredit }));
+            }
+        } catch (err) {
+            console.error('Fetch transactions error:', err);
+        } finally {
+            setLoading(false);
         }
-
-        let startDate, endDate;
-        if (selectedMonth) {
-            startDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-01`;
-            const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-            endDate = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}-${lastDay}T23:59:59`;
-        } else {
-            startDate = `${selectedYear}-01-01`;
-            endDate = `${selectedYear}-12-31T23:59:59`;
-        }
-
-        const { data, error } = await supabase.from('account_transactions')
-            .select('*')
-            .eq('company_id', profile?.company_id)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('Transactions fetch error:', error);
-            if (error.code === '42P01') setDbError(true);
-        } else {
-            setTransactions(data || []);
-            const tDebt = (data || []).reduce((acc, r) => acc + Number(r.debt || 0), 0);
-            const tCredit = (data || []).reduce((acc, r) => acc + Number(r.credit || 0), 0);
-            setTotals(prev => ({ ...prev, debt: tDebt, credit: tCredit }));
-        }
-        setLoading(false);
     }, [selectedYear, selectedMonth]);
 
     useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+const handleExpand = async (tx) => {
+    if (expandedRow === tx.id) { setExpandedRow(null); return; }
+    setExpandedRow(tx.id);
 
-    const handleExpand = async (tx) => {
-        if (expandedRow === tx.id) { setExpandedRow(null); return; }
-        setExpandedRow(tx.id);
-        if ((tx.transaction_type === 'TOPTAN SATIŞ') && tx.document_no && !orderDetails[tx.id]) {
-            setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
-            const { data } = await supabase.from('order_items')
-                .select('*, product:products(name, code, oem_no)')
-                .eq('order_id', tx.document_no);
-            setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
-            setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
-        }
-    };
+    // If it's an order and we haven't fetched details yet
+    if ((tx.transaction_type === 'TOPTAN SATIŞ') && !orderDetails[tx.id]) {
+        setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
+
+        // Prefer order_id if available, fallback to document_no
+        const searchId = tx.order_id || tx.document_no;
+
+        const { data } = await supabase.from('order_items')
+            .select('*, product:products(name, code, oem_no)')
+            .eq('order_id', searchId);
+        setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
+        setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
+    }
+};
 
     if (dbError) {
         return (

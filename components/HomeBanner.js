@@ -11,12 +11,12 @@ export default function HomeBanner() {
         const fetchBanners = async () => {
             const supabase = createClient();
             
-            // 1. Fetch custom banners
+            // 1. Fetch custom banners - order by display_order
             const { data, error } = await supabase
                 .from('banners')
                 .select('image_url')
                 .eq('is_active', true)
-                .order('created_at', { ascending: false });
+                .order('display_order', { ascending: true });
             
             // 2. Fetch hidden defaults
             const { data: hiddenData } = await supabase

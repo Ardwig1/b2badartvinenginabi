@@ -105,64 +105,61 @@ export default function DealerCatalog() {
 
     const fetchSettingsAndFilters = useCallback(async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        setUserId(user?.id);
-
-        if (user?.id) {
-            const { data: profile } = await supabase.from('profiles').select('company_id').eq('id', user.id).single();
-            if (profile?.company_id) {
-                setCompanyId(profile.company_id);
-                // Store for CartProvider to use
-                if (typeof window !== 'undefined') localStorage.setItem('b2b_company_id', profile.company_id);
+        try {
+            // 1. Use our smart info API that handles showroom and RLS correctly
+            const infoRes = await fetch('/api/user/info');
+            if (infoRes.ok) {
+                const infoData = await infoRes.json();
+                
+                setUserId(infoData.userId || null);
+                setCompanyId(infoData.companyId || null);
+                setDiscount(Number(infoData.discountPercent) || 0);
+                
+                if (infoData.companyId && typeof window !== 'undefined') {
+                    localStorage.setItem('b2b_company_id', infoData.companyId);
+                }
             }
-        }
 
-        if (user?.id) {
-            const disc = await getUserDiscount(user.id);
-            setDiscount(disc || 0);
-        }
+            // 2. Fetch metadata for filters
+            const { data: metaData } = await supabase
+                .from('products')
+                .select('brand, car_brand, car_model')
+                .eq('is_active', true);
 
-        const { data: metaData } = await supabase
-            .from('products')
-            .select('brand, car_brand, car_model')
-            .eq('is_active', true);
+            if (metaData) {
+                setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
+                setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
+            }
 
-        if (metaData) {
-            setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
-            setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
-        }
-
-        try {
-            const res = await fetch('/api/rates');
-            const data = await res.json();
-            if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
-        } catch (e) {
-            console.error('Rates fetch error:', e);
-        }
-
-        try {
-            const [marginRes, usdRes] = await Promise.all([
+            // 3. Fetch rates and settings
+            const [ratesRes, marginRes, usdRes] = await Promise.all([
+                fetch('/api/rates'),
                 fetch('/api/admin/margin'),
                 fetch('/api/admin/usd-settings')
             ]);
-            const marginData = await marginRes.json();
-            const usdData = await usdRes.json();
 
-            if (marginData?.margin !== undefined) {
-                setGlobalMargin(marginData.margin);
+            if (ratesRes.ok) {
+                const data = await ratesRes.json();
+                if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
             }
-            if (usdData?.usd_rate !== undefined) {
-                setGlobalUsdRate(usdData.usd_rate);
+
+            if (marginRes.ok) {
+                const marginData = await marginRes.json();
+                if (marginData?.margin !== undefined) setGlobalMargin(marginData.margin);
             }
-            if (usdData?.is_active !== undefined) {
-                setGlobalUsdActive(usdData.is_active);
+
+            if (usdRes.ok) {
+                const usdData = await usdRes.json();
+                if (usdData?.usd_rate !== undefined) setGlobalUsdRate(usdData.usd_rate);
+                if (usdData?.is_active !== undefined) setGlobalUsdActive(usdData.is_active);
             }
+
         } catch (e) {
-            console.error('Settings fetch error:', e);
+            console.error('Fetch catalog settings error:', e);
+        } finally {
+            setLoading(false);
         }
-
-        setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => { fetchSettingsAndFilters(); }, [fetchSettingsAndFilters]);
 
@@ -184,8 +181,35 @@ export default function DealerCatalog() {
             let query = supabase.from('products').select(productColumns).eq('is_active', true);
 
             if (filterText.trim()) {
-                const term = `%${filterText.trim()}%`;
-                query = query.or(`name.ilike.${term},code.ilike.${term},product_number.ilike.${term},oem_no.ilike.${term},brand.ilike.${term}`);
+                // Multi-word order-independent search logic
+                const words = filterText.trim().toUpperCase().split(/\s+/).filter(w => w.length > 0);
+                
+                words.forEach(word => {
+                    // Generate variants to handle Turkish/English character issues
+                    // Variant 1: Pure English (İ -> I, Ğ -> G, etc.)
+                    const wordEng = word
+                        .replace(/İ/g, 'I').replace(/Ğ/g, 'G').replace(/Ü/g, 'U')
+                        .replace(/Ö/g, 'O').replace(/Ş/g, 'S').replace(/Ç/g, 'C');
+                    
+                    // Variant 2: Pure Turkish (I -> İ, G -> Ğ, etc.)
+                    const wordTr = word
+                        .replace(/I/g, 'İ').replace(/G/g, 'Ğ').replace(/U/g, 'Ü')
+                        .replace(/Ö/g, 'O').replace(/S/g, 'Ş').replace(/C/g, 'Ç');
+
+                    const variants = [...new Set([word, wordEng, wordTr])];
+                    const columns = ['name', 'code', 'oem_no', 'brand'];
+                    
+                    const orParts = [];
+                    variants.forEach(v => {
+                        const term = `%${v}%`;
+                        columns.forEach(col => {
+                            orParts.push(`${col}.ilike.${term}`);
+                        });
+                    });
+                    
+                    // Join all variants and columns for this specific word
+                    query = query.or(orParts.join(','));
+                });
             }
 
             if (filterBrand) query = query.eq('brand', filterBrand);
@@ -395,6 +419,27 @@ export default function DealerCatalog() {
 
     return (
         <div className="page-wrapper">
+            <div style={{ 
+                background: 'linear-gradient(90deg, rgba(30, 64, 175, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)', 
+                border: '1px solid rgba(37, 99, 235, 0.2)',
+                color: 'var(--primary)', 
+                padding: '14px 20px', 
+                borderRadius: '16px', 
+                marginBottom: '24px', 
+                textAlign: 'center', 
+                fontWeight: '800', 
+                fontSize: '15px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                letterSpacing: '0.5px'
+            }}>
+                <span style={{ fontSize: '20px' }}>📦</span>
+                <span>SAAT 16:00’A KADAR VERİLEN SİPARİŞLER AYNI GÜN KARGO’DA</span>
+                <span style={{ fontSize: '20px' }}>🚚</span>
+            </div>
+
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Ürün Arama</h1>
@@ -435,7 +480,7 @@ export default function DealerCatalog() {
                                     style={{ border: 'none', background: 'transparent', width: '100%', fontSize: 13, outline: 'none', color: '#000' }}
                                     placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın (Enter'a basmayı unutmayın)"
                                     value={filterText}
-                                    onChange={e => setFilterText(e.target.value)}
+                                    onChange={e => setFilterText(e.target.value.toLocaleUpperCase('tr-TR'))}
                                     onKeyDown={searchProducts}
                                     id="catalog-search"
                                 />
@@ -779,7 +824,7 @@ export default function DealerCatalog() {
                                 {Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency || 'TRY'}
                                 {hoveredPriceTooltip.product.currency && hoveredPriceTooltip.product.currency !== 'TRY' && (
                                     <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>
-                                        (₺{((Number(hoveredPriceTooltip.product.list_price) / 1.36) * (1 + (globalMargin / 100)) * rates[hoveredPriceTooltip.product.currency]).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
+                                        (₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
                                     </span>
                                 )}
                             </span>

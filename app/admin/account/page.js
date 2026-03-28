@@ -140,11 +140,12 @@ export default function AdminAccountLedger() {
     const handleExpand = async (tx) => {
         if (expandedRow === tx.id) { setExpandedRow(null); return; }
         setExpandedRow(tx.id);
-        if (tx.transaction_type === 'TOPTAN SATIŞ' && tx.document_no && !orderDetails[tx.id]) {
+        if (tx.transaction_type === 'TOPTAN SATIŞ' && !orderDetails[tx.id]) {
             setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
+            const searchId = tx.order_id || tx.document_no;
             const { data } = await supabase.from('order_items')
                 .select('*, product:products(name, code, oem_no)')
-                .eq('order_id', tx.document_no);
+                .eq('order_id', searchId);
             setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
             setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
         }

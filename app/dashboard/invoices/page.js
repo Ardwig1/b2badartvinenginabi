@@ -13,18 +13,19 @@ export default function DealerInvoices() {
 
     const fetchInvoices = useCallback(async () => {
         setLoading(true);
-        const { data: { user } } = await supabase.auth.getUser();
-        const { data: profile } = await supabase.from('profiles')
-            .select('company_id')
-            .eq('id', user.id).single();
-        const { data } = await supabase.from('invoices')
-            .select('*, items:invoice_items(*, product:products(name))')
-            .eq('company_id', profile.company_id)
-            .order('created_at', { ascending: false });
-        setInvoices(data || []);
-        const unpaid = (data || []).filter(i => i.status !== 'paid').reduce((acc, i) => acc + Number(i.total_amount), 0);
-        setTotalUnpaid(unpaid);
-        setLoading(false);
+        try {
+            const res = await fetch('/api/user/invoices');
+            if (res.ok) {
+                const data = await res.json();
+                setInvoices(data || []);
+                const unpaid = (data || []).filter(i => i.status !== 'paid').reduce((acc, i) => acc + Number(i.total_amount), 0);
+                setTotalUnpaid(unpaid);
+            }
+        } catch (err) {
+            console.error('Fetch invoices error:', err);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);

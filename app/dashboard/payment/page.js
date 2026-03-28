@@ -129,8 +129,7 @@ export default function PaymentPage() {
         if (hasItems) {
             // We need the discount percent from the profile
             const fetchDiscount = async () => {
-                const { data: { user } } = await createClient().auth.getUser();
-                if (user) {
+                try {
                     const res = await fetch('/api/user/info');
                     if (res.ok) {
                         const data = await res.json();
@@ -146,20 +145,22 @@ export default function PaymentPage() {
                         );
                         
                         setCartTotal(totals.grandTotal);
-                        // Only set amount if nothing else is set yet or we came from cart
-                        if (!amount || amount === '0.00' || context === 'cart' || sessionStorage.getItem('pendingCartTotal')) {
-                            // If user is already typing or has debt checked, don't overwrite unless coming from cart
+                        // Update amount if this is the first calculation or context is cart
+                        if (!amount || amount === '0.00' || context === 'cart') {
                             if (isCartChecked) {
                                 setAmount(totals.grandTotal.toFixed(2));
                             }
                         }
                     }
+                } catch (e) {
+                    console.error('Error calculating cart totals:', e);
                 }
             };
             fetchDiscount();
         } else {
             setCartTotal(null);
-            if (isCartChecked) setAmount('');
+            // Don't clear amount if user is typing or has debt checked
+            if (isCartChecked && !context) setAmount('');
         }
     }, [cartItems, pricingSettings, isCartChecked, context]);
 
@@ -474,7 +475,7 @@ export default function PaymentPage() {
                 </div>
 
                 <div style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        {cartTotal && (
+                        {cartTotal !== null && (
                             <div className="card" style={{ 
                                 padding: 24, 
                                 border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', 
@@ -501,7 +502,7 @@ export default function PaymentPage() {
                             </div>
                         )}
 
-                        {(buyerInfo.currentBalance !== undefined && buyerInfo.currentBalance < 0) && (
+                        {(!isInfoLoading && buyerInfo.currentBalance < 0) && (
                             <div className="card" style={{ 
                                 padding: 24, 
                                 border: isDebtChecked ? '2px solid var(--danger)' : '1px solid var(--border)', 

@@ -166,6 +166,27 @@ export default function CompaniesPage() {
     fetchData();
   };
 
+  const autoFillDealerCode = async (city) => {
+    const trimmedCity = city?.trim();
+    if (!trimmedCity || trimmedCity.length < 2) return;
+    
+    // Autofill if dealerCode is empty OR it looks like one of our auto-generated codes (has a dash)
+    const currentCode = formData.dealerCode || '';
+    if (!currentCode || currentCode.includes('-')) {
+      try {
+        const res = await fetch(`/api/admin/next-dealer-code?city=${encodeURIComponent(trimmedCity)}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.nextCode) {
+            setFormData(prev => ({ ...prev, dealerCode: data.nextCode }));
+          }
+        }
+      } catch (e) {
+        console.error('Bayi kodu oluşturma hatası:', e);
+      }
+    }
+  };
+
   const update = (field) => (e) => {
     const value = e.target.value;
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -549,7 +570,7 @@ export default function CompaniesPage() {
                 </div>
                 <div className="form-group">
                     <label className="form-label">İl</label>
-                    <input className="form-input" type="text" placeholder="Örn: İstanbul" value={formData.city} onChange={update('city')} id="modal-city" />
+                    <input className="form-input" type="text" placeholder="Örn: İstanbul" value={formData.city} onChange={update('city')} onBlur={(e) => autoFillDealerCode(e.target.value)} id="modal-city" />
                 </div>
                 <div className="form-group">
                     <label className="form-label">İlçe</label>

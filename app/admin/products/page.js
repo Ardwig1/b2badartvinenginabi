@@ -327,7 +327,7 @@ export default function AdminProducts() {
                     <table>
                         <thead>
                             <tr>
-                                <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Alnan M.</th><th>Kategori</th>
+                                <th>Görsel</th><th>Stok Kodu</th><th>OEM No</th><th>Ürün Adı</th><th>Marka</th><th>Alnan F.</th><th>Kategori</th>
                                 <th>Liste Fiyatı</th><th>İskonto %</th><th style={{ textAlign: 'center' }}>Koli</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th>Durum</th><th>İşlemler</th>
                             </tr>
                         </thead>
@@ -425,7 +425,7 @@ export default function AdminProducts() {
                                 <div className="form-group"><label className="form-label">OEM No</label><input className="form-input" value={form.oem_no} onChange={up('oem_no')} id="prod-oem" placeholder="Örn: 12345-ABC" /></div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Ürün Adı *</label><input className="form-input" value={form.name} onChange={up('name')} required id="prod-name" /></div>
                                 <div className="form-group"><label className="form-label">Marka</label><input className="form-input" value={form.brand} onChange={up('brand')} id="prod-brand" /></div>
-                                <div className="form-group"><label className="form-label" style={{ color: 'var(--danger)', fontWeight: 700 }}>Ürünün Alındığı Marka (GİZLİ)</label><input className="form-input" style={{ borderColor: 'var(--danger)' }} value={form.supplier_brand} onChange={up('supplier_brand')} id="prod-supplier-brand" placeholder="Örn: X Tedarikçisi" /></div>
+                                <div className="form-group"><label className="form-label" style={{ color: 'var(--danger)', fontWeight: 700 }}>Ürünün Alındığı Firma (GİZLİ)</label><input className="form-input" style={{ borderColor: 'var(--danger)' }} value={form.supplier_brand} onChange={up('supplier_brand')} id="prod-supplier-brand" placeholder="Örn: X Tedarikçisi" /></div>
                                 <div className="form-group"><label className="form-label">Araç Markası</label><input className="form-input" value={form.car_brand} onChange={up('car_brand')} id="prod-car-brand" placeholder="Örn: RENAULT" /></div>
                                 <div className="form-group"><label className="form-label">Araç Modeli</label><input className="form-input" value={form.car_model} onChange={up('car_model')} id="prod-car-model" placeholder="Örn: CLIO 5" /></div>
                                 <div className="form-group"><label className="form-label">Kategori</label><input className="form-input" value={form.category} onChange={up('category')} id="prod-category" /></div>

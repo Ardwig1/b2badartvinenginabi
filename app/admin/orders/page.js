@@ -35,7 +35,7 @@ export default function AdminOrders() {
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         let query = supabase.from('orders')
-            .select('*, company:companies(name), items:order_items(*, product:products(name, code, oem_no))')
+            .select('*, company:companies(name), items:order_items(*, product:products(name, code, oem_no, supplier_brand))')
             .order('created_at', { ascending: false });
         if (filter !== 'all') query = query.eq('status', filter);
         const { data } = await query;
@@ -207,6 +207,7 @@ export default function AdminOrders() {
                             <th width="250">Ürün Adı</th>
                             <th width="120">Ürün Kodu</th>
                             <th width="120">OEM No</th>
+                            <th width="120">Ürünün Alındığı Firma</th>
                             <th width="80">Miktar</th>
                             <th width="120">Birim Fiyat</th>
                             <th width="120">Toplam Fiyat</th>
@@ -220,13 +221,14 @@ export default function AdminOrders() {
                                 <td>${item.product?.name || ''}</td>
                                 <td>${item.product?.code || ''}</td>
                                 <td>${item.product?.oem_no || ''}</td>
+                                <td>${item.product?.supplier_brand || '-'}</td>
                                 <td>${item.quantity}</td>
                                 <td>₺${Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                 <td>₺${Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                             </tr>
                         `).join('')}
                         <tr>
-                            <td colspan="7" style="text-align: right; font-weight: bold;">GENEL TOPLAM</td>
+                            <td colspan="8" style="text-align: right; font-weight: bold;">GENEL TOPLAM</td>
                             <td style="font-weight: bold;">₺${Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                         </tr>
                     </tbody>
@@ -322,10 +324,15 @@ export default function AdminOrders() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                                         <div>
                                             <div style={{ fontWeight: 600 }}>{item.product?.name}</div>
-                                            {item.product?.oem_no && (
-                                                <div style={{ color: 'var(--primary)', fontSize: 11, fontFamily: 'monospace' }}>OEM: {item.product.oem_no}</div>
-                                            )}
-                                            <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ display: 'flex', gap: 12, marginTop: 2 }}>
+                                                {item.product?.oem_no && (
+                                                    <div style={{ color: 'var(--primary)', fontSize: 11, fontFamily: 'monospace' }}>OEM: {item.product.oem_no}</div>
+                                                )}
+                                                {item.product?.supplier_brand && (
+                                                    <div style={{ color: '#eab308', fontSize: 11, fontWeight: 600 }}>Firma: {item.product.supplier_brand}</div>
+                                                )}
+                                            </div>
+                                            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                         </div>
                                         <div style={{ fontWeight: 700 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                     </div>

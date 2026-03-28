@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { getUserDiscount } from '../actions';
-import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon, MagnifyingGlassIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { useCart } from '@/components/CartProvider';
 
@@ -48,6 +48,7 @@ export default function DealerCatalog() {
     const [viewMode, setViewMode] = useState('catalog'); // 'catalog' = görselsiz kompakt, 'list' = görselli
     const perPage = viewMode === 'list' ? 15 : 10;
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null); // Full-screen image modal state
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
@@ -550,13 +551,15 @@ export default function DealerCatalog() {
                                 onMouseMove={e => handleRowMouseMove(e, p)}
                                 onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; handleRowMouseLeave(); }}
                             >
-                                <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden' }}>
-                                    {p.image_url ? (
-                                        <img src={p.image_url} alt={p.name || 'Ürün'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
-                                    ) : (
-                                        <CubeIcon style={{ width: 48, height: 48, color: '#ccc' }} />
-                                    )}
-                                </div>
+                                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden', cursor: 'zoom-in' }}
+                                            onClick={() => p.image_url && setSelectedImage({ url: p.image_url, name: p.name })}
+                                        >
+                                            {p.image_url ? (
+                                                <img src={p.image_url} alt={p.name || 'Ürün'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
+                                            ) : (
+                                                <CubeIcon style={{ width: 48, height: 48, color: '#ccc' }} />
+                                            )}
+                                        </div>
                                 <div style={{ padding: '8px 10px 0', fontSize: 11, fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                     {p.code || '-'}
                                 </div>
@@ -671,19 +674,29 @@ export default function DealerCatalog() {
                                         <td style={{ textAlign: 'center' }}>
                                             {p.image_url ? (
                                                 <div
-                                                    style={{ cursor: 'pointer', color: 'var(--primary)', display: 'flex', justifyContent: 'center' }}
+                                                    style={{ cursor: 'zoom-in', color: 'var(--primary)', display: 'flex', justifyContent: 'center' }}
                                                     onMouseEnter={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect();
                                                         setHoveredImage({ url: p.image_url, x: rect.left, y: rect.top });
                                                     }}
                                                     onMouseLeave={() => setHoveredImage(null)}
+                                                    onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}
                                                 >
                                                     <PhotoIcon style={{ width: 20, height: 20 }} />
                                                 </div>
                                             ) : '-'}
                                         </td>
                                         <td style={{ fontSize: 12, color: p.is_campaign ? '#000' : 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 800, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>%{discountPercent}</td>
+                                        <td style={{ textAlign: 'center', fontWeight: 800, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>
+                                            {discountPercent > 0 ? (
+                                                <>
+                                                    %{discountPercent}
+                                                    {Number(p.discount_rate) > 0 && ` + %${p.discount_rate}`}
+                                                </>
+                                            ) : (
+                                                Number(p.discount_rate) > 0 ? <>%{p.discount_rate}</> : ''
+                                            )}
+                                        </td>
                                         <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                             <div
                                                 style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}
@@ -723,27 +736,53 @@ export default function DealerCatalog() {
                                                 >+</button>
                                             </div>
                                         </td>
-                                        <td>
-                                            {(() => {
-                                                const pVal = getPending(p.id);
-                                                const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
-                                                return (
-                                                    <button
-                                                        className="btn btn-primary btn-sm"
-                                                        onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
-                                                        disabled={isOutOfStock || isPendingEmpty}
-                                                        style={{
-                                                            opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
-                                                            whiteSpace: 'nowrap',
-                                                            cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
-                                                            filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
-                                                            transition: 'all 0.2s'
-                                                        }}
-                                                    >
-                                                        {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
-                                                    </button>
-                                                );
-                                            })()}
+                                        <td style={{ width: 100 }}>
+                                            <div style={{ display: 'flex', gap: 4 }}>
+                                                {(() => {
+                                                    const pVal = getPending(p.id);
+                                                    const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
+                                                    return (
+                                                        <button
+                                                            className="btn btn-primary btn-sm"
+                                                            onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
+                                                            disabled={isOutOfStock || isPendingEmpty}
+                                                            style={{
+                                                                opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
+                                                                whiteSpace: 'nowrap',
+                                                                cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
+                                                                filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
+                                                                transition: 'all 0.2s',
+                                                                flex: 1
+                                                            }}
+                                                        >
+                                                            {isOutOfStock ? 'Yok' : '🛒 Ekle'}
+                                                        </button>
+                                                    );
+                                                })()}
+                                                <a 
+                                                    href={`/dashboard/orders?tab=items&search=${p.code}`}
+                                                    className="btn btn-sm"
+                                                    title="Ürün Geçmişi"
+                                                    style={{ 
+                                                        padding: '6px 12px', 
+                                                        background: '#475569', 
+                                                        color: '#fff', 
+                                                        fontSize: 11, 
+                                                        fontWeight: 700, 
+                                                        borderRadius: 8,
+                                                        border: 'none',
+                                                        textDecoration: 'none',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = '#475569'}
+                                                >
+                                                    Geçmiş
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 );
@@ -858,6 +897,79 @@ export default function DealerCatalog() {
             )}
 
             {toast && <div className="toast toast-success">✓ {toast}</div>}
+
+            {/* Full Screen Image Modal */}
+            {selectedImage && (
+                <div 
+                    style={{
+                        position: 'fixed',
+                        inset: 0,
+                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 1000000,
+                        backdropFilter: 'blur(8px)',
+                        cursor: 'zoom-out'
+                    }}
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button 
+                        style={{
+                            position: 'absolute',
+                            top: 24,
+                            right: 24,
+                            background: 'rgba(255,255,255,0.1)',
+                            border: 'none',
+                            color: '#fff',
+                            width: 48,
+                            height: 48,
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            cursor: 'pointer',
+                            fontSize: 24,
+                            zIndex: 1000001
+                        }}
+                        onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
+                    >
+                        <XMarkIcon style={{ width: 24, height: 24 }} />
+                    </button>
+                    
+                    <div style={{ position: 'relative', width: '95vw', height: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img 
+                            src={selectedImage.url} 
+                            alt={selectedImage.name} 
+                            style={{ 
+                                maxWidth: '100%', 
+                                maxHeight: '100%', 
+                                objectFit: 'contain', 
+                                borderRadius: 4, 
+                                boxShadow: '0 0 50px rgba(0,0,0,0.5)' 
+                            }} 
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                        <div style={{ 
+                            position: 'absolute', 
+                            bottom: 20, 
+                            left: '50%', 
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(0,0,0,0.6)',
+                            padding: '8px 24px',
+                            borderRadius: 20,
+                            color: '#fff', 
+                            fontSize: 14, 
+                            fontWeight: 600,
+                            backdropFilter: 'blur(4px)',
+                            whiteSpace: 'nowrap',
+                            pointerEvents: 'none'
+                        }}>
+                            {selectedImage.name}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -41,58 +41,76 @@ export default function AdminShowroom() {
     };
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)', overflow: 'hidden', padding: '0px' }}>
+        <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: '100vh', // Take full height
+            width: '100%',
+            overflow: 'hidden', 
+            padding: '0px',
+            background: 'var(--bg-canvas)'
+        }}>
+            {/* Inner Window Container - Flush with Sidebar */}
             <div style={{ 
-                padding: '12px 24px', 
-                background: 'var(--bg-card)', 
-                borderBottom: '1px solid var(--border)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                zIndex: 20,
-                boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
+                flex: 1,
+                display: 'flex', 
+                flexDirection: 'column',
+                boxShadow: '15px 0 40px rgba(0,0,0,0.3)', 
+                overflow: 'hidden',
+                border: 'none', // Pixel-perfect flush
+                background: 'var(--bg-primary)',
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={{ 
-                        background: 'rgba(59, 130, 246, 0.1)', 
-                        color: 'var(--primary)', 
-                        padding: '6px 16px', 
-                        borderRadius: 8,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        border: '1px solid rgba(59, 130, 246, 0.2)'
-                    }}>
-                        Görüntülenen Firma: {companyName}
+                {/* Header Bar */}
+                <div style={{ 
+                    padding: '10px 24px', 
+                    background: 'var(--bg-card)', 
+                    borderBottom: '1px solid var(--border)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    zIndex: 20
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ 
+                            background: 'rgba(37, 99, 235, 0.1)', 
+                            color: 'var(--primary)', 
+                            padding: '6px 16px', 
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            border: '1px solid rgba(37, 99, 235, 0.2)'
+                        }}>
+                            Görüntülenen Firma: {companyName}
+                        </div>
                     </div>
+
+                    <button 
+                        onClick={exitShowroom}
+                        className="btn btn-primary btn-sm"
+                        style={{ fontSize: 13, gap: 8, padding: '8px 24px' }}
+                    >
+                        <ArrowLeftIcon style={{ width: 16, height: 16 }} />
+                        Showroom Modundan Çık
+                    </button>
                 </div>
 
-                <button 
-                    onClick={exitShowroom}
-                    className="btn btn-primary"
-                    style={{ fontSize: 13, gap: 8, padding: '8px 20px' }}
-                >
-                    <ArrowLeftIcon style={{ width: 16, height: 16 }} />
-                    Showroom Modundan Çık
-                </button>
-            </div>
-
-            <div style={{ 
-                flex: 1, 
-                position: 'relative', 
-                background: 'var(--bg-primary)',
-                overflow: 'hidden'
-            }}>
-                <iframe 
-                    src="/dashboard" 
-                    style={{ 
-                        width: '117.6%', 
-                        height: '117.6%',
-                        border: 'none',
-                        transform: 'scale(0.85)',
-                        transformOrigin: 'top left'
-                    }} 
-                    title="User Dashboard Showroom"
-                />
+                {/* Dashboard Viewport */}
+                <div style={{ 
+                    flex: 1, 
+                    position: 'relative', 
+                    background: 'var(--bg-primary)',
+                    overflow: 'hidden'
+                }}>
+                    <iframe 
+                        src="/dashboard?showroom=true" 
+                        style={{ 
+                            width: '100%', 
+                            height: '100%',
+                            border: 'none',
+                        }} 
+                        title="Admin Showroom View"
+                    />
+                </div>
             </div>
         </div>
     );

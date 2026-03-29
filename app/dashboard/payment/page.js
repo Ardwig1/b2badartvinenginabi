@@ -37,8 +37,11 @@ export default function PaymentPage() {
     const fetchUserAndSettings = useCallback(async () => {
         setIsInfoLoading(true);
         try {
-            // Force bypass cache
-            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store' });
+            // Force bypass cache and include credentials
+            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { 
+                cache: 'no-store',
+                credentials: 'include'
+            });
             if (infoRes.ok) {
                 const data = await infoRes.json();
                 setBuyerInfo({

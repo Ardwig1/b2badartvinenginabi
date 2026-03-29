@@ -15,44 +15,39 @@ export async function GET() {
             return NextResponse.json({ error: 'Oturum açılmamış.' }, { status: 401 });
         }
 
+        // --- NÜKLEER YETKİ: Temsilci ve Adminler için RLS bypass ---
         const adminSupabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        // 1. Fetch Profile
-        const { data: profile } = await adminSupabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .maybeSingle();
-
-        if (!profile) return NextResponse.json({ error: 'Profil bulunamadı' }, { status: 404 });
-
-        // 2. Impersonation (Showroom) Logic
-        const cookieStore = await cookies();
-        let impId = cookieStore.get('impersonate_company_id')?.value;
-        
-        const isRepMetadata = user.user_metadata?.role === 'representative';
+        // 1. Profil ve Temsilci Durumu Kontrolü
+        const { data: profile } = await adminSupabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
         const { data: repRecord } = await adminSupabase.from('customer_representatives').select('id').eq('id', user.id).maybeSingle();
         
-        const isRep = isRepMetadata || !!repRecord;
-        const canImpersonate = profile.is_admin || isRep;
+        const isRep = user.user_metadata?.role === 'representative' || !!repRecord;
+        const isAdmin = profile?.is_admin === true;
+        const hasSuperPower = isRep || isAdmin; // TEMSİLCİ = ADMIN MANTIĞI
+
+        // 2. Showroom Çerezi Okuma
+        const cookieStore = await cookies();
+        const impId = cookieStore.get('impersonate_company_id')?.value;
         
-        let targetCompanyId = profile.company_id;
+        let targetCompanyId = profile?.company_id;
         let isImpersonating = false;
 
-        // Force Showroom if authorized and cookie exists
-        if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
+        // Yetkili biri showroom modundaysa bayiyi hedefle
+        if (hasSuperPower && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
         }
 
-        // 3. Fetch Company & Price Group (Exact same query as Dashboard Page)
+        // 3. Veri Çekme (Dashboard ile Birebir Aynı Sorgu)
         let discount = 0;
         let companyData = null;
 
         if (targetCompanyId) {
+            // RLS bypass ile en yetkili şekilde çekiyoruz
             const { data: company } = await adminSupabase
                 .from('companies')
                 .select('*, price_group:price_groups(name, discount_percent)')
@@ -61,13 +56,13 @@ export async function GET() {
             
             if (company) {
                 companyData = company;
-                // Bayinin fiyat grubu iskontosunu al
+                // Fiyat grubu iskontosunu garantiye al
                 discount = Number(company.price_group?.discount_percent) || 0;
             }
         }
 
-        // 4. Fallback (Sadece showroom dışındaysak kendi iskontosu)
-        if (discount === 0 && !isImpersonating) {
+        // 4. Fallback (Showroom değilsek kendi iskontosu)
+        if (discount === 0 && !isImpersonating && profile) {
             discount = Number(profile.discount_rate) || 0;
         }
 
@@ -76,17 +71,18 @@ export async function GET() {
             email: user.email,
             phone: companyData?.phone || '',
             companyId: targetCompanyId,
-            companyName: companyData?.name || profile.full_name,
-            fullName: profile.full_name,
+            companyName: companyData?.name || profile?.full_name || 'B2B Kullanıcısı',
+            fullName: profile?.full_name || 'B2B Kullanıcısı',
             currentBalance: Number(companyData?.current_balance) || 0,
-            discountPercent: discount,
+            discountPercent: discount, // BU ARTIK GARANTİ BAYİDEN GELİYOR
             isImpersonating,
             isPrepaymentLocked: companyData?.is_prepayment_locked || false,
-            riskLimit: Number(companyData?.risk_limit) || 0
+            riskLimit: Number(companyData?.risk_limit) || 0,
+            role: isRep ? 'representative' : (isAdmin ? 'admin' : 'dealer')
         });
 
     } catch (err) {
-        console.error('API Error:', err);
-        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+        console.error('CRITICAL API ERROR:', err);
+        return NextResponse.json({ error: 'Sunucu hatası', details: err.message }, { status: 500 });
     }
 }

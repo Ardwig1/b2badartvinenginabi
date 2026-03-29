@@ -19,14 +19,18 @@ async function getEffectiveCompanyId() {
         const isImpersonating = impId && impId !== 'undefined' && impId !== '';
 
         if (isImpersonating) {
+            // Check if representative: 
+            // 1. In metadata
+            // 2. In customer_representatives table (more reliable after re-adds)
             const isRepMetadata = user.user_metadata?.role === 'representative';
-            const { data: repAssignment } = await adminSupabase
-                .from('representative_assignments')
-                .select('representative_id')
-                .eq('representative_id', user.id)
-                .limit(1)
+            const { data: repRecord } = await adminSupabase
+                .from('customer_representatives')
+                .select('id')
+                .eq('id', user.id)
                 .maybeSingle();
-            const isRep = isRepMetadata || !!repAssignment;
+            
+            const isRep = isRepMetadata || !!repRecord;
+
             if (profile?.is_admin || isRep) return impId;
         }
         return profile?.company_id;

@@ -229,7 +229,7 @@ export default function DealerCart() {
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 100, marginTop: 4 }}>
                                     {searchProducts.map(p => (
                                         <div key={p.id} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)' }}
-                                            onClick={() => { ctxAddToCart(product); setProductSearch(''); setSearchProducts([]); }}>
+                                            onClick={() => { ctxAddToCart(p); setProductSearch(''); setSearchProducts([]); }}>
                                             <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>
                                             <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                         </div>
@@ -250,7 +250,7 @@ export default function DealerCart() {
                             </div>
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat (KDV'siz)</th><th>Miktar</th><th>Toplam (KDV'siz)</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
@@ -281,11 +281,11 @@ export default function DealerCart() {
                     <div className="form-group"><label className="form-label">Sepet Notu</label><textarea className="form-textarea" value={note} onChange={e => setNote(e.target.value)} placeholder="Siparişle ilgili notunuz..." /></div>
                     <hr className="divider" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        {discountPercent > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)' }}><span>İskonto (%{discountPercent})</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', gap: 20 }}><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                        {discountPercent > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', gap: 20 }}><span>İskonto (%{discountPercent})</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', gap: 20 }}><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}><span>Genel Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 16, gap: 20 }}><span>Genel Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
                     {totals.isRiskExceeded && <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '10px', borderRadius: 'var(--radius)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.2)', textAlign: 'center' }}>Risk limitini ₺{totals.exceededAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} aşıyorsunuz</div>}
                     <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', backgroundColor: totals.needsPrepayment && !submitting ? 'var(--danger)' : undefined }} disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder}>{submitting ? 'Sipariş veriliyor...' : totals.selectedCount === 0 ? 'Ürün seçin' : totals.isRiskExceeded ? 'LİMİT AŞILDI (ÖDEME YAP)' : totals.needsPrepayment ? 'YETERSİZ BAKİYE (ÖN ÖDEME)' : `✓ ${totals.selectedCount} Ürün Sipariş Et`}</button>
                 </div>

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
+    const debugInfo = {};
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -31,18 +32,10 @@ export async function GET() {
 
         // 2. Impersonation (Showroom) Logic
         const cookieStore = await cookies();
-        const allCookies = cookieStore.getAll();
-        console.log('INFO API: All Cookies:', allCookies.map(c => c.name));
-        
         const impId = cookieStore.get('impersonate_company_id')?.value;
-        console.log('INFO API: Impersonate Cookie Value:', impId);
         
         const isRepMetadata = user.user_metadata?.role === 'representative';
-        const { data: repRecord } = await adminSupabase
-            .from('customer_representatives')
-            .select('id')
-            .eq('id', user.id)
-            .maybeSingle();
+        const { data: repRecord } = await adminSupabase.from('customer_representatives').select('id').eq('id', user.id).maybeSingle();
         
         const isRep = isRepMetadata || !!repRecord;
         const canImpersonate = profile.is_admin || isRep;
@@ -50,40 +43,35 @@ export async function GET() {
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
-        // CRITICAL: Force targetCompanyId if cookie exists and user has permission
         if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
         }
 
-        // 3. Fetch Company Info DIRECTLY from DB
+        debugInfo.isImpersonating = isImpersonating;
+        debugInfo.targetCompanyId = targetCompanyId;
+
+        // 3. Fetch Company & Price Group (Exact same query as Dashboard)
         let discount = 0;
         let companyData = null;
 
         if (targetCompanyId) {
-            const { data: company } = await adminSupabase
+            const { data: company, error: compErr } = await adminSupabase
                 .from('companies')
-                .select('*')
+                .select('*, price_group:price_groups(name, discount_percent)')
                 .eq('id', targetCompanyId)
                 .maybeSingle();
             
             if (company) {
                 companyData = company;
-                // Fetch Price Group Discount DIRECTLY
-                if (company.price_group_id) {
-                    const { data: pg } = await adminSupabase
-                        .from('price_groups')
-                        .select('discount_percent')
-                        .eq('id', company.price_group_id)
-                        .maybeSingle();
-                    if (pg) {
-                        discount = Number(pg.discount_percent) || 0;
-                    }
-                }
+                discount = Number(company.price_group?.discount_percent) || 0;
+                debugInfo.foundDiscount = discount;
+            } else if (compErr) {
+                debugInfo.error = compErr.message;
             }
         }
 
-        // 4. Fallback only if not impersonating
+        // 4. Fallback
         if (discount === 0 && !isImpersonating) {
             discount = Number(profile.discount_rate) || 0;
         }
@@ -99,11 +87,12 @@ export async function GET() {
             discountPercent: discount,
             isImpersonating,
             isPrepaymentLocked: companyData?.is_prepayment_locked || false,
-            riskLimit: Number(companyData?.risk_limit) || 0
+            riskLimit: Number(companyData?.risk_limit) || 0,
+            _debug: debugInfo
         });
 
     } catch (err) {
-        console.error('API-level Error in /api/user/info:', err);
-        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
+        console.error('API Error:', err);
+        return NextResponse.json({ error: 'Sunucu hatası', details: err.message }, { status: 500 });
     }
 }

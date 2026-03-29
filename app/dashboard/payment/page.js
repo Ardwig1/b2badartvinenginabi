@@ -1,8 +1,7 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CreditCardIcon, ArrowLeftIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/components/CartProvider';
 import { calculateCartTotals } from '@/lib/pricing';
 
@@ -35,6 +34,52 @@ export default function PaymentPage() {
         discountPercent: 0
     });
 
+    const fetchUserAndSettings = useCallback(async () => {
+        let backupName = '';
+        if (typeof window !== 'undefined') {
+            backupName = localStorage.getItem('storedCompanyName') || '';
+            if (backupName) {
+                setBuyerInfo(prev => ({ ...prev, companyName: backupName }));
+                setIsInfoLoading(false);
+            }
+        }
+
+        try {
+            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store' });
+            if (infoRes.ok) {
+                const data = await infoRes.json();
+                setBuyerInfo({
+                    email: data.email || '',
+                    phone: data.phone || '',
+                    companyId: data.companyId || '',
+                    companyName: data.companyName || '',
+                    currentBalance: Number(data.currentBalance) || 0
+                });
+                setPricingSettings(prev => ({ ...prev, discountPercent: Number(data.discountPercent) || 0 }));
+            }
+
+            const [marginRes, usdRes, ratesRes] = await Promise.all([
+                fetch('/api/admin/margin'),
+                fetch('/api/admin/usd-settings'),
+                fetch('/api/rates')
+            ]);
+            
+            const [m, u, r] = await Promise.all([marginRes.json(), usdRes.json(), ratesRes.json()]);
+
+            setPricingSettings(prev => ({
+                ...prev,
+                margin: m?.margin ?? prev.margin,
+                usdRate: u?.usd_rate ?? prev.usdRate,
+                isUsdActive: u?.is_active ?? prev.isUsdActive,
+                rates: r ?? prev.rates
+            }));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setIsInfoLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search);
@@ -42,93 +87,15 @@ export default function PaymentPage() {
             const ctx = params.get('context');
             if (amt) setAmount(amt);
             if (ctx) setContext(ctx);
-
-            const cTot = sessionStorage.getItem('pendingCartTotal');
-            if (cTot) {
-                setCartTotal(cTot);
-                setAmount(parseFloat(cTot).toFixed(2));
-            }
         }
+        fetchUserAndSettings();
+    }, [fetchUserAndSettings]);
 
-        const fetchUser = async () => {
-            let backupName = '';
-            if (typeof window !== 'undefined') {
-                backupName = localStorage.getItem('storedCompanyName') || '';
-                if (backupName) {
-                    setBuyerInfo(prev => ({ ...prev, companyName: backupName }));
-                    setIsInfoLoading(false);
-                } else {
-                    setIsInfoLoading(true);
-                }
-            }
-
-            setInfoError(null);
-            try {
-                const res = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store' });
-                if (res.ok) {
-                    const data = await res.json();
-                    setBuyerInfo({
-                        email: data.email || '',
-                        phone: data.phone || '',
-                        companyId: data.companyId || '',
-                        companyName: data.companyName || backupName || '',
-                        currentBalance: Number(data.currentBalance) || 0
-                    });
-                    
-                    setPricingSettings(prev => ({
-                        ...prev,
-                        discountPercent: Number(data.discountPercent) || 0
-                    }));
-
-                    if (data.companyName && typeof window !== 'undefined') {
-                        localStorage.setItem('storedCompanyName', data.companyName);
-                    }
-                } else {
-                    const errData = await res.json().catch(() => ({}));
-                    if (!backupName) {
-                        setInfoError(errData.error || 'Bilgiler alınamadı.');
-                    }
-                }
-            } catch (err) {
-                console.error('Error fetching user info:', err);
-                if (!backupName) {
-                    setInfoError('Bağlantı hatası: Lütfen internetinizi kontrol edin.');
-                }
-            } finally {
-                setIsInfoLoading(false);
-            }
-        };
-
-        const fetchSettings = async () => {
-            try {
-                const [marginRes, usdRes, ratesRes] = await Promise.all([
-                    fetch('/api/admin/margin'),
-                    fetch('/api/admin/usd-settings'),
-                    fetch('/api/rates')
-                ]);
-                const marginData = await marginRes.json();
-                const usdData = await usdRes.json();
-                const ratesData = await ratesRes.json();
-
-                setPricingSettings(prev => ({
-                    ...prev,
-                    margin: marginData?.margin ?? prev.margin,
-                    usdRate: usdData?.usd_rate ?? prev.usdRate,
-                    isUsdActive: usdData?.is_active ?? prev.isUsdActive,
-                    rates: ratesData ?? prev.rates
-                }));
-            } catch (e) {
-                console.error('Settings fetch error:', e);
-            }
-        };
-
-        fetchUser();
-        fetchSettings();
-        window._retryFetchUser = fetchUser;
-    }, []);
-
+    // CART CALCULATION LOGIC
     useEffect(() => {
-        const hasItems = Object.values(cartItems).some(i => i.qty > 0);
+        const items = Object.values(cartItems || {});
+        const hasItems = items.some(i => i.qty > 0);
+        
         if (hasItems) {
             setIsCartLoading(true);
             const totals = calculateCartTotals(
@@ -139,18 +106,17 @@ export default function PaymentPage() {
                 pricingSettings.usdRate, 
                 pricingSettings.rates
             );
-            
             setCartTotal(totals.grandTotal);
-            if (!amount || amount === '0.00' || context === 'cart') {
-                if (isCartChecked) setAmount(totals.grandTotal.toFixed(2));
+            if ((!amount || amount === '0.00' || context === 'cart') && isCartChecked) {
+                setAmount(totals.grandTotal.toFixed(2));
             }
             setIsCartLoading(false);
         } else {
+            // Only clear if we are sure there are NO items
             setCartTotal(null);
             setIsCartLoading(false);
-            if (isCartChecked && !context) setAmount('');
         }
-    }, [cartItems, pricingSettings, isCartChecked, context]);
+    }, [cartItems, pricingSettings, isCartChecked, context, amount]);
 
     useEffect(() => {
         if (toslaData) document.getElementById("tosla3dForm")?.submit();
@@ -254,24 +220,9 @@ export default function PaymentPage() {
                                 src="https://www.akbank.com/Content/img/akbank-logo.png" 
                                 alt="Akbank" 
                                 style={{ height: '32px', width: 'auto', objectFit: 'contain' }} 
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.nextSibling.style.display = 'flex';
-                                }}
+                                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                             />
-                            <div style={{ 
-                                display: 'none', 
-                                background: '#e31837', 
-                                color: 'white', 
-                                padding: '4px 12px', 
-                                borderRadius: '4px', 
-                                fontWeight: 900, 
-                                fontSize: '18px', 
-                                fontFamily: 'Arial, sans-serif',
-                                letterSpacing: '-1px'
-                            }}>
-                                AKBANK
-                            </div>
+                            <div style={{ display: 'none', background: '#e31837', color: 'white', padding: '4px 12px', borderRadius: '4px', fontWeight: 900, fontSize: '18px', fontFamily: 'Arial, sans-serif', letterSpacing: '-1px' }}>AKBANK</div>
                         </div>
                         <div style={{ fontSize: '16px', fontWeight: 500, lineHeight: '1.4' }}>
                             <strong style={{ color: '#e31837', fontWeight: 800 }}>TOSLA</strong> altyapısı ile güvenli ödeme yapıyorsunuz. 
@@ -290,7 +241,7 @@ export default function PaymentPage() {
                         <form onSubmit={handlePayment}>
                             <div className="form-group" style={{ marginBottom: 20 }}>
                                 <label className="form-label">{context === 'cart' ? 'Sepet Tutarı (Değiştirilemez)' : 'Ödenecek Tutar (₺)'}</label>
-                                <input type="text" inputMode="decimal" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => handleAmountChange(e.target.value)} placeholder="0.00" disabled={context === 'cart' || Boolean(cartTotal && isCartChecked) || isDebtChecked} required />
+                                <input type="text" inputMode="decimal" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => handleAmountChange(e.target.value)} placeholder="0.00" disabled={context === 'cart' || (isCartChecked && cartTotal !== null) || isDebtChecked} required />
                                 <small style={{ color: '#6c757d', display: 'block', marginTop: 4 }}>{amount.includes(',') || amount.includes('.') ? 'Ondalık ayracı otomatik olarak ayarlanır.' : 'Virgül (,) veya Nokta (.) kullanabilirsiniz.'}</small>
                             </div>
 
@@ -315,7 +266,6 @@ export default function PaymentPage() {
                         </form>
 
                         <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                            <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', padding: '16px 24px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', marginBottom: '20px' }}>
                                 <img src="/user_logo3.png" alt="Troy" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
                                 <img src="/user_logo2.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
@@ -334,7 +284,6 @@ export default function PaymentPage() {
                     {(cartTotal !== null || isCartLoading) && (
                         <div className="card" style={{ padding: 24, border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', opacity: (isDebtChecked || isCartLoading) ? 0.6 : 1, cursor: isCartLoading ? 'wait' : 'pointer' }} onClick={() => !isCartChecked && !isCartLoading && handleCartCheck({ target: { checked: true } })}>
                             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isCartChecked ? 'var(--primary)' : 'inherit' }}>Sepet Ödemesi</h3>
-                            <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Siparişinizi tamamlamak için mevcut sepet tutarı kadar bakiye yükleyerek devam edebilirsiniz.</p>
                             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16, minHeight: 64, display: 'flex', alignItems: 'center' }}>
                                 {isCartLoading ? <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}><div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /><span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hesaplanıyor...</span></div> : <div><div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Ödenecek Tutar:</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>₺{parseFloat(cartTotal || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div></div>}
                             </div>
@@ -342,10 +291,13 @@ export default function PaymentPage() {
                         </div>
                     )}
 
-                    {!isInfoLoading && buyerInfo.currentBalance < 0 && (
+                    {!isInfoLoading && (buyerInfo.currentBalance < 0 || isInfoLoading) && (
                         <div className="card" style={{ padding: 24, border: isDebtChecked ? '2px solid var(--danger)' : '1px solid var(--border)', opacity: isCartChecked ? 0.6 : 1, cursor: 'pointer' }} onClick={() => !isDebtChecked && handleDebtCheck({ target: { checked: true } })}>
                             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isDebtChecked ? 'var(--danger)' : 'inherit' }}>Cari Borç Ödemesi</h3>
-                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16 }}><div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Güncel Cari Borcunuz:</div><div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div></div>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Güncel Cari Borcunuz:</div>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                            </div>
                             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}><input type="checkbox" checked={isDebtChecked} onChange={handleDebtCheck} style={{ width: 20, height: 20 }} /><span style={{ fontWeight: 600, fontSize: 14 }}>Tüm borcumu öde</span></label>
                         </div>
                     )}

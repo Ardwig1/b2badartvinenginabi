@@ -24,8 +24,7 @@ export default async function RepLayout({ children }) {
                 height: '100vh',
                 display: 'flex',
                 flexDirection: 'column',
-                overflow: 'hidden',
-                margin: 0 /* Reset any default margin to let globals.css handle it */
+                overflow: 'hidden'
             }}>
                 {children}
             </main>

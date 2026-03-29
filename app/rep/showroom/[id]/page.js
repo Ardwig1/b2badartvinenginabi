@@ -47,7 +47,7 @@ export default function RepShowroom() {
             height: '100vh', 
             width: '100%',
             background: 'var(--bg-canvas)', 
-            padding: '24px 24px 24px 0px', // LEFT PADDING ZERO to stick to sidebar
+            padding: '0px', // TOTAL FLUSH - no gaps
             overflow: 'hidden'
         }}>
             {/* The Floating Window Container */}
@@ -55,16 +55,15 @@ export default function RepShowroom() {
                 flex: 1,
                 display: 'flex', 
                 flexDirection: 'column',
-                boxShadow: '15px 0 40px rgba(0,0,0,0.3)', // Shadow only on the right/bottom
-                borderRadius: '0 16px 16px 0', // Sharp on the left, rounded on the right
+                boxShadow: '15px 0 40px rgba(0,0,0,0.3)', 
+                borderRadius: '0px', // Sharp all around to merge perfectly with container
                 overflow: 'hidden',
-                border: '1px solid var(--border)',
-                borderLeft: 'none', // SEAMLESS STICK TO OUR SIDEBAR
+                border: 'none', // Remove border to be pixel-perfect flush
                 background: 'var(--bg-primary)',
             }}>
                 {/* Window Header */}
                 <div style={{ 
-                    padding: '12px 24px', 
+                    padding: '10px 24px', 
                     background: 'var(--bg-card)', 
                     borderBottom: '1px solid var(--border)',
                     display: 'flex',
@@ -88,7 +87,7 @@ export default function RepShowroom() {
 
                     <button 
                         onClick={exitShowroom}
-                        className="btn btn-primary"
+                        className="btn btn-primary btn-sm"
                         style={{ fontSize: 13, gap: 8, padding: '8px 24px' }}
                     >
                         <ArrowLeftIcon style={{ width: 16, height: 16 }} />
@@ -96,7 +95,7 @@ export default function RepShowroom() {
                     </button>
                 </div>
 
-                {/* Window Content / Iframe */}
+                {/* Window Content / Iframe Area */}
                 <div style={{ 
                     flex: 1, 
                     position: 'relative', 

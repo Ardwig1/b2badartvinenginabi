@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CreditCardIcon, ArrowLeftIcon, RefreshIcon } from '@heroicons/react/24/outline'; // Note: Heroicons 2.0 might use ArrowPathIcon for Refresh
+import { CreditCardIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/components/CartProvider';
@@ -15,6 +15,7 @@ export default function PaymentPage() {
     const [cvv, setCvv] = useState('');
 
     const [cartTotal, setCartTotal] = useState(null);
+    const [isCartLoading, setIsCartLoading] = useState(false);
     const [isCartChecked, setIsCartChecked] = useState(true);
     const [isDebtChecked, setIsDebtChecked] = useState(false);
 
@@ -50,13 +51,12 @@ export default function PaymentPage() {
         }
 
         const fetchUser = async () => {
-            // Priority 1: Check localStorage for instant display (from Sidebar)
             let backupName = '';
             if (typeof window !== 'undefined') {
                 backupName = localStorage.getItem('storedCompanyName') || '';
                 if (backupName) {
                     setBuyerInfo(prev => ({ ...prev, companyName: backupName }));
-                    setIsInfoLoading(false); // We have enough to show the UI
+                    setIsInfoLoading(false);
                 } else {
                     setIsInfoLoading(true);
                 }
@@ -71,10 +71,9 @@ export default function PaymentPage() {
                         email: data.email || '',
                         phone: data.phone || '',
                         companyId: data.companyId || '',
-                        companyName: data.companyName || backupName || '', // Keep backup if API empty
+                        companyName: data.companyName || backupName || '',
                         currentBalance: Number(data.currentBalance) || 0
                     });
-                    // Update backup
                     if (data.companyName && typeof window !== 'undefined') {
                         localStorage.setItem('storedCompanyName', data.companyName);
                     }
@@ -119,7 +118,6 @@ export default function PaymentPage() {
 
         fetchUser();
         fetchSettings();
-        // Expose fetchUser for retry
         window._retryFetchUser = fetchUser;
     }, []);
 
@@ -127,7 +125,7 @@ export default function PaymentPage() {
     useEffect(() => {
         const hasItems = Object.values(cartItems).some(i => i.qty > 0);
         if (hasItems) {
-            // We need the discount percent from the profile
+            setIsCartLoading(true);
             const fetchDiscount = async () => {
                 try {
                     const res = await fetch('/api/user/info');
@@ -145,7 +143,6 @@ export default function PaymentPage() {
                         );
                         
                         setCartTotal(totals.grandTotal);
-                        // Update amount if this is the first calculation or context is cart
                         if (!amount || amount === '0.00' || context === 'cart') {
                             if (isCartChecked) {
                                 setAmount(totals.grandTotal.toFixed(2));
@@ -154,12 +151,14 @@ export default function PaymentPage() {
                     }
                 } catch (e) {
                     console.error('Error calculating cart totals:', e);
+                } finally {
+                    setIsCartLoading(false);
                 }
             };
             fetchDiscount();
         } else {
             setCartTotal(null);
-            // Don't clear amount if user is typing or has debt checked
+            setIsCartLoading(false);
             if (isCartChecked && !context) setAmount('');
         }
     }, [cartItems, pricingSettings, isCartChecked, context]);
@@ -174,7 +173,7 @@ export default function PaymentPage() {
         const checked = e.target.checked;
         setIsCartChecked(checked);
         if (checked) {
-            setIsDebtChecked(false); // Exclusive
+            setIsDebtChecked(false);
             if (cartTotal) {
                 setAmount(parseFloat(cartTotal).toFixed(2));
             }
@@ -187,7 +186,7 @@ export default function PaymentPage() {
         const checked = e.target.checked;
         setIsDebtChecked(checked);
         if (checked) {
-            setIsCartChecked(false); // Exclusive
+            setIsCartChecked(false);
             if (buyerInfo?.currentBalance < 0) {
                 setAmount(Math.abs(buyerInfo.currentBalance).toFixed(2));
             }
@@ -197,9 +196,7 @@ export default function PaymentPage() {
     };
 
     const handleAmountChange = (val) => {
-        // Normalize comma to dot
         let normalized = val.replace(',', '.');
-        // Allow only numbers and one dot
         normalized = normalized.replace(/[^0-9.]/g, '');
         const dots = normalized.split('.');
         if (dots.length > 2) {
@@ -212,8 +209,6 @@ export default function PaymentPage() {
 
     const handlePayment = async (e) => {
         e.preventDefault();
-
-        // Final normalization and validation
         const numericAmount = parseFloat(amount.replace(',', '.'));
         if (isNaN(numericAmount) || numericAmount <= 0) {
             alert('Lütfen geçerli bir tutar giriniz.');
@@ -221,13 +216,12 @@ export default function PaymentPage() {
         }
 
         setLoading(true);
-
         try {
             const res = await fetch('/api/payment/tosla/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    amount: numericAmount.toFixed(2), // Ensure consistent format for API
+                    amount: numericAmount.toFixed(2),
                     cardHolderName: buyerInfo.companyName || 'MUSTERI',
                     cardNumber: cardNumber.replace(/\s/g, ''),
                     expireMonth,
@@ -243,7 +237,6 @@ export default function PaymentPage() {
             const data = await res.json();
 
             if (res.ok && data.success && data.threeDSessionId) {
-                // Submit via React lifecycle instead of dangerouslySetInnerHTML script execution
                 setToslaData({
                     threeDSessionId: data.threeDSessionId,
                     cardHolderName,
@@ -267,16 +260,14 @@ export default function PaymentPage() {
     };
 
     if (toslaData) {
-        // Format the customer name for Tosla: SADECE FIRMA ADI
         let formattedName = `${toslaData.companyName || ''}`.trim();
         let safeName = formattedName
             .replace(/İ/g, 'I').replace(/ı/g, 'i').replace(/Ş/g, 'S').replace(/ş/g, 's')
             .replace(/Ğ/g, 'G').replace(/ğ/g, 'g').replace(/Ü/g, 'U').replace(/ü/g, 'u')
             .replace(/Ö/g, 'O').replace(/ö/g, 'o').replace(/Ç/g, 'C').replace(/ç/g, 'c')
             .replace(/[^a-zA-Z0-9\s]/g, '').trim().toUpperCase();
-        if (!safeName) safeName = 'MUSTERI'; // emergency fallback
+        if (!safeName) safeName = 'MUSTERI';
 
-        // Render a native React form and let useEffect submit it
         return (
             <div className="page-wrapper">
                 <div style={{ padding: 40, textAlign: 'center' }}>
@@ -296,9 +287,6 @@ export default function PaymentPage() {
             </div>
         );
     }
-
-    const showCartBox = (buyerInfo.currentBalance >= 0) || (buyerInfo.currentBalance < 0 && cartTotal && parseFloat(cartTotal) > 0);
-    const showDebtBox = (buyerInfo.currentBalance < 0);
 
     return (
         <div className="page-wrapper">
@@ -326,13 +314,10 @@ export default function PaymentPage() {
                                 disabled={context === 'cart' || Boolean(cartTotal && isCartChecked) || isDebtChecked}
                                 required
                             />
-                            <small style={{ color: '#6c757d', display: 'block', marginTop: 4 }}>
-                                {amount.includes(',') || amount.includes('.') ? 'Ondalık ayracı otomatik olarak ayarlanır.' : 'Virgül (,) veya Nokta (.) kullanabilirsiniz.'}
-                            </small>
                         </div>
 
                         <div className="form-group" style={{ marginBottom: 15 }}>
-                            <label className="form-label">İşlem Yapan Firma (Tosla'ya gönderilecek referans)</label>
+                            <label className="form-label">İşlem Yapan Firma</label>
                             <div style={{ position: 'relative' }}>
                                 <input
                                     type="text"
@@ -343,41 +328,15 @@ export default function PaymentPage() {
                                         backgroundColor: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#fff1f2' : '#f8f9fa',
                                         cursor: 'not-allowed',
                                         color: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#dc2626' : (isInfoLoading ? '#6c757d' : '#1e293b'),
-                                        fontWeight: 'bold',
-                                        border: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '1px solid #fda4af' : '1px solid var(--border)'
+                                        fontWeight: 'bold'
                                     }}
                                 />
-                                {(infoError || (!isInfoLoading && !buyerInfo.companyName)) && (
-                                    <button
-                                        type="button"
-                                        onClick={() => window._retryFetchUser?.()}
-                                        style={{
-                                            position: 'absolute',
-                                            right: 12,
-                                            top: '50%',
-                                            transform: 'translateY(-50%)',
-                                            fontSize: 12,
-                                            color: '#dc2626',
-                                            border: '1px solid #dc2626',
-                                            background: '#fff',
-                                            padding: '4px 8px',
-                                            borderRadius: '4px',
-                                            cursor: 'pointer',
-                                            fontWeight: 700
-                                        }}
-                                    >
-                                        YENİDEN DENE
-                                    </button>
-                                )}
                                 {isInfoLoading && (
                                     <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
                                         <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
                                     </div>
                                 )}
                             </div>
-                            <small style={{ color: infoError ? '#dc2626' : '#6c757d', marginTop: 4, display: 'block' }}>
-                                {infoError || "Güvenlik gereği kart sahibi ismi yerine sadece firma adınız Tosla'ya iletilir."}
-                            </small>
                         </div>
 
                         <div className="form-group" style={{ marginBottom: 15 }}>
@@ -390,176 +349,66 @@ export default function PaymentPage() {
                         </div>
 
                         <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label">Son Kullanma (Ay)</label>
-                                <input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value.replace(/\D/g, ''))} placeholder="AA" maxLength="2" required />
-                            </div>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label">Son Kullanma (Yıl)</label>
-                                <input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value.replace(/\D/g, ''))} placeholder="YY" maxLength="2" required />
-                            </div>
-                            <div className="form-group" style={{ flex: 1 }}>
-                                <label className="form-label">CVV</label>
-                                <input type="password" placeholder="***" className="form-input" value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, ''))} maxLength="4" required />
-                            </div>
+                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">Ay</label><input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value.replace(/\D/g, ''))} placeholder="AA" maxLength="2" required /></div>
+                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">Yıl</label><input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value.replace(/\D/g, ''))} placeholder="YY" maxLength="2" required /></div>
+                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">CVV</label><input type="password" placeholder="***" className="form-input" value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, ''))} maxLength="4" required /></div>
                         </div>
 
-                        <button
-                            type="submit"
-                            className="btn btn-primary btn-lg"
-                            style={{
-                                width: '100%',
-                                justifyContent: 'center',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 10,
-                                opacity: (loading || isInfoLoading || infoError || !buyerInfo.companyName) ? 0.6 : 1,
-                                transition: 'all 0.2s'
-                            }}
-                            disabled={loading || isInfoLoading || infoError || !buyerInfo.companyName}
-                        >
-                            {loading ? (
-                                <><div className="loading-spinner" style={{ width: 18, height: 18, borderTopColor: 'white' }} /> İşleniyor...</>
-                            ) : (
-                                <><CreditCardIcon style={{ width: 20, height: 20 }} /> Güvenli Ödeme Yap (Tosla)</>
-                            )}
+                        <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', gap: 10 }} disabled={loading || isInfoLoading || infoError || !buyerInfo.companyName}>
+                            {loading ? <><div className="loading-spinner" style={{ width: 18, height: 18, borderTopColor: 'white' }} /> İşleniyor...</> : <><CreditCardIcon style={{ width: 20, height: 20 }} /> Güvenli Ödeme Yap (Tosla)</>}
                         </button>
                     </form>
-
-                    <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                        <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
-
-                        {/* Payment Logos Block - Styled like the reference image */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '24px',
-                            padding: '16px 24px',
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                            borderRadius: '12px',
-                            marginBottom: '20px'
-                        }}>
-                            <img src="/user_logo3.png" alt="Troy" style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:900; font-size:18px; font-style: italic;">troy</span>'); }} />
-                            <img src="/user_logo2.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:900; font-size:22px; font-style: italic;">VISA</span>'); }} />
-                            <img src="/user_logo1.png" alt="Mastercard" style={{ height: 32, width: 'auto', objectFit: 'contain', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:16px;">mastercard</span>'); }} />
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                paddingLeft: '24px',
-                                borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
-                                height: '32px'
-                            }}>
-                                <div style={{ width: 28, height: 28, background: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                                </div>
-                                <div style={{ textAlign: 'left', lineHeight: '1.2' }}>
-                                    <div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.5px' }}>256 BIT SSL</div>
-                                    <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>GÜVENLİ ÖDEME</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
-                             <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link>
-                            <span style={{ color: 'var(--border)' }}>|</span>
-                            <Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İptal ve İade Koşulları</Link>
-                            <span style={{ color: 'var(--border)' }}>|</span>
-                            <Link href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik Politikası</Link>
-                        </div>
-                        <p style={{ marginTop: 16, fontSize: 12 }}>Ödeme yaparak yukarıdaki sözleşme ve koşulları kabul etmiş sayılırsınız.</p>
-                    </div>
                 </div>
 
                 <div style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                        {cartTotal !== null && (
-                            <div className="card" style={{ 
-                                padding: 24, 
-                                border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', 
-                                opacity: isDebtChecked ? 0.6 : 1,
-                                transition: 'all 0.2s',
-                                cursor: 'pointer'
-                            }} onClick={() => !isCartChecked && handleCartCheck({ target: { checked: true } })}>
-                                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isCartChecked ? 'var(--primary)' : 'inherit' }}>Sepet Ödemesi</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Siparişinizi tamamlamak için mevcut sepet tutarı kadar bakiye yükleyerek devam edebilirsiniz.</p>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16 }}>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Ödenecek Tutar:</div>
-                                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>₺{parseFloat(cartTotal).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                                </div>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 12px', background: isCartChecked ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent', borderRadius: 8, transition: 'all 0.2s' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={isCartChecked}
-                                        onChange={handleCartCheck}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ width: 20, height: 20, accentColor: 'var(--primary)', cursor: 'pointer' }}
-                                    />
-                                    <span style={{ fontWeight: 600, fontSize: 14, color: isCartChecked ? 'var(--primary)' : 'inherit' }}>Bu tutarı öde</span>
-                                </label>
+                    {(cartTotal !== null || isCartLoading) && (
+                        <div className="card" style={{ 
+                            padding: 24, 
+                            border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', 
+                            opacity: (isDebtChecked || isCartLoading) ? 0.6 : 1,
+                            cursor: isCartLoading ? 'wait' : 'pointer'
+                        }} onClick={() => !isCartChecked && !isCartLoading && handleCartCheck({ target: { checked: true } })}>
+                            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isCartChecked ? 'var(--primary)' : 'inherit' }}>Sepet Ödemesi</h3>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16, minHeight: 64, display: 'flex', alignItems: 'center' }}>
+                                {isCartLoading ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Hesaplanıyor...</span>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Ödenecek Tutar:</div>
+                                        <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>₺{parseFloat(cartTotal || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                    </div>
+                                )}
                             </div>
-                        )}
-
-                        {(!isInfoLoading && buyerInfo.currentBalance < 0) && (
-                            <div className="card" style={{ 
-                                padding: 24, 
-                                border: isDebtChecked ? '2px solid var(--danger)' : '1px solid var(--border)', 
-                                opacity: isCartChecked ? 0.6 : 1,
-                                transition: 'all 0.2s',
-                                cursor: 'pointer'
-                            }} onClick={() => !isDebtChecked && handleDebtCheck({ target: { checked: true } })}>
-                                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isDebtChecked ? 'var(--danger)' : 'inherit' }}>Cari Borç Ödemesi</h3>
-                                <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 16 }}>Cari hesabınızda bulunan güncel borç tutarınızı anında kolayca ödeyebilirsiniz.</p>
-                                <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16 }}>
-                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Güncel Cari Borcunuz:</div>
-                                    <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                                </div>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '10px 12px', background: isDebtChecked ? 'rgba(220, 38, 38, 0.1)' : 'transparent', borderRadius: 8, transition: 'all 0.2s' }}>
-                                    <input
-                                        type="checkbox"
-                                        checked={isDebtChecked}
-                                        onChange={handleDebtCheck}
-                                        onClick={(e) => e.stopPropagation()}
-                                        style={{ width: 20, height: 20, accentColor: 'var(--danger)', cursor: 'pointer' }}
-                                    />
-                                    <span style={{ fontWeight: 600, fontSize: 14, color: isDebtChecked ? 'var(--danger)' : 'inherit' }}>Tüm borcumu öde</span>
-                                </label>
-                            </div>
-                        )}
-
-                        {/* Akbank Tosla Info Box */}
-                        <div style={{
-                            marginTop: 'auto',
-                            padding: '24px',
-                            background: 'rgba(255, 255, 255, 0.04)',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
-                            borderRadius: '16px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '12px',
-                            color: 'var(--text-secondary)',
-                            fontSize: '14px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                            flexWrap: 'nowrap'
-                        }}>
-                            <span style={{ whiteSpace: 'nowrap' }}><strong>TOSLA,</strong> bir</span>
-                            <img
-                                src="https://upload.wikimedia.org/wikipedia/commons/8/87/Akbank_logo.svg"
-                                alt="Akbank"
-                                style={{ height: '18px', opacity: 1, flexShrink: 0 }}
-                                onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    e.target.insertAdjacentHTML('afterend', '<strong style="color:#e31837; font-style:italic; font-family:Arial, sans-serif; letter-spacing:-0.5px">AKBANK</strong>');
-                                }}
-                            />
-                            <span style={{ whiteSpace: 'nowrap' }}>ödeme yöntemidir.</span>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: isCartLoading ? 'wait' : 'pointer' }}>
+                                <input type="checkbox" checked={isCartChecked} onChange={handleCartCheck} disabled={isCartLoading} style={{ width: 20, height: 20 }} />
+                                <span style={{ fontWeight: 600, fontSize: 14 }}>Bu tutarı öde</span>
+                            </label>
                         </div>
-                    </div>
+                    )}
+
+                    {!isInfoLoading && buyerInfo.currentBalance < 0 && (
+                        <div className="card" style={{ 
+                            padding: 24, 
+                            border: isDebtChecked ? '2px solid var(--danger)' : '1px solid var(--border)', 
+                            opacity: isCartChecked ? 0.6 : 1,
+                            cursor: 'pointer'
+                        }} onClick={() => !isDebtChecked && handleDebtCheck({ target: { checked: true } })}>
+                            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: isDebtChecked ? 'var(--danger)' : 'inherit' }}>Cari Borç Ödemesi</h3>
+                            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', padding: 16, marginBottom: 16 }}>
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>Güncel Cari Borcunuz:</div>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)' }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                            </div>
+                            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+                                <input type="checkbox" checked={isDebtChecked} onChange={handleDebtCheck} style={{ width: 20, height: 20 }} />
+                                <span style={{ fontWeight: 600, fontSize: 14 }}>Tüm borcumu öde</span>
+                            </label>
+                        </div>
+                    )}
                 </div>
             </div>
+        </div>
     );
 }
-

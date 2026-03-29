@@ -59,11 +59,18 @@ export default async function DealerDashboard() {
         { count: pendingOrders },
         { count: totalOrders },
         { data: recentOrders },
+        { data: repData }
     ] = await Promise.all([
         queryClient.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
         queryClient.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
         queryClient.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
+        queryClient.from('representative_assignments')
+            .select('representative:customer_representatives(first_name, last_name)')
+            .eq('company_id', companyId)
+            .maybeSingle()
     ]);
+
+    const assignedRep = repData?.representative ? `${repData.representative.first_name} ${repData.representative.last_name}` : "Omi Group's Destek Ekibi";
 
     const pg = company?.price_group;
     const orderStatusMap = { pending: 'Bekliyor', confirmed: 'Onaylandı', preparing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal' };
@@ -80,7 +87,7 @@ export default async function DealerDashboard() {
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> 
-                            M. Temsilcisi: B2B Destek Ekibi
+                            M. Temsilcisi: {assignedRep}
                         </span>
                     </div>
                 </div>

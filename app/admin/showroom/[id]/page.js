@@ -44,23 +44,24 @@ export default function AdminShowroom() {
         <div style={{ 
             display: 'flex', 
             flexDirection: 'column', 
-            height: '100vh', // Take full height
+            height: '100vh', 
             width: '100%',
             overflow: 'hidden', 
-            padding: '0px',
+            padding: '16px', // Restore floating spacing
             background: 'var(--bg-canvas)'
         }}>
-            {/* Inner Window Container - Flush with Sidebar */}
+            {/* The Floating Window Container */}
             <div style={{ 
                 flex: 1,
                 display: 'flex', 
                 flexDirection: 'column',
-                boxShadow: '15px 0 40px rgba(0,0,0,0.3)', 
+                boxShadow: '0 10px 40px rgba(0,0,0,0.5)', 
+                borderRadius: '16px', // Restore rounded corners
                 overflow: 'hidden',
-                border: 'none', // Pixel-perfect flush
+                border: '1px solid var(--border)',
                 background: 'var(--bg-primary)',
             }}>
-                {/* Header Bar */}
+                {/* Window Header */}
                 <div style={{ 
                     padding: '10px 24px', 
                     background: 'var(--bg-card)', 
@@ -94,7 +95,7 @@ export default function AdminShowroom() {
                     </button>
                 </div>
 
-                {/* Dashboard Viewport */}
+                {/* Window Content / Iframe Area */}
                 <div style={{ 
                     flex: 1, 
                     position: 'relative', 

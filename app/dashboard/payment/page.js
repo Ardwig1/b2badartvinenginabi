@@ -233,7 +233,7 @@ export default function PaymentPage() {
 
             <div style={{ display: 'flex', gap: 24, maxWidth: 900, margin: '0 auto', alignItems: 'stretch', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {/* Tosla & Akbank Info Banner - Moved here and made LARGER */}
+                    {/* Tosla & Akbank Info Banner - Fixed Logo and Fallback */}
                     <div style={{
                         padding: '24px 30px',
                         background: 'linear-gradient(90deg, rgba(227, 24, 55, 0.12) 0%, rgba(227, 24, 55, 0.03) 100%)',
@@ -245,11 +245,30 @@ export default function PaymentPage() {
                         color: 'var(--text-primary)',
                         boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
                     }}>
-                        <img 
-                            src="https://upload.wikimedia.org/wikipedia/commons/8/87/Akbank_logo.svg" 
-                            alt="Akbank" 
-                            style={{ height: '28px', flexShrink: 0 }} 
-                        />
+                        <div style={{ display: 'flex', alignItems: 'center', minWidth: '100px' }}>
+                            <img 
+                                src="https://www.akbank.com/Content/img/akbank-logo.png" 
+                                alt="Akbank" 
+                                style={{ height: '32px', width: 'auto', objectFit: 'contain' }} 
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                }}
+                            />
+                            <div style={{ 
+                                display: 'none', 
+                                background: '#e31837', 
+                                color: 'white', 
+                                padding: '4px 12px', 
+                                borderRadius: '4px', 
+                                fontWeight: 900, 
+                                fontSize: '18px', 
+                                fontFamily: 'Arial, sans-serif',
+                                letterSpacing: '-1px'
+                            }}>
+                                AKBANK
+                            </div>
+                        </div>
                         <div style={{ fontSize: '16px', fontWeight: 500, lineHeight: '1.4' }}>
                             <strong style={{ color: '#e31837', fontWeight: 800 }}>TOSLA</strong> altyapısı ile güvenli ödeme yapıyorsunuz. 
                             <br/>

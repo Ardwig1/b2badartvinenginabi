@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { XMarkIcon, DocumentTextIcon, ShoppingCartIcon, CheckCircleIcon, ClockIcon, TruckIcon, XCircleIcon, BeakerIcon } from '@heroicons/react/24/outline';
 
 const statusConfig = {
@@ -15,25 +14,31 @@ const statusConfig = {
 export default function OrderDetailsModal({ isOpen, onClose, orderId, isAdmin = false }) {
     const [order, setOrder] = useState(null);
     const [loading, setLoading] = useState(true);
-    const supabase = createClient();
 
     useEffect(() => {
         if (!isOpen || !orderId) return;
 
         async function fetchOrderDetail() {
             setLoading(true);
-            const { data, error } = await supabase
-                .from('orders')
-                .select('*, items:order_items(*, product:products(name, code, oem_no, image_url))')
-                .eq('id', orderId)
-                .single();
-
-            if (!error) setOrder(data);
-            setLoading(false);
+            try {
+                const response = await fetch(`/api/user/orders/${orderId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setOrder(data);
+                } else {
+                    console.error('Failed to fetch order detail:', response.statusText);
+                    setOrder(null);
+                }
+            } catch (err) {
+                console.error("Order Detail fetch error:", err);
+                setOrder(null);
+            } finally {
+                setLoading(false);
+            }
         }
 
         fetchOrderDetail();
-    }, [isOpen, orderId, supabase]);
+    }, [isOpen, orderId]);
 
     if (!isOpen) return null;
 

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js'; // Admin client for RLS bypass
 import { getExchangeRates } from '@/lib/tcmb';
 import { cookies } from 'next/headers';
 import {
@@ -8,27 +9,38 @@ import {
 import Image from 'next/image';
 import HomeBanner from '@/components/HomeBanner';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DealerDashboard() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: profile } = await supabase
+    if (!user) return null;
+
+    // Use Admin Client for profile to ensure we get roles correctly
+    const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    
+    const { data: profile } = await adminSupabase
         .from('profiles')
         .select('full_name, is_admin, company_id, company:companies(id, name, current_balance, risk_limit, price_group:price_groups(name, discount_percent))')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-    // Impersonation Support
+    // Impersonation Support (Include Reps) - Robust Version
     const cookieStore = await cookies();
     const impersonatedId = cookieStore.get('impersonate_company_id')?.value;
-    const isImpersonating = profile?.is_admin && impersonatedId && impersonatedId !== 'undefined';
+    
+    // Identify Rep (Metadata or missing company_id)
+    const isRep = user.user_metadata?.role === 'representative' || (profile && !profile.is_admin && !profile.company_id);
+    const isImpersonating = (profile?.is_admin || isRep) && impersonatedId && impersonatedId !== 'undefined' && impersonatedId !== '';
 
     let effectiveCompanyId = profile?.company_id;
     let company = profile?.company;
+    let queryClient = adminSupabase; // Default to admin client for server-side safety in dashboard
 
     if (isImpersonating) {
         effectiveCompanyId = impersonatedId;
-        const { data: impCompany } = await supabase
+        const { data: impCompany } = await queryClient
             .from('companies')
             .select('name, current_balance, risk_limit, price_group:price_groups(name, discount_percent)')
             .eq('id', effectiveCompanyId)
@@ -39,6 +51,8 @@ export default async function DealerDashboard() {
     }
 
     const companyId = effectiveCompanyId;
+    if (!companyId && !profile?.is_admin && !isRep) return <div>Erişim Yetkiniz Yok.</div>;
+
     let rates = await getExchangeRates();
 
     const [
@@ -46,9 +60,9 @@ export default async function DealerDashboard() {
         { count: totalOrders },
         { data: recentOrders },
     ] = await Promise.all([
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
-        supabase.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
-        supabase.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
+        queryClient.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId).eq('status', 'pending'),
+        queryClient.from('orders').select('*', { count: 'exact', head: true }).eq('company_id', companyId),
+        queryClient.from('orders').select('id, total_amount, status, created_at').eq('company_id', companyId).order('created_at', { ascending: false }).limit(3),
     ]);
 
     const pg = company?.price_group;
@@ -58,11 +72,11 @@ export default async function DealerDashboard() {
         <div className="page-wrapper">
             <div className="page-header" style={{ alignItems: 'flex-start' }}>
                 <div>
-                    <h1 className="page-title">Hoş Geldiniz, {company?.name} 👋</h1>
+                    <h1 className="page-title">Hoş Geldiniz, {company?.name || 'Değerli İş Ortağımız'} 👋</h1>
                     <div className="page-subtitle" style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <UserIcon style={{ width: 16, height: 16 }} /> 
-                            Yetkili: {isImpersonating ? 'Admin (Showroom)' : (profile?.full_name || 'Standart Kullanıcı')}
+                            Yetkili: {isImpersonating ? (profile?.is_admin ? 'Yönetici (Showroom)' : 'Temsilci (Showroom)') : (profile?.full_name || 'Standart Kullanıcı')}
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> 

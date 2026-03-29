@@ -1,9 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { createClient } from '@/lib/supabase/client';
-import { getUserDiscount } from '../actions';
-import { ShoppingCartIcon, PhotoIcon, CubeIcon, StarIcon, MagnifyingGlassIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
-import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { ShoppingCartIcon, PhotoIcon, CubeIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
 
 const STOCK_STATUS = {
@@ -55,7 +52,7 @@ export default function DealerCatalog() {
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
-    const { cartItems: cartQtys, setQty: ctxSetQty, addToCart: ctxAddToCart } = useCart();
+    const { cartItems: cartQtys, setQty: ctxSetQty } = useCart();
     const [pendingQtys, setPendingQtys] = useState({});
     const [userId, setUserId] = useState(null);
     const [companyId, setCompanyId] = useState(null);
@@ -100,8 +97,6 @@ export default function DealerCatalog() {
     const [checkNew, setCheckNew] = useState(false);
     const [checkCampaign, setCheckCampaign] = useState(false);
 
-    const supabase = createClient();
-
     const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
     const fetchSettingsAndFilters = useCallback(async () => {
@@ -122,14 +117,11 @@ export default function DealerCatalog() {
             }
 
             // 2. Fetch metadata for filters
-            const { data: metaData } = await supabase
-                .from('products')
-                .select('brand, car_brand, car_model')
-                .eq('is_active', true);
-
-            if (metaData) {
-                setBrands([...new Set(metaData.map(p => p.brand).filter(Boolean))].sort());
-                setCarBrands([...new Set(metaData.map(p => p.car_brand).filter(Boolean))].sort());
+            const metaRes = await fetch('/api/products/metadata');
+            if (metaRes.ok) {
+                const metaData = await metaRes.json();
+                setBrands(metaData.brands || []);
+                setCarBrands(metaData.carBrands || []);
             }
 
             // 3. Fetch rates and settings
@@ -160,7 +152,7 @@ export default function DealerCatalog() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, []);
 
     useEffect(() => { fetchSettingsAndFilters(); }, [fetchSettingsAndFilters]);
 
@@ -178,47 +170,21 @@ export default function DealerCatalog() {
         setCurrentPage(1);
 
         try {
-            const productColumns = 'id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price';
-            let query = supabase.from('products').select(productColumns).eq('is_active', true);
+            const response = await fetch('/api/products/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filterText: filterText.trim(),
+                    brand: filterBrand,
+                    carBrand: filterCarBrand,
+                    carModel: filterCarModel,
+                    is_new: checkNew,
+                    is_campaign: checkCampaign
+                })
+            });
 
-            if (filterText.trim()) {
-                // Multi-word order-independent search logic
-                const words = filterText.trim().toUpperCase().split(/\s+/).filter(w => w.length > 0);
-                
-                words.forEach(word => {
-                    // Generate variants to handle Turkish/English character issues
-                    // Variant 1: Pure English (İ -> I, Ğ -> G, etc.)
-                    const wordEng = word
-                        .replace(/İ/g, 'I').replace(/Ğ/g, 'G').replace(/Ü/g, 'U')
-                        .replace(/Ö/g, 'O').replace(/Ş/g, 'S').replace(/Ç/g, 'C');
-                    
-                    // Variant 2: Pure Turkish (I -> İ, G -> Ğ, etc.)
-                    const wordTr = word
-                        .replace(/I/g, 'İ').replace(/G/g, 'Ğ').replace(/U/g, 'Ü')
-                        .replace(/Ö/g, 'O').replace(/S/g, 'Ş').replace(/C/g, 'Ç');
-
-                    const variants = [...new Set([word, wordEng, wordTr])];
-                    const columns = ['name', 'code', 'oem_no', 'brand'];
-                    
-                    const orParts = [];
-                    variants.forEach(v => {
-                        const term = `%${v}%`;
-                        columns.forEach(col => {
-                            orParts.push(`${col}.ilike.${term}`);
-                        });
-                    });
-                    
-                    // Join all variants and columns for this specific word
-                    query = query.or(orParts.join(','));
-                });
-            }
-
-            if (filterBrand) query = query.eq('brand', filterBrand);
-            if (filterCarBrand) query = query.eq('car_brand', filterCarBrand);
-            if (filterCarModel) query = query.eq('car_model', filterCarModel);
-
-            const { data, error } = await query.order('brand').order('name');
-            if (error) throw error;
+            if (!response.ok) throw new Error('Search failed');
+            const data = await response.json();
 
             if (companyId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
                 fetch('/api/log-activity', {
@@ -248,15 +214,15 @@ export default function DealerCatalog() {
 
     useEffect(() => {
         if (!filterCarBrand) { setCarModels([]); setFilterCarModel(''); return; }
-        supabase.from('products')
-            .select('car_model')
-            .eq('car_brand', filterCarBrand)
-            .eq('is_active', true)
-            .then(({ data }) => {
-                if (data) setCarModels([...new Set(data.map(p => p.car_model).filter(Boolean))].sort());
+        
+        fetch(`/api/products/metadata?carBrand=${encodeURIComponent(filterCarBrand)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.carModels) setCarModels(data.carModels);
                 setFilterCarModel('');
-            });
-    }, [filterCarBrand, supabase]);
+            })
+            .catch(err => console.error('Fetch models error:', err));
+    }, [filterCarBrand]);
 
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
@@ -377,45 +343,6 @@ export default function DealerCatalog() {
         setProducts([]);
         setHasSearched(false);
         setCurrentPage(1);
-    };
-
-    const openCatalogPrint = () => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) { showToast('Pop-up engellendi, lütfen izin verin'); return; }
-        const rows = filtered.map(p => `
-            <tr>
-                <td>${p.code || ''}</td>
-                <td>${p.name || ''}</td>
-                <td>${p.brand || ''}</td>
-                <td>${p.unit || 'AD'}</td>
-                <td style="text-align:right">₺${getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                <td style="text-align:center">${p.stock_merkez > 0 ? '✅' : '❌'}</td>
-                <td style="text-align:center">${p.stock_depo > 0 ? '✅' : '❌'}</td>
-                <td style="text-align:center">${p.box_quantity || 1}</td>
-            </tr>
-        `).join('');
-        printWindow.document.write(`<!DOCTYPE html><html><head><title>OMİ GROUPS - Ürün Kataloğu</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 24px; }
-            h1 { text-align: center; margin-bottom: 8px; }
-            p { text-align: center; color: #666; margin-bottom: 24px; }
-            table { width: 100%; border-collapse: collapse; font-size: 13px; }
-            th { background: #1e40af; color: white; padding: 8px 12px; text-align: left; }
-            td { padding: 6px 12px; border-bottom: 1px solid #ddd; }
-            tr:nth-child(even) { background: #f8f8f8; }
-            @media print { body { padding: 0; } }
-        </style></head><body>
-        <h1>OMİ GROUPS - Ürün Kataloğu</h1>
-        <p>${filtered.length} ürün • ${new Date().toLocaleDateString('tr-TR')}</p>
-        <table>
-            <thead><tr>
-                <th>Stok Kodu</th><th>Ürün Adı</th><th>Marka</th><th>Birim</th><th>Fiyat (KDV Dahil)</th><th>İstanbul</th><th>Depo</th><th>Koli</th>
-            </tr></thead>
-            <tbody>${rows}</tbody>
-        </table>
-        <script>setTimeout(()=>window.print(),500)</script>
-        </body></html>`);
-        printWindow.document.close();
     };
 
     return (

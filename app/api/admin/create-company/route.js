@@ -10,7 +10,7 @@ async function getAdminClient() {
     );
 }
 
-async function verifyAdmin() {
+async function verifyAuthorized() {
     const cookieStore = await cookies();
     const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -26,26 +26,62 @@ async function verifyAdmin() {
     );
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
-    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).single();
-    return profile?.is_admin ? user : null;
+
+    // Check metadata first
+    const role = user.user_metadata?.role;
+    if (role === 'representative') return { user, isRep: true };
+
+    // Check profile for admin
+    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+    if (profile?.is_admin) return { user, isAdmin: true };
+
+    // Double check rep in DB if metadata is missing
+    const { data: repCheck } = await supabase.from('customer_representatives').select('id').eq('id', user.id).maybeSingle();
+    if (repCheck) return { user, isRep: true };
+
+    return null;
 }
 
 // GET — Tüm firmaları listele
 export async function GET(request) {
-    const user = await verifyAdmin();
-    if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
+    const auth = await verifyAuthorized();
+    if (!auth) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
-    const filter = searchParams.get('filter');
     const id = searchParams.get('id');
     const adminSupabase = await getAdminClient();
 
     if (id) {
+        // If rep is asking, ensure they have access to this company
+        if (auth.isRep) {
+            // Check if they are currently impersonating this company (showroom mode)
+            const cookieStore = await cookies();
+            const impId = cookieStore.get('impersonate_company_id')?.value;
+            
+            if (impId !== id) {
+                // Not in showroom for THIS company, check if it's assigned to them
+                const { data: assignmentCheck } = await adminSupabase
+                    .from('representative_assignments')
+                    .select('company_id')
+                    .eq('representative_id', auth.user.id)
+                    .eq('company_id', id)
+                    .maybeSingle();
+                
+                if (!assignmentCheck) {
+                    return NextResponse.json({ error: 'Bu firmaya erişim yetkiniz yok.' }, { status: 403 });
+                }
+            }
+        }
+
         const { data, error } = await adminSupabase.from('companies').select('*, price_group:price_groups(name)').eq('id', id).single();
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
         return NextResponse.json({ company: data });
     }
 
+    // Only Admin can list ALL companies
+    if (!auth.isAdmin) return NextResponse.json({ error: 'Bu işlem için admin yetkisi gerekli.' }, { status: 403 });
+
+    const filter = searchParams.get('filter');
     let query = adminSupabase.from('companies').select('*, price_group:price_groups(name)').order('created_at', { ascending: false });
     if (filter && filter !== 'all') query = query.eq('status', filter);
 
@@ -58,8 +94,8 @@ export async function GET(request) {
 
 // POST — Yeni firma ekle
 export async function POST(request) {
-    const user = await verifyAdmin();
-    if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
+    const auth = await verifyAuthorized();
+    if (!auth?.isAdmin) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const body = await request.json();
     const {
@@ -105,8 +141,8 @@ export async function POST(request) {
 
 // PATCH — Durum veya fiyat grubu güncelle
 export async function PATCH(request) {
-    const user = await verifyAdmin();
-    if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
+    const auth = await verifyAuthorized();
+    if (!auth?.isAdmin) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const { id, status, price_group_id, password, user_code, dealer_code, is_prepayment_locked, risk_limit } = await request.json();
     const adminSupabase = await getAdminClient();
@@ -139,8 +175,8 @@ export async function PATCH(request) {
 
 // DELETE — Firmayı ve kullanıcısını tamamen sil
 export async function DELETE(request) {
-    const user = await verifyAdmin();
-    if (!user) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
+    const auth = await verifyAuthorized();
+    if (!auth?.isAdmin) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');

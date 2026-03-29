@@ -19,7 +19,6 @@ async function getEffectiveCompanyId() {
         const isImpersonating = impId && impId !== 'undefined' && impId !== '';
 
         if (isImpersonating) {
-            // Check if representative (metadata OR representative_assignments table)
             const isRepMetadata = user.user_metadata?.role === 'representative';
             const { data: repAssignment } = await adminSupabase
                 .from('representative_assignments')
@@ -28,10 +27,8 @@ async function getEffectiveCompanyId() {
                 .limit(1)
                 .maybeSingle();
             const isRep = isRepMetadata || !!repAssignment;
-
             if (profile?.is_admin || isRep) return impId;
         }
-
         return profile?.company_id;
     } catch (e) {
         console.error("getEffectiveCompanyId Error:", e);
@@ -39,40 +36,31 @@ async function getEffectiveCompanyId() {
     }
 }
 
-export async function GET() {
+export async function POST(req) {
     try {
         const companyId = await getEffectiveCompanyId();
-        if (!companyId) return NextResponse.json([]);
+        if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const body = await req.json();
+        const { shippingAddress, note, totalAmount, items } = body;
 
         const adminSupabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        // Fetch all items from all orders of this company
-        // We join with orders to get date and status
-        const { data, error } = await adminSupabase
-            .from('order_items')
-            .select('*, orders!inner(created_at, status, company_id), product:products(name, code, oem_no)')
-            .eq('orders.company_id', companyId)
-            .order('orders(created_at)', { ascending: false });
-
-        if (error) throw error;
-
-        // Sort: Alphabetical by product name first
-        const sortedData = (data || []).sort((a, b) => {
-            const nameA = (a.product?.name || '').toLocaleLowerCase('tr-TR');
-            const nameB = (b.product?.name || '').toLocaleLowerCase('tr-TR');
-            if (nameA < nameB) return -1;
-            if (nameA > nameB) return 1;
-            
-            // If names same, sort by date descending
-            return new Date(b.orders.created_at) - new Date(a.orders.created_at);
+        const { data, error } = await adminSupabase.rpc('place_b2b_order', {
+            p_company_id: companyId,
+            p_shipping_address: shippingAddress,
+            p_note: note,
+            p_total_amount: totalAmount,
+            p_items: items
         });
 
-        return NextResponse.json(sortedData);
+        if (error) throw error;
+        return NextResponse.json(data);
     } catch (err) {
-        console.error("ORDER ITEMS API ERROR:", err.message);
+        console.error("CHECKOUT API ERROR:", err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

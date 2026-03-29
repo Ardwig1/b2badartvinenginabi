@@ -92,11 +92,17 @@ const handleExpand = async (tx) => {
         // Prefer order_id if available, fallback to document_no
         const searchId = tx.order_id || tx.document_no;
 
-        const { data } = await supabase.from('order_items')
-            .select('*, product:products(name, code, oem_no)')
-            .eq('order_id', searchId);
-        setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
-        setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
+        try {
+            const res = await fetch(`/api/user/orders/${searchId}/items`);
+            if (res.ok) {
+                const data = await res.json();
+                setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
+            }
+        } catch (e) {
+            console.error('Fetch order items error:', e);
+        } finally {
+            setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
+        }
     }
 };
 

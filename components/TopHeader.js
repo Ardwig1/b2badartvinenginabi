@@ -4,8 +4,21 @@ import { usePathname } from 'next/navigation';
 
 export default function TopHeader() {
     const pathname = usePathname();
-    const isShowroom = pathname?.includes('/admin/showroom') || (typeof window !== 'undefined' && window.location.pathname.includes('/admin/showroom'));
     const [rates, setRates] = useState({ USD: null, EUR: null });
+    const [isShowroom, setIsShowroom] = useState(false);
+
+    useEffect(() => {
+        // Check if showroom via pathname or query param
+        const checkShowroom = () => {
+            if (pathname?.includes('/admin/showroom') || pathname?.includes('/rep/showroom')) return true;
+            if (typeof window !== 'undefined') {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get('showroom') === 'true' || window.location.pathname.includes('/admin/showroom');
+            }
+            return false;
+        };
+        setIsShowroom(checkShowroom());
+    }, [pathname]);
 
     useEffect(() => {
         const fetchRates = async () => {

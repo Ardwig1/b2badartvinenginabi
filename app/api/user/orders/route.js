@@ -11,24 +11,25 @@ async function getEffectiveCompanyId() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
-        const adminSupabase = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
+        const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        const { data: profile } = await adminSupabase.from('profiles').select('is_admin, company_id').eq('id', user.id).maybeSingle();
 
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
+        const isImpersonating = impId && impId !== 'undefined' && impId !== '';
 
-        // Fetch current user profile
-        const { data: profile } = await adminSupabase
-            .from('profiles')
-            .select('company_id, is_admin')
-            .eq('id', user.id)
-            .maybeSingle();
+        if (isImpersonating) {
+            // Check if representative (metadata OR representative_assignments table)
+            const isRepMetadata = user.user_metadata?.role === 'representative';
+            const { data: repAssignment } = await adminSupabase
+                .from('representative_assignments')
+                .select('representative_id')
+                .eq('representative_id', user.id)
+                .limit(1)
+                .maybeSingle();
+            const isRep = isRepMetadata || !!repAssignment;
 
-        // If showroom is active and user is admin, return the impersonated ID
-        if (profile?.is_admin && impId && impId !== 'undefined') {
-            return impId;
+            if (profile?.is_admin || isRep) return impId;
         }
 
         return profile?.company_id;

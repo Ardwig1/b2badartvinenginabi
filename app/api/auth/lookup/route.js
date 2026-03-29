@@ -16,23 +16,37 @@ export async function POST(request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        const { data, error } = await adminSupabase
+        // 1. Try finding in companies (Dealers)
+        const { data: dealerData, error: dealerError } = await adminSupabase
             .from('companies')
             .select('email, status')
             .ilike('dealer_code', dealerCode.trim())
             .ilike('user_code', userCode.trim())
-            .single();
+            .maybeSingle();
 
-        if (error || !data) {
-            console.error("Supabase Error / No Data:", error);
-            return NextResponse.json({ error: 'Kullanıcı bulunamadı. Girdiğiniz bilgileri kontrol edin.' }, { status: 404 });
+        if (dealerData) {
+            if (dealerData.status === 'rejected') {
+                return NextResponse.json({ error: 'Hesabınız uzaklaştırılmıştır. Lütfen yetkililere ulaşın.' }, { status: 403 });
+            }
+            return NextResponse.json({ email: dealerData.email, type: 'dealer' });
         }
 
-        if (data.status === 'rejected') {
-            return NextResponse.json({ error: 'Hesabınız uzaklaştırılmıştır. Lütfen yetkililere ulaşın: Telefon: 0532 597 0664 Email: muratkaan@omigroups.com' }, { status: 403 });
+        // 2. Try finding in customer_representatives
+        const { data: repData, error: repError } = await adminSupabase
+            .from('customer_representatives')
+            .select('email, is_active')
+            .ilike('dealer_code', dealerCode.trim())
+            .ilike('user_code', userCode.trim())
+            .maybeSingle();
+
+        if (repData) {
+            if (!repData.is_active) {
+                return NextResponse.json({ error: 'Hesabınız pasife alınmıştır.' }, { status: 403 });
+            }
+            return NextResponse.json({ email: repData.email, type: 'representative' });
         }
 
-        return NextResponse.json({ email: data.email });
+        return NextResponse.json({ error: 'Kullanıcı bulunamadı. Bilgilerinizi kontrol edin.' }, { status: 404 });
 
     } catch (err) {
         console.error("API Error in /api/auth/lookup:", err);

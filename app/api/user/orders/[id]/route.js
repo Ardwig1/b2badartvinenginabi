@@ -19,7 +19,6 @@ async function getEffectiveCompanyId() {
         const isImpersonating = impId && impId !== 'undefined' && impId !== '';
 
         if (isImpersonating) {
-            // Check if representative (metadata OR representative_assignments table)
             const isRepMetadata = user.user_metadata?.role === 'representative';
             const { data: repAssignment } = await adminSupabase
                 .from('representative_assignments')
@@ -28,10 +27,8 @@ async function getEffectiveCompanyId() {
                 .limit(1)
                 .maybeSingle();
             const isRep = isRepMetadata || !!repAssignment;
-
             if (profile?.is_admin || isRep) return impId;
         }
-
         return profile?.company_id;
     } catch (e) {
         console.error("getEffectiveCompanyId Error:", e);
@@ -39,40 +36,31 @@ async function getEffectiveCompanyId() {
     }
 }
 
-export async function GET() {
+export async function GET(req, { params }) {
     try {
+        const { id } = await params;
         const companyId = await getEffectiveCompanyId();
-        if (!companyId) return NextResponse.json([]);
+        if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const adminSupabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        // Fetch all items from all orders of this company
-        // We join with orders to get date and status
-        const { data, error } = await adminSupabase
-            .from('order_items')
-            .select('*, orders!inner(created_at, status, company_id), product:products(name, code, oem_no)')
-            .eq('orders.company_id', companyId)
-            .order('orders(created_at)', { ascending: false });
+        // Fetch order and ensure it belongs to the company
+        const { data: order, error } = await adminSupabase
+            .from('orders')
+            .select('*, items:order_items(*, product:products(name, code, oem_no, image_url))')
+            .eq('id', id)
+            .eq('company_id', companyId)
+            .single();
 
         if (error) throw error;
+        if (!order) return NextResponse.json({ error: 'Order not found' }, { status: 404 });
 
-        // Sort: Alphabetical by product name first
-        const sortedData = (data || []).sort((a, b) => {
-            const nameA = (a.product?.name || '').toLocaleLowerCase('tr-TR');
-            const nameB = (b.product?.name || '').toLocaleLowerCase('tr-TR');
-            if (nameA < nameB) return -1;
-            if (nameA > nameB) return 1;
-            
-            // If names same, sort by date descending
-            return new Date(b.orders.created_at) - new Date(a.orders.created_at);
-        });
-
-        return NextResponse.json(sortedData);
+        return NextResponse.json(order);
     } catch (err) {
-        console.error("ORDER ITEMS API ERROR:", err.message);
+        console.error("ORDER DETAIL API ERROR:", err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

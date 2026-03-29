@@ -46,6 +46,8 @@ function LoginContent() {
             }
 
             const email = lookupData.email;
+            const userType = lookupData.type; // 'dealer' or 'representative'
+            
             const supabase = createClient();
             const { error: err } = await supabase.auth.signInWithPassword({ email, password });
 
@@ -65,14 +67,19 @@ function LoginContent() {
                 localStorage.removeItem('b2b_user_code');
             }
 
-            const { data: { user } } = await supabase.auth.getUser();
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('is_admin')
-                .eq('id', user.id)
-                .single();
+            // Redirection logic
+            if (userType === 'representative') {
+                router.push('/rep');
+            } else {
+                const { data: { user } } = await supabase.auth.getUser();
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('is_admin')
+                    .eq('id', user.id)
+                    .single();
 
-            router.push(profile?.is_admin ? '/admin' : '/dashboard');
+                router.push(profile?.is_admin ? '/admin' : '/dashboard');
+            }
             router.refresh();
         } catch (err) {
             setError('Giriş yapılırken bir hata oluşti: ' + err.message);

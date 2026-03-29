@@ -11,19 +11,30 @@ async function getEffectiveCompanyId() {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return null;
 
+        const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        const { data: profile } = await adminSupabase.from('profiles').select('is_admin, company_id').eq('id', user.id).maybeSingle();
+
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
+        const isImpersonating = impId && impId !== 'undefined' && impId !== '';
 
-        // Fetch user profile using admin client to bypass potential RLS visibility issues
-        const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-        const { data: profile } = await adminSupabase.from('profiles').select('company_id, is_admin').eq('id', user.id).maybeSingle();
+        if (isImpersonating) {
+            // Check if representative (metadata OR representative_assignments table)
+            const isRepMetadata = user.user_metadata?.role === 'representative';
+            const { data: repAssignment } = await adminSupabase
+                .from('representative_assignments')
+                .select('representative_id')
+                .eq('representative_id', user.id)
+                .limit(1)
+                .maybeSingle();
+            const isRep = isRepMetadata || !!repAssignment;
 
-        if (profile?.is_admin && impId && impId !== 'undefined') {
-            return impId; // Showroom mode
+            if (profile?.is_admin || isRep) return impId;
         }
-        return profile?.company_id; // Normal mode
+
+        return profile?.company_id;
     } catch (e) {
-        console.error("getEffectiveCompanyId error:", e);
+        console.error("getEffectiveCompanyId Error:", e);
         return null;
     }
 }

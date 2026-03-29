@@ -32,15 +32,28 @@ export async function GET() {
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
         
+        // Check if representative (metadata OR representative_assignments table)
+        const isRepMetadata = user.user_metadata?.role === 'representative';
+        const { data: repAssignment } = await adminSupabase
+            .from('representative_assignments')
+            .select('representative_id')
+            .eq('representative_id', user.id)
+            .limit(1)
+            .maybeSingle();
+        const isRep = isRepMetadata || !!repAssignment;
+        
+        const canImpersonate = profile.is_admin || isRep;
+        
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
-        if (profile.is_admin && impId && impId !== 'undefined') {
+        // If user is Admin or Representative AND impersonating
+        if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
         }
 
-        // 3. Fetch Company Info (Garantici yöntem: join yerine düz çekim)
+        // 3. Fetch Company Info
         let discount = 0;
         let companyData = null;
 
@@ -71,6 +84,7 @@ export async function GET() {
         }
 
         return NextResponse.json({
+            userId: user.id,
             email: user.email,
             phone: companyData?.phone || '',
             companyId: targetCompanyId,
@@ -78,7 +92,9 @@ export async function GET() {
             fullName: profile.full_name,
             currentBalance: Number(companyData?.current_balance) || 0,
             discountPercent: discount,
-            isImpersonating
+            isImpersonating,
+            isPrepaymentLocked: companyData?.is_prepayment_locked || false,
+            riskLimit: Number(companyData?.risk_limit) || 0
         });
 
     } catch (err) {

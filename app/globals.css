@@ -168,6 +168,7 @@ select {
 
 /* Showroom / Nested Layout Adjustments */
 .app-layout[data-nested="true"] .main-content {
+  margin-left: var(--sidebar-width) !important;
   padding-top: 0;
 }
 

@@ -9,14 +9,30 @@ export async function POST(req) {
 
         if (!user) return NextResponse.json({ error: 'Oturum açılmamış' }, { status: 401 });
 
-        // Verify admin
-        const { data: profile } = await supabase
-            .from('profiles')
-            .select('is_admin')
-            .eq('id', user.id)
-            .single();
+        // Verify admin or representative (Double Check: Metadata + DB)
+        let isAuthorized = user.user_metadata?.role === 'representative';
+        
+        if (!isAuthorized) {
+            // Check DB directly if metadata is missing
+            const { data: repCheck } = await supabase
+                .from('customer_representatives')
+                .select('id')
+                .eq('id', user.id)
+                .maybeSingle();
+            if (repCheck) isAuthorized = true;
+        }
 
-        if (!profile?.is_admin) {
+        if (!isAuthorized) {
+            // Check if Admin
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('is_admin')
+                .eq('id', user.id)
+                .maybeSingle();
+            if (profile?.is_admin) isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
             return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 403 });
         }
 
@@ -29,7 +45,7 @@ export async function POST(req) {
         const cookieStore = await cookies();
         cookieStore.set('impersonate_company_id', companyId, {
             path: '/',
-            httpOnly: true,
+            httpOnly: false, 
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 // 1 day

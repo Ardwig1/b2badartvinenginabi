@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { createClient } from '@/lib/supabase/client';
 import { getUserDiscount } from '../actions';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
@@ -33,12 +32,10 @@ export default function DealerCart() {
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
-    const supabase = createClient();
 
     const fetchUser = useCallback(async () => {
         setLoading(true);
         try {
-            // Use our smart info API that handles showroom and RLS correctly
             const infoRes = await fetch('/api/user/info');
             if (infoRes.ok) {
                 const infoData = await infoRes.json();
@@ -46,19 +43,8 @@ export default function DealerCart() {
                 setCompanyId(infoData.companyId || '');
                 setCompanyBalance(Number(infoData.currentBalance) || 0);
                 setDiscountPercent(Number(infoData.discountPercent) || 0);
-                
-                // Fetch extra company info like locks and risk limits
-                if (infoData.companyId) {
-                    const { data: comp } = await supabase
-                        .from('companies')
-                        .select('is_prepayment_locked, risk_limit')
-                        .eq('id', infoData.companyId)
-                        .single();
-                    if (comp) {
-                        setIsPrepaymentLocked(comp.is_prepayment_locked || false);
-                        setCompanyRiskLimit(Number(comp.risk_limit) || 0);
-                    }
-                }
+                setIsPrepaymentLocked(infoData.isPrepaymentLocked || false);
+                setCompanyRiskLimit(Number(infoData.riskLimit) || 0);
             }
 
             // Fetch rates and other settings
@@ -89,7 +75,7 @@ export default function DealerCart() {
         } finally {
             setLoading(false);
         }
-    }, [supabase]);
+    }, []);
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
@@ -117,10 +103,8 @@ export default function DealerCart() {
         return afterGroup;
     };
 
-    const addProduct = async (productId) => {
-        if (!productId) return;
-        const { data: prod } = await supabase.from('products').select('*').eq('id', productId).single();
-        if (prod) ctxAddToCart(prod);
+    const addProduct = (product) => {
+        if (product) ctxAddToCart(product);
     };
 
     const [searchProducts, setSearchProducts] = useState([]);
@@ -129,8 +113,20 @@ export default function DealerCart() {
     const searchProds = async (q) => {
         setProductSearch(q);
         if (q.length < 2) { setSearchProducts([]); return; }
-        const { data } = await supabase.from('products').select('*').eq('is_active', true).or(`name.ilike.%${q}%,code.ilike.%${q}%`).limit(6);
-        setSearchProducts(data || []);
+        try {
+            const res = await fetch('/api/products/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filterText: q })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                // Limit to 6 results as in original code
+                setSearchProducts((data || []).slice(0, 6));
+            }
+        } catch (e) {
+            console.error('Product search error:', e);
+        }
     };
 
     const updateQty = (p, delta) => {
@@ -193,7 +189,7 @@ export default function DealerCart() {
         const finalNote = `[${shippingMethod}] ${note}`;
 
         try {
-            // Prepare items for the RPC
+            // Prepare items for the API
             const p_items = selectedCartItems.map(i => ({
                 product_id: i.product.id,
                 quantity: i.qty,
@@ -201,16 +197,22 @@ export default function DealerCart() {
                 total_price: getDiscountedPrice(i.product) * i.qty
             }));
 
-            // Call the secure RPC
-            const { data, error } = await supabase.rpc('place_b2b_order', {
-                p_company_id: companyId,
-                p_shipping_address: finalAddress,
-                p_note: finalNote,
-                p_total_amount: grandTotal,
-                p_items: p_items
+            // Call the secure API route
+            const response = await fetch('/api/user/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    companyId: companyId,
+                    shippingAddress: finalAddress,
+                    note: finalNote,
+                    totalAmount: grandTotal,
+                    items: p_items
+                })
             });
 
-            if (error) throw error;
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Sipariş oluşturulamadı');
 
             if (data?.success) {
                 // Log the order placement activity
@@ -289,7 +291,7 @@ export default function DealerCart() {
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 100, marginTop: 4 }}>
                                     {searchProducts.map(p => (
                                         <div key={p.id} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)' }}
-                                            onClick={() => { addProduct(p.id); setProductSearch(''); setSearchProducts([]); }}>
+                                            onClick={() => { addProduct(p); setProductSearch(''); setSearchProducts([]); }}>
                                             <div>
                                                 <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>
                                                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>

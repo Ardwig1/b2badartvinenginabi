@@ -9,13 +9,14 @@ import {
     ClipboardDocumentListIcon, DocumentTextIcon, HomeIcon, MagnifyingGlassIcon,
     ChatBubbleLeftEllipsisIcon, CreditCardIcon, FolderOpenIcon, BuildingLibraryIcon,
     EnvelopeIcon, PhoneIcon, SunIcon, MoonIcon, ArrowRightOnRectangleIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon,
-    Cog6ToothIcon
+    Cog6ToothIcon, UserGroupIcon
 } from '@heroicons/react/24/outline';
 import styles from './Sidebar.module.css';
 
 const adminNav = [
     { label: 'Ana Sayfa', href: '/admin', icon: <ChartBarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Firmalar', href: '/admin/companies', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Müşteri Temsilcileri', href: '/admin/representatives', icon: <UserGroupIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
@@ -36,17 +37,22 @@ const dealerNav = [
     { label: 'Öneri ve Şikayet', href: '/dashboard/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'İletişim', href: '/dashboard/contact', icon: <PhoneIcon style={{ width: 20, height: 20 }} /> },
 ];
-export default function Sidebar({ isAdmin = false, companyName = '', userEmail = '', isImpersonated = false }) {
+
+const repNav = [
+    { label: 'Firmalarım', href: '/rep', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
+];
+
+export default function Sidebar({ isAdmin = false, isRep = false, companyName = '', userEmail = '', isImpersonated = false }) {
     const { theme, toggleTheme, mounted } = useTheme();
     const pathname = usePathname();
     const router = useRouter();
-    const isShowroom = pathname.includes('/admin/showroom');
-    const impersonated = isImpersonated || isShowroom || (typeof window !== 'undefined' && document.cookie.includes('impersonate_company_id'));
-    const [isOpen, setIsOpen] = useState(!impersonated);
+    const isShowroom = pathname.includes('/admin/showroom') || pathname.includes('/rep/showroom');
+    const impersonated = isImpersonated || isShowroom;
+    const [isOpen, setIsOpen] = useState(true); // Default to open for better UX, regardless of impersonation
     
-    // We strictly use the isAdmin prop to determine which menu to show.
-    // This ensures that an admin doesn't see dealer links in their main sidebar.
-    const navItems = isAdmin ? adminNav : dealerNav;
+    // Determine which menu to show
+    // If in showroom mode, ALWAYS show dealer navigation regardless of who the user is
+    const navItems = isImpersonated ? dealerNav : (isRep ? repNav : (isAdmin ? adminNav : dealerNav));
 
     const handleSignOut = async () => {
         const supabase = createClient();
@@ -108,17 +114,17 @@ export default function Sidebar({ isAdmin = false, companyName = '', userEmail =
                 )}
                 <div className={styles.userInfo}>
                     <div className={styles.userAvatar}>
-                        {(companyName || userEmail || '?')[0].toUpperCase()}
+                        {(companyName || userEmail || 'B')[0].toUpperCase()}
                     </div>
                     {isOpen && (
                         <div className={styles.userDetails}>
-                            <div className={styles.userName}>{companyName || 'Admin'}</div>
+                            <div className={styles.userName}>{companyName || (isAdmin ? 'Yönetici' : (isRep ? 'Temsilci' : 'Bayi Paneli'))}</div>
                             <div className={styles.userEmail}>{userEmail}</div>
                         </div>
                     )}
                 </div>
-                {/* Admin always sees their logout. Dealer only sees it if NOT impersonated by Admin. */}
-                {(isAdmin || !impersonated) && (
+                {/* Admin always sees their logout. Dealer only sees it if NOT impersonated. Representative always sees it. */}
+                {(isAdmin || isRep || !impersonated) && (
                     <button className={styles.signOutBtn} onClick={handleSignOut} id="sidebar-signout" title="Çıkış Yap">
                         <ArrowRightOnRectangleIcon style={{ width: 20, height: 20, marginRight: isOpen ? 6 : 0, transition: 'all 0.2s' }} />
                         {isOpen && 'Çıkış'}

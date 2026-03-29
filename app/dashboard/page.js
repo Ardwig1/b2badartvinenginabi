@@ -42,7 +42,7 @@ export default async function DealerDashboard() {
         effectiveCompanyId = impersonatedId;
         const { data: impCompany } = await queryClient
             .from('companies')
-            .select('name, current_balance, risk_limit, price_group:price_groups(name, discount_percent)')
+            .select('name, contact_person, current_balance, risk_limit, price_group:price_groups(name, discount_percent)')
             .eq('id', effectiveCompanyId)
             .single();
         if (impCompany) {
@@ -76,7 +76,7 @@ export default async function DealerDashboard() {
                     <div className="page-subtitle" style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <UserIcon style={{ width: 16, height: 16 }} /> 
-                            Yetkili: {isImpersonating ? (profile?.is_admin ? 'Yönetici (Showroom)' : 'Temsilci (Showroom)') : (profile?.full_name || 'Standart Kullanıcı')}
+                            Yetkili: {isImpersonating ? (company?.contact_person || 'Firma Yetkilisi') : (profile?.full_name || 'Standart Kullanıcı')}
                         </span>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <ChatBubbleBottomCenterTextIcon style={{ width: 16, height: 16 }} /> 

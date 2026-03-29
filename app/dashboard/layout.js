@@ -34,8 +34,10 @@ export default async function DashboardLayout({ children }) {
         if (isRep) redirect('/rep');
     }
 
-    // 4. Fetch Company Name (Use Admin Client for Showroom to bypass RLS)
+    // 4. Fetch Company Info (Use Admin Client for Showroom to bypass RLS)
     let effectiveCompanyName = profile?.company?.name || '';
+    let effectiveCompanyEmail = user.email; // Default to user's email
+
     if (isImpersonating) {
         const adminSupabase = createAdminClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -43,11 +45,14 @@ export default async function DashboardLayout({ children }) {
         );
         const { data: impCompany } = await adminSupabase
             .from('companies')
-            .select('name')
+            .select('name, email')
             .eq('id', impersonatedId)
             .maybeSingle();
         
-        if (impCompany) effectiveCompanyName = impCompany.name;
+        if (impCompany) {
+            effectiveCompanyName = impCompany.name;
+            if (impCompany.email) effectiveCompanyEmail = impCompany.email;
+        }
     }
 
     return (
@@ -55,7 +60,7 @@ export default async function DashboardLayout({ children }) {
             <Sidebar 
                 isAdmin={false} 
                 isRep={isImpersonating ? false : isRep} 
-                userEmail={user.email} 
+                userEmail={effectiveCompanyEmail} 
                 companyName={effectiveCompanyName} 
                 isImpersonated={isImpersonating} 
             />

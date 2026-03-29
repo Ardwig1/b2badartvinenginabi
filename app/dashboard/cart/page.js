@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { getUserDiscount } from '../actions';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
 
@@ -9,12 +8,11 @@ export default function DealerCart() {
 
     // Convert cartItems object to array for rendering
     const cartItems = useMemo(() => {
-        return Object.values(contextCartItems).filter(item => item.qty > 0);
+        return Object.values(contextCartItems || {}).filter(item => item && item.qty > 0);
     }, [contextCartItems]);
 
     const isSelected = (id) => !(contextCartItems[id]?.unselected);
 
-    const [products, setProducts] = useState([]);
     const [discountPercent, setDiscountPercent] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
@@ -28,18 +26,17 @@ export default function DealerCart() {
     const [companyBalance, setCompanyBalance] = useState(0);
     const [companyRiskLimit, setCompanyRiskLimit] = useState(0);
     const [submitting, setSubmitting] = useState(false);
-
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
+    const [searchProducts, setSearchProducts] = useState([]);
+    const [productSearch, setProductSearch] = useState('');
 
     const fetchUser = useCallback(async () => {
-        setLoading(true);
         try {
             const infoRes = await fetch('/api/user/info');
             if (infoRes.ok) {
                 const infoData = await infoRes.json();
-                
                 setCompanyId(infoData.companyId || '');
                 setCompanyBalance(Number(infoData.currentBalance) || 0);
                 setDiscountPercent(Number(infoData.discountPercent) || 0);
@@ -47,7 +44,6 @@ export default function DealerCart() {
                 setCompanyRiskLimit(Number(infoData.riskLimit) || 0);
             }
 
-            // Fetch rates and other settings
             const [ratesRes, marginRes, usdRes] = await Promise.all([
                 fetch('/api/rates'),
                 fetch('/api/admin/margin'),
@@ -58,18 +54,15 @@ export default function DealerCart() {
                 const data = await ratesRes.json();
                 if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
             }
-
             if (marginRes.ok) {
                 const marginData = await marginRes.json();
                 if (marginData?.margin !== undefined) setGlobalMargin(marginData.margin);
             }
-
             if (usdRes.ok) {
                 const usdData = await usdRes.json();
                 if (usdData?.usd_rate !== undefined) setGlobalUsdRate(usdData.usd_rate);
                 if (usdData?.is_active !== undefined) setGlobalUsdActive(usdData.is_active);
             }
-
         } catch (e) {
             console.error('Fetch user/settings error:', e);
         } finally {
@@ -79,116 +72,55 @@ export default function DealerCart() {
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
-    if (loading) {
-        return (
-            <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-                <div className="loading-spinner" style={{ width: 48, height: 48, border: '4px solid var(--border)', borderTopColor: 'var(--primary)' }} />
-                <div style={{ marginTop: 20, fontWeight: 600, color: 'var(--text-secondary)', fontSize: 15 }}>Sepet Hesaplanıyor...</div>
-            </div>
-        );
-    }
-
-    const getBaseTryPrice = (p) => {
+    const getBaseTryPrice = useCallback((p) => {
+        if (!p) return 0;
         let initialPrice = Number(p.list_price) || 0;
         let marginBase = (Number(p.profit_margin) || 36) / 100;
         let rawCost = initialPrice / (1 + marginBase);
         let price = rawCost * (1 + (globalMargin / 100));
 
-        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0 && p.currency === 'USD') {
+        if (globalUsdActive && globalUsdRate > 0 && p.currency === 'USD') {
             price = price * globalUsdRate;
         } else {
-            if (p.currency === 'USD') price = price * rates.USD;
-            else if (p.currency === 'EUR') price = price * rates.EUR;
+            if (p.currency === 'USD') price = price * (rates.USD || 1);
+            else if (p.currency === 'EUR') price = price * (rates.EUR || 1);
         }
         return price;
-    };
-    const getDiscountedPrice = (p) => {
+    }, [globalMargin, globalUsdActive, globalUsdRate, rates]);
+
+    const getDiscountedPrice = useCallback((p) => {
+        if (!p) return 0;
         const base = getBaseTryPrice(p);
         const prodDiscount = Number(p.discount_rate || 0);
         const groupDiscount = discountPercent || 0;
-
         const afterProd = base * (1 - prodDiscount / 100);
         const afterGroup = afterProd * (1 - groupDiscount / 100);
         return afterGroup;
-    };
+    }, [getBaseTryPrice, discountPercent]);
 
-    const addProduct = (product) => {
-        if (product) ctxAddToCart(product);
-    };
+    // Totals Calculation (Safe Version)
+    const totals = useMemo(() => {
+        const selected = cartItems.filter(i => isSelected(i.product.id));
+        const sub = selected.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
+        const afterDisc = selected.reduce((acc, i) => acc + (getDiscountedPrice(i.product) * i.qty), 0);
+        const disc = sub - afterDisc;
+        const v = afterDisc * 0.20;
+        const grand = afterDisc + v;
+        const liability = grand - companyBalance;
+        const riskExc = companyRiskLimit > 0 && liability > companyRiskLimit;
+        const excAmt = riskExc ? (liability - companyRiskLimit) : 0;
+        const prepay = (isPrepaymentLocked && companyBalance < grand) || riskExc;
 
-    const [searchProducts, setSearchProducts] = useState([]);
-    const [productSearch, setProductSearch] = useState('');
-
-    const searchProds = async (q) => {
-        setProductSearch(q);
-        if (q.length < 2) { setSearchProducts([]); return; }
-        try {
-            const res = await fetch('/api/products/search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ filterText: q })
-            });
-            if (res.ok) {
-                const data = await res.json();
-                // Limit to 6 results as in original code
-                setSearchProducts((data || []).slice(0, 6));
-            }
-        } catch (e) {
-            console.error('Product search error:', e);
-        }
-    };
-
-    const updateQty = (p, delta) => {
-        const currentQty = contextCartItems[p.id]?.qty || 0;
-        ctxSetQty(p.id, p, currentQty + delta, contextCartItems[p.id]?.unselected);
-    };
-    const removeItem = (p) => {
-        ctxSetQty(p.id, p, 0);
-    };
-
-    const toggleSelect = (id) => {
-        const item = contextCartItems[id];
-        if (item) {
-            ctxSetQty(id, item.product, item.qty, !item.unselected);
-        }
-    };
-    const selectAll = () => {
-        cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, false));
-    };
-    const deselectAll = () => {
-        cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, true));
-    };
-
-    const selectedCartItems = cartItems.filter(i => isSelected(i.product.id));
-    
-    // Calculate totals based on consolidated logic
-    const subtotal = selectedCartItems.reduce((acc, i) => acc + (getBaseTryPrice(i.product) * i.qty), 0);
-    const totalAfterDiscount = selectedCartItems.reduce((acc, i) => acc + (getDiscountedPrice(i.product) * i.qty), 0);
-    const totalDiscount = subtotal - totalAfterDiscount;
-    
-    const vat = totalAfterDiscount * 0.20;
-    const grandTotal = totalAfterDiscount + vat;
-
-    // Risk Limit Logic:
-    // Balance is positive if dealer has credit, negative if dealer owes money.
-    // Total Liability = Grand Total (current cart) - Balance
-    // If Liability > Risk Limit, then risk is exceeded.
-    const totalLiability = grandTotal - companyBalance;
-    const isRiskExceeded = companyRiskLimit > 0 && totalLiability > companyRiskLimit;
-    const exceededAmount = isRiskExceeded ? (totalLiability - companyRiskLimit) : 0;
-
-    const needsPrepayment = (isPrepaymentLocked && companyBalance < grandTotal) || isRiskExceeded;
+        return { subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand, isRiskExceeded: riskExc, exceededAmount: excAmt, needsPrepayment: prepay, selectedCount: selected.length };
+    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, companyBalance, companyRiskLimit, isPrepaymentLocked]);
 
     const placeOrder = async () => {
-        if (selectedCartItems.length === 0) return;
+        const selectedItems = cartItems.filter(i => isSelected(i.product.id));
+        if (selectedItems.length === 0) return;
 
-        if (needsPrepayment) {
-            // Redirect to payment page
-            // If it's a risk limit issue, we need at least the exceeded amount, 
-            // but usually we redirect with the full grand total or the needed amount.
-            // Let's use the grand total as requested for "payment required".
-            const paymentAmount = isRiskExceeded ? exceededAmount : grandTotal;
-            sessionStorage.setItem('pendingCartTotal', grandTotal.toString());
+        if (totals.needsPrepayment) {
+            const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.grandTotal;
+            sessionStorage.setItem('pendingCartTotal', totals.grandTotal.toString());
             window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
             return;
         }
@@ -198,15 +130,13 @@ export default function DealerCart() {
         const finalNote = `[${shippingMethod}] ${note}`;
 
         try {
-            // Prepare items for the API
-            const p_items = selectedCartItems.map(i => ({
+            const p_items = selectedItems.map(i => ({
                 product_id: i.product.id,
                 quantity: i.qty,
                 unit_price: getDiscountedPrice(i.product),
                 total_price: getDiscountedPrice(i.product) * i.qty
             }));
 
-            // Call the secure API route
             const response = await fetch('/api/user/checkout', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -214,53 +144,45 @@ export default function DealerCart() {
                     companyId: companyId,
                     shippingAddress: finalAddress,
                     note: finalNote,
-                    totalAmount: grandTotal,
+                    totalAmount: totals.grandTotal,
                     items: p_items
                 })
             });
 
             const data = await response.json();
-
             if (!response.ok) throw new Error(data.error || 'Sipariş oluşturulamadı');
 
             if (data?.success) {
-                // Log the order placement activity
-                try {
-                    await fetch('/api/log-activity', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            company_id: companyId, 
-                            action_type: 'order_placed', 
-                            details: { 
-                                order_id: data.order_id, 
-                                total_amount: grandTotal, 
-                                items_count: selectedCartItems.length 
-                            } 
-                        })
-                    });
-                } catch (logErr) {
-                    console.error("Order logging failed (non-critical):", logErr);
-                }
+                await fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        company_id: companyId, 
+                        action_type: 'order_placed', 
+                        details: { order_id: data.order_id, total_amount: totals.grandTotal, items_count: selectedItems.length } 
+                    })
+                }).catch(e => console.error("Log error", e));
 
-                // Only remove ordered (selected) items from cart context, keep the rest
-                for (const item of selectedCartItems) {
+                for (const item of selectedItems) {
                     ctxSetQty(item.product.id, item.product, 0);
                 }
                 setSuccess(true);
             }
- else {
-                throw new Error(data?.error || 'Sipariş oluşturulamadı');
-            }
-
         } catch (error) {
-            console.error("Order placement failed:", error);
-            // Graceful error message (e.g. from the Postgres RAISE EXCEPTION)
             alert("HATA: " + (error.message || "Sipariş verilirken bir sorun oluştu."));
         } finally {
             setSubmitting(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                <div className="loading-spinner" style={{ width: 48, height: 48, border: '4px solid var(--border)', borderTopColor: 'var(--primary)' }} />
+                <div style={{ marginTop: 20, fontWeight: 600, color: 'var(--text-secondary)', fontSize: 15 }}>Sepet Hesaplanıyor...</div>
+            </div>
+        );
+    }
 
     if (success) {
         return (
@@ -288,23 +210,27 @@ export default function DealerCart() {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24, alignItems: 'start' }}>
                 <div>
-                    {/* Product search & add */}
                     <div className="card" style={{ marginBottom: 20 }}>
                         <div className="card-title" style={{ marginBottom: 12 }}>Katalogdan Ekle</div>
                         <div style={{ position: 'relative' }}>
                             <div className="search-bar" style={{ width: '100%' }}>
                                 <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
-                                <input placeholder="Ürün adı veya kodunu yazın..." value={productSearch} onChange={e => searchProds(e.target.value)} id="cart-product-search" />
+                                <input placeholder="Ürün adı veya kodunu yazın..." value={productSearch} onChange={e => {
+                                    setProductSearch(e.target.value);
+                                    if (e.target.value.length < 2) { setSearchProducts([]); return; }
+                                    fetch('/api/products/search', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ filterText: e.target.value })
+                                    }).then(r => r.json()).then(data => setSearchProducts((data || []).slice(0, 6))).catch(err => console.error(err));
+                                }} id="cart-product-search" />
                             </div>
                             {searchProducts.length > 0 && (
                                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', zIndex: 100, marginTop: 4 }}>
                                     {searchProducts.map(p => (
                                         <div key={p.id} style={{ padding: '10px 14px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)' }}
-                                            onClick={() => { addProduct(p); setProductSearch(''); setSearchProducts([]); }}>
-                                            <div>
-                                                <div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>
-                                                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
-                                            </div>
+                                            onClick={() => { ctxAddToCart(product); setProductSearch(''); setSearchProducts([]); }}>
+                                            <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>
                                             <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                         </div>
                                     ))}
@@ -313,48 +239,30 @@ export default function DealerCart() {
                         </div>
                     </div>
 
-                    {/* Cart items */}
                     {cartItems.length === 0 ? (
                         <div className="card"><div className="empty-state"><div className="empty-state-icon"><ShoppingCartIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Sepetiniz boş</div><div className="empty-state-text">Katalogdan ürün ekleyin</div></div></div>
                     ) : (
                         <div>
-                            {/* Select all / Deselect all */}
                             <div style={{ display: 'flex', gap: 10, marginBottom: 12, alignItems: 'center' }}>
-                                <button className="btn btn-ghost btn-sm" onClick={selectAll} style={{ fontSize: 13 }}>☑ Tümünü Seç</button>
-                                <button className="btn btn-ghost btn-sm" onClick={deselectAll} style={{ fontSize: 13 }}>☐ Seçimi Kaldır</button>
-                                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>{selectedCartItems.length} / {cartItems.length} ürün seçili</span>
+                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, false))}>☑ Tümünü Seç</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, true))}>☐ Seçimi Kaldır</button>
+                                <span style={{ marginLeft: 'auto', fontSize: 13, color: 'var(--text-muted)' }}>{totals.selectedCount} / {cartItems.length} ürün seçili</span>
                             </div>
                             <div className="table-wrapper">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat (KDV'siz)</th><th>Miktar</th><th>Toplam (KDV'siz)</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th>Birim Fiyat</th><th>Miktar</th><th>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
                                             return (
-                                                <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5, transition: 'opacity 0.15s' }}>
-                                                    <td>
-                                                        <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>
-                                                    </td>
+                                                <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5 }}>
+                                                    <td><div style={{ fontWeight: 600 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-muted)' }}>{p.brand || '-'}</td>
                                                     <td>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                                    <td>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, -1)}>−</button>
-                                                            <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span>
-                                                            <button className="btn btn-ghost btn-sm" style={{ padding: '4px 10px' }} onClick={() => updateQty(p, 1)}>+</button>
-                                                        </div>
-                                                    </td>
+                                                    <td><div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => ctxSetQty(p.id, p, qty - 1, !itemSelected)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => ctxSetQty(p.id, p, qty + 1, !itemSelected)}>+</button></div></td>
                                                     <td style={{ fontWeight: 600 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                                    <td style={{ textAlign: 'center' }}>
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={itemSelected}
-                                                            onChange={() => toggleSelect(p.id)}
-                                                            style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)', margin: '0 auto', display: 'block' }}
-                                                        />
-                                                    </td>
-                                                    <td><button className="btn btn-danger btn-sm" onClick={() => removeItem(p)}>✕</button></td>
+                                                    <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => ctxSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18, cursor: 'pointer' }} /></td>
+                                                    <td><button className="btn btn-danger btn-sm" onClick={() => ctxSetQty(p.id, p, 0)}>✕</button></td>
                                                 </tr>
                                             );
                                         })}
@@ -365,79 +273,21 @@ export default function DealerCart() {
                     )}
                 </div>
 
-                {/* Order summary */}
                 <div className="card" style={{ position: 'sticky', top: 20 }}>
                     <div className="card-title" style={{ marginBottom: 16 }}>Sipariş Özeti</div>
-
-                    <div className="form-group" style={{ marginBottom: 16 }}>
-                        <label className="form-label">Gönderim Şekli</label>
-                        <select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}>
-                            <option value="Kargo">Kargo</option>
-                            <option value="Kurye">Kurye</option>
-                            <option value="Elden Teslim">Elden Teslim</option>
-                        </select>
-                    </div>
-
-                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                        <input type="checkbox" id="diff-address" checked={isDifferentAddress} onChange={e => setIsDifferentAddress(e.target.checked)} />
-                        <label htmlFor="diff-address" style={{ margin: 0, fontWeight: 500, cursor: 'pointer' }}>Farklı Sevk Adresi Kullan</label>
-                    </div>
-
-                    {isDifferentAddress && (
-                        <div className="form-group" style={{ marginBottom: 16 }}>
-                            <label className="form-label">Farklı Teslimat Adresi</label>
-                            <textarea className="form-textarea" style={{ minHeight: 70 }} value={shipping} onChange={e => setShipping(e.target.value)} placeholder="Teslimat adresi..." id="shipping-address" />
-                        </div>
-                    )}
-
-                    <div className="form-group" style={{ marginBottom: 16 }}>
-                        <label className="form-label">Sepet Notu (opsiyonel)</label>
-                        <textarea className="form-textarea" style={{ minHeight: 70 }} value={note} onChange={e => setNote(e.target.value)} placeholder="Siparişle ilgili notunuz..." id="order-note" />
-                    </div>
-
-                    <hr className="divider" style={{ margin: '16px 0' }} />
-
+                    <div className="form-group"><label className="form-label">Gönderim Şekli</label><select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}><option value="Kargo">Kargo</option><option value="Kurye">Kurye</option><option value="Elden Teslim">Elden Teslim</option></select></div>
+                    <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><input type="checkbox" id="diff-address" checked={isDifferentAddress} onChange={e => setIsDifferentAddress(e.target.checked)} /><label htmlFor="diff-address" style={{ cursor: 'pointer' }}>Farklı Sevk Adresi</label></div>
+                    {isDifferentAddress && <div className="form-group"><textarea className="form-textarea" value={shipping} onChange={e => setShipping(e.target.value)} placeholder="Teslimat adresi..." /></div>}
+                    <div className="form-group"><label className="form-label">Sepet Notu</label><textarea className="form-textarea" value={note} onChange={e => setNote(e.target.value)} placeholder="Siparişle ilgili notunuz..." /></div>
+                    <hr className="divider" />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                            <span>Ara Toplam</span>
-                            <span>₺{subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        {discountPercent > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)' }}>
-                                <span>İskonto (%{discountPercent})</span>
-                                <span>-₺{totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                            </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}>
-                            <span>KDV (%20)</span>
-                            <span>₺{vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                        {discountPercent > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)' }}><span>İskonto (%{discountPercent})</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)' }}><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
                     </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 22, fontWeight: 800, color: 'var(--primary)', fontFamily: 'Outfit, sans-serif', marginBottom: 16 }}>
-                        <span>Genel Toplam</span>
-                        <span>₺{grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                    </div>
-
-                    {isRiskExceeded && (
-                        <div style={{ 
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                            color: 'var(--danger)', 
-                            padding: '10px 12px', 
-                            borderRadius: 'var(--radius)', 
-                            fontSize: 13, 
-                            fontWeight: 600, 
-                            marginBottom: 16,
-                            border: '1px solid rgba(239, 68, 68, 0.2)',
-                            textAlign: 'center'
-                        }}>
-                            Risk limitini ₺{exceededAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} aşıyorsunuz (ödeme gerekli)
-                        </div>
-                    )}
-
-                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', backgroundColor: needsPrepayment && !submitting ? 'var(--danger)' : undefined, border: needsPrepayment && !submitting ? 'none' : undefined }} disabled={selectedCartItems.length === 0 || submitting} onClick={placeOrder} id="place-order-btn">
-                        {submitting ? 'Sipariş veriliyor...' : selectedCartItems.length === 0 ? 'Ürün seçin' : isRiskExceeded ? 'LİMİT AŞILDI (ÖDEME YAP)' : needsPrepayment ? 'YETERSİZ BAKİYE (ÖN ÖDEME)' : `✓ ${selectedCartItems.length} Ürün Sipariş Et`}
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 22, fontWeight: 800, color: 'var(--primary)', marginBottom: 16 }}><span>Genel Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                    {totals.isRiskExceeded && <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', padding: '10px', borderRadius: 'var(--radius)', fontSize: 13, marginBottom: 16, border: '1px solid rgba(239, 68, 68, 0.2)', textAlign: 'center' }}>Risk limitini ₺{totals.exceededAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} aşıyorsunuz</div>}
+                    <button className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', backgroundColor: totals.needsPrepayment && !submitting ? 'var(--danger)' : undefined }} disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder}>{submitting ? 'Sipariş veriliyor...' : totals.selectedCount === 0 ? 'Ürün seçin' : totals.isRiskExceeded ? 'LİMİT AŞILDI (ÖDEME YAP)' : totals.needsPrepayment ? 'YETERSİZ BAKİYE (ÖN ÖDEME)' : `✓ ${totals.selectedCount} Ürün Sipariş Et`}</button>
                 </div>
             </div>
         </div>

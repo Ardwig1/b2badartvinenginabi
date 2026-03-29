@@ -74,6 +74,12 @@ export default function PaymentPage() {
                         companyName: data.companyName || backupName || '',
                         currentBalance: Number(data.currentBalance) || 0
                     });
+                    
+                    setPricingSettings(prev => ({
+                        ...prev,
+                        discountPercent: Number(data.discountPercent) || 0
+                    }));
+
                     if (data.companyName && typeof window !== 'undefined') {
                         localStorage.setItem('storedCompanyName', data.companyName);
                     }
@@ -125,22 +131,20 @@ export default function PaymentPage() {
         const hasItems = Object.values(cartItems).some(i => i.qty > 0);
         if (hasItems) {
             setIsCartLoading(true);
-            const fetchDiscount = async () => {
-                try {
-                    const res = await fetch('/api/user/info');
-                    if (res.ok) {
-                        const data = await res.json();
-                        const disc = data.discountPercent || 0;
-                        const totals = calculateCartTotals(cartItems, disc, pricingSettings.margin, pricingSettings.isUsdActive, pricingSettings.usdRate, pricingSettings.rates);
-                        setCartTotal(totals.grandTotal);
-                        if (!amount || amount === '0.00' || context === 'cart') {
-                            if (isCartChecked) setAmount(totals.grandTotal.toFixed(2));
-                        }
-                    }
-                } catch (e) { console.error(e); } 
-                finally { setIsCartLoading(false); }
-            };
-            fetchDiscount();
+            const totals = calculateCartTotals(
+                cartItems, 
+                pricingSettings.discountPercent, 
+                pricingSettings.margin, 
+                pricingSettings.isUsdActive, 
+                pricingSettings.usdRate, 
+                pricingSettings.rates
+            );
+            
+            setCartTotal(totals.grandTotal);
+            if (!amount || amount === '0.00' || context === 'cart') {
+                if (isCartChecked) setAmount(totals.grandTotal.toFixed(2));
+            }
+            setIsCartLoading(false);
         } else {
             setCartTotal(null);
             setIsCartLoading(false);
@@ -233,7 +237,7 @@ export default function PaymentPage() {
 
             <div style={{ display: 'flex', gap: 24, maxWidth: 900, margin: '0 auto', alignItems: 'stretch', flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    {/* Tosla & Akbank Info Banner - Fixed Logo and Fallback */}
+                    {/* Tosla & Akbank Info Banner */}
                     <div style={{
                         padding: '24px 30px',
                         background: 'linear-gradient(90deg, rgba(227, 24, 55, 0.12) 0%, rgba(227, 24, 55, 0.03) 100%)',

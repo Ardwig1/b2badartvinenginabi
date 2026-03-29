@@ -102,7 +102,6 @@ export default function DealerCatalog() {
     const fetchSettingsAndFilters = useCallback(async () => {
         setLoading(true);
         try {
-            // 1. Use our smart info API that handles showroom and RLS correctly
             const infoRes = await fetch('/api/user/info');
             if (infoRes.ok) {
                 const infoData = await infoRes.json();

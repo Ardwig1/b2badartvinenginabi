@@ -46,7 +46,7 @@ export async function GET() {
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
-        // If user is Admin or Representative AND has a cookie
+        // CRITICAL: If they CAN impersonate and have a cookie, override targetCompanyId
         if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
@@ -70,11 +70,12 @@ export async function GET() {
             }
         }
 
-        // 4. Fallback to profile discount ONLY if not impersonating or no company discount
+        // 4. Fallback to profile discount ONLY if not impersonating AND no company discount found
         if (discount === 0 && !isImpersonating) {
             discount = Number(profile.discount_rate) || 0;
         }
 
+        // 5. Final Response
         return NextResponse.json({
             userId: user.id,
             email: user.email,

@@ -318,10 +318,29 @@ export default function AdminRepresentatives() {
                             </div>
 
                             <div className="form-group" style={{ marginBottom: 0, marginTop: 16 }}>
-                                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    Sorumlu Olacağı Firmalar 
-                                    <span style={{ fontSize: 11, color: 'var(--primary)' }}>{formData.assigned_companies.length} firma seçildi</span>
-                                </label>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                    <label className="form-label" style={{ marginBottom: 0 }}>Sorumlu Olacağı Firmalar</label>
+                                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, cursor: 'pointer', color: 'var(--primary)', fontWeight: 600 }}>
+                                            <input 
+                                                type="checkbox" 
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        const availableIds = companies
+                                                            .filter(c => !c.assigned_to_rep_id || c.assigned_to_rep_id === editingId)
+                                                            .map(c => c.id);
+                                                        setFormData(prev => ({ ...prev, assigned_companies: availableIds }));
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, assigned_companies: [] }));
+                                                    }
+                                                }}
+                                                style={{ width: 13, height: 13 }}
+                                            />
+                                            Boştaki Tümünü Seç
+                                        </label>
+                                        <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formData.assigned_companies.length} firma seçildi</span>
+                                    </div>
+                                </div>
                                 <div style={{ 
                                     maxHeight: 200, 
                                     overflowY: 'auto', 

@@ -41,14 +41,36 @@ export default function AdminRepresentatives() {
         
         if (!repError) setReps(repData || []);
 
-        // 2. Fetch all companies for the selection list
+        // 2. Map all current assignments to find which companies are "taken"
+        const allAssignments = [];
+        repData?.forEach(r => {
+            r.assignments?.forEach(a => {
+                allAssignments.push({
+                    company_id: a.company_id,
+                    rep_id: r.id,
+                    rep_name: `${r.first_name} ${r.last_name}`
+                });
+            });
+        });
+
+        // 3. Fetch all companies for the selection list
         const { data: compData } = await supabase
             .from('companies')
             .select('id, name')
             .eq('status', 'approved')
             .order('name');
         
-        if (compData) setCompanies(compData);
+        if (compData) {
+            const enrichedCompanies = compData.map(c => {
+                const assignment = allAssignments.find(a => a.company_id === c.id);
+                return {
+                    ...c,
+                    assigned_to_rep_id: assignment?.rep_id || null,
+                    assigned_to_rep_name: assignment?.rep_name || null
+                };
+            });
+            setCompanies(enrichedCompanies);
+        }
         setLoading(false);
     }, [supabase]);
 
@@ -311,28 +333,40 @@ export default function AdminRepresentatives() {
                                     gridTemplateColumns: '1fr 1fr',
                                     gap: 8
                                 }}>
-                                    {companies.map(c => (
-                                        <label key={c.id} style={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 8, 
-                                            fontSize: 12, 
-                                            cursor: 'pointer',
-                                            padding: '6px 8px',
-                                            borderRadius: 6,
-                                            background: formData.assigned_companies.includes(c.id) ? 'rgba(37,99,235,0.1)' : 'transparent',
-                                            border: formData.assigned_companies.includes(c.id) ? '1px solid var(--primary)' : '1px solid transparent',
-                                            transition: 'all 0.2s'
-                                        }}>
-                                            <input 
-                                                type="checkbox" 
-                                                checked={formData.assigned_companies.includes(c.id)} 
-                                                onChange={() => toggleCompany(c.id)}
-                                                style={{ width: 14, height: 14 }}
-                                            />
-                                            <span style={{ fontWeight: formData.assigned_companies.includes(c.id) ? 600 : 400 }}>{c.name}</span>
-                                        </label>
-                                    ))}
+                                    {companies.map(c => {
+                                        const isTaken = c.assigned_to_rep_id && c.assigned_to_rep_id !== editingId;
+                                        const isSelected = formData.assigned_companies.includes(c.id);
+                                        
+                                        return (
+                                            <label key={c.id} style={{ 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: 8, 
+                                                fontSize: 12, 
+                                                cursor: isTaken ? 'not-allowed' : 'pointer',
+                                                padding: '6px 8px',
+                                                borderRadius: 6,
+                                                background: isSelected ? 'rgba(37,99,235,0.1)' : (isTaken ? 'rgba(0,0,0,0.05)' : 'transparent'),
+                                                border: isSelected ? '1px solid var(--primary)' : '1px solid transparent',
+                                                opacity: isTaken ? 0.6 : 1,
+                                                transition: 'all 0.2s'
+                                            }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={isSelected} 
+                                                    disabled={isTaken}
+                                                    onChange={() => !isTaken && toggleCompany(c.id)}
+                                                    style={{ width: 14, height: 14 }}
+                                                />
+                                                <span style={{ 
+                                                    fontWeight: isSelected ? 600 : 400,
+                                                    color: isTaken ? 'var(--text-muted)' : 'inherit'
+                                                }}>
+                                                    {c.name} {isTaken && `(Dolu - ${c.assigned_to_rep_name})`}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

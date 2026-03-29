@@ -32,9 +32,7 @@ export async function GET() {
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
         
-        // Check if representative: 
-        // 1. In metadata
-        // 2. In customer_representatives table (more reliable after re-adds)
+        // Identify Rep: Check Metadata OR customer_representatives table
         const isRepMetadata = user.user_metadata?.role === 'representative';
         const { data: repRecord } = await adminSupabase
             .from('customer_representatives')
@@ -43,13 +41,12 @@ export async function GET() {
             .maybeSingle();
         
         const isRep = isRepMetadata || !!repRecord;
-        
         const canImpersonate = profile.is_admin || isRep;
         
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
-        // If user is Admin or Representative AND impersonating
+        // If user is Admin or Representative AND has a cookie
         if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
@@ -62,26 +59,19 @@ export async function GET() {
         if (targetCompanyId) {
             const { data: company } = await adminSupabase
                 .from('companies')
-                .select('*')
+                .select('*, price_group:price_groups(discount_percent)')
                 .eq('id', targetCompanyId)
-                .single();
+                .maybeSingle();
             
             if (company) {
                 companyData = company;
-                // 4. Fetch Price Group Discount
-                if (company.price_group_id) {
-                    const { data: pg } = await adminSupabase
-                        .from('price_groups')
-                        .select('discount_percent')
-                        .eq('id', company.price_group_id)
-                        .single();
-                    if (pg) discount = Number(pg.discount_percent) || 0;
-                }
+                // Get discount from company's price group
+                discount = Number(company.price_group?.discount_percent) || 0;
             }
         }
 
-        // 5. Fallback to profile discount if no company discount
-        if (discount === 0) {
+        // 4. Fallback to profile discount ONLY if not impersonating or no company discount
+        if (discount === 0 && !isImpersonating) {
             discount = Number(profile.discount_rate) || 0;
         }
 

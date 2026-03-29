@@ -102,7 +102,8 @@ export default function DealerCatalog() {
     const fetchSettingsAndFilters = useCallback(async () => {
         setLoading(true);
         try {
-            const infoRes = await fetch('/api/user/info');
+            // Force no-cache to get real-time showroom data
+            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store' });
             if (infoRes.ok) {
                 const infoData = await infoRes.json();
                 

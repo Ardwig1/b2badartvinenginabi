@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function GET() {
     try {
@@ -32,7 +33,6 @@ export async function GET() {
         const cookieStore = await cookies();
         const impId = cookieStore.get('impersonate_company_id')?.value;
         
-        // Identify Rep: Check Metadata OR customer_representatives table
         const isRepMetadata = user.user_metadata?.role === 'representative';
         const { data: repRecord } = await adminSupabase
             .from('customer_representatives')
@@ -46,42 +46,44 @@ export async function GET() {
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
-        // CRITICAL: If they CAN impersonate and have a cookie, override targetCompanyId
+        // CRITICAL: Force targetCompanyId if cookie exists and user has permission
         if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
         }
 
-        // 3. Fetch Company Info
+        // 3. Fetch Company Info DIRECTLY from DB
         let discount = 0;
         let companyData = null;
 
         if (targetCompanyId) {
-            console.log('INFO API: Fetching data for company:', targetCompanyId);
-            const { data: company, error: compErr } = await adminSupabase
+            const { data: company } = await adminSupabase
                 .from('companies')
-                .select('*, price_group:price_groups(discount_percent)')
+                .select('*')
                 .eq('id', targetCompanyId)
                 .maybeSingle();
             
-            if (compErr) console.error('INFO API: Company fetch error:', compErr);
-
             if (company) {
                 companyData = company;
-                // Get discount from company's price group
-                discount = Number(company.price_group?.discount_percent) || 0;
-                console.log('INFO API: Found company discount:', discount, 'from group:', company.price_group);
-            } else {
-                console.log('INFO API: No company found for ID:', targetCompanyId);
+                // Fetch Price Group Discount DIRECTLY
+                if (company.price_group_id) {
+                    const { data: pg } = await adminSupabase
+                        .from('price_groups')
+                        .select('discount_percent')
+                        .eq('id', company.price_group_id)
+                        .maybeSingle();
+                    if (pg) {
+                        discount = Number(pg.discount_percent) || 0;
+                    }
+                }
             }
         }
 
-        // 4. Fallback to profile discount ONLY if not impersonating AND no company discount found
+        // 4. Fallback only if not impersonating
         if (discount === 0 && !isImpersonating) {
             discount = Number(profile.discount_rate) || 0;
         }
 
-        // 5. Final Response
         return NextResponse.json({
             userId: user.id,
             email: user.email,

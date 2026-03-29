@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CreditCardIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { CreditCardIcon, ArrowLeftIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { useCart } from '@/components/CartProvider';
@@ -232,48 +232,78 @@ export default function PaymentPage() {
             <div className="page-header"><div><h1 className="page-title">Online Ödeme (Sanal POS)</h1><p className="page-subtitle">Kredi kartınızla anında bakiye yükleyin veya fatura ödeyin</p></div></div>
 
             <div style={{ display: 'flex', gap: 24, maxWidth: 900, margin: '0 auto', alignItems: 'stretch', flexWrap: 'wrap' }}>
-                <div className="card" style={{ flex: '1 1 500px', padding: 30 }}>
-                    <h2 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700 }}>Ödeme Bilgileri</h2>
-                    <form onSubmit={handlePayment}>
-                        <div className="form-group" style={{ marginBottom: 20 }}>
-                            <label className="form-label">{context === 'cart' ? 'Sepet Tutarı (Değiştirilemez)' : 'Ödenecek Tutar (₺)'}</label>
-                            <input type="text" inputMode="decimal" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => handleAmountChange(e.target.value)} placeholder="0.00" disabled={context === 'cart' || Boolean(cartTotal && isCartChecked) || isDebtChecked} required />
-                            <small style={{ color: '#6c757d', display: 'block', marginTop: 4 }}>{amount.includes(',') || amount.includes('.') ? 'Ondalık ayracı otomatik olarak ayarlanır.' : 'Virgül (,) veya Nokta (.) kullanabilirsiniz.'}</small>
+                <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* Tosla & Akbank Info Banner - Moved here and made LARGER */}
+                    <div style={{
+                        padding: '24px 30px',
+                        background: 'linear-gradient(90deg, rgba(227, 24, 55, 0.12) 0%, rgba(227, 24, 55, 0.03) 100%)',
+                        border: '1px solid rgba(227, 24, 55, 0.25)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '20px',
+                        color: 'var(--text-primary)',
+                        boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
+                    }}>
+                        <img 
+                            src="https://upload.wikimedia.org/wikipedia/commons/8/87/Akbank_logo.svg" 
+                            alt="Akbank" 
+                            style={{ height: '28px', flexShrink: 0 }} 
+                        />
+                        <div style={{ fontSize: '16px', fontWeight: 500, lineHeight: '1.4' }}>
+                            <strong style={{ color: '#e31837', fontWeight: 800 }}>TOSLA</strong> altyapısı ile güvenli ödeme yapıyorsunuz. 
+                            <br/>
+                            <span style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>Tosla, bir <strong>AKBANK</strong> ödeme yöntemidir.</span>
                         </div>
+                        <div style={{ marginLeft: 'auto', background: '#10b981', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <ShieldCheckIcon style={{ width: 16, height: 16 }} />
+                            GÜVENLİ
+                        </div>
+                    </div>
 
-                        <div className="form-group" style={{ marginBottom: 15 }}>
-                            <label className="form-label">İşlem Yapan Firma (Tosla'ya gönderilecek referans)</label>
-                            <div style={{ position: 'relative' }}>
-                                <input type="text" className="form-input" value={infoError ? 'Hata oluştu!' : (buyerInfo.companyName || (isInfoLoading ? 'Yükleniyor...' : 'FİRMA BİLGİSİ EKSİK!'))} disabled style={{ backgroundColor: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#fff1f2' : '#f8f9fa', cursor: 'not-allowed', color: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#dc2626' : (isInfoLoading ? '#6c757d' : '#1e293b'), fontWeight: 'bold', border: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '1px solid #fda4af' : '1px solid var(--border)' }} />
-                                {(infoError || (!isInfoLoading && !buyerInfo.companyName)) && <button type="button" onClick={() => window._retryFetchUser?.()} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: '#dc2626', border: '1px solid #dc2626', background: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontWeight: 700 }}>YENİDEN DENE</button>}
-                                {isInfoLoading && <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}><div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /></div>}
+                    {/* Main Payment Card */}
+                    <div className="card" style={{ padding: 30 }}>
+                        <h2 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700 }}>Ödeme Bilgileri</h2>
+                        <form onSubmit={handlePayment}>
+                            <div className="form-group" style={{ marginBottom: 20 }}>
+                                <label className="form-label">{context === 'cart' ? 'Sepet Tutarı (Değiştirilemez)' : 'Ödenecek Tutar (₺)'}</label>
+                                <input type="text" inputMode="decimal" className="form-input" style={{ fontSize: 24, padding: '12px 16px', fontWeight: 'bold', color: 'var(--primary)' }} value={amount} onChange={e => handleAmountChange(e.target.value)} placeholder="0.00" disabled={context === 'cart' || Boolean(cartTotal && isCartChecked) || isDebtChecked} required />
+                                <small style={{ color: '#6c757d', display: 'block', marginTop: 4 }}>{amount.includes(',') || amount.includes('.') ? 'Ondalık ayracı otomatik olarak ayarlanır.' : 'Virgül (,) veya Nokta (.) kullanabilirsiniz.'}</small>
                             </div>
-                            <small style={{ color: infoError ? '#dc2626' : '#6c757d', marginTop: 4, display: 'block' }}>Güvenlik gereği kart sahibi ismi yerine sadece firma adınız Tosla'ya iletilir.</small>
-                        </div>
 
-                        <div className="form-group" style={{ marginBottom: 15 }}><label className="form-label">Kredi Kartı Numarası</label><input type="text" className="form-input" value={cardNumber} onChange={e => { let val = e.target.value.replace(/\D/g, ''); let parts = val.match(/.{1,4}/g); setCardNumber(parts ? parts.join(' ') : val); }} placeholder="0000 0000 0000 0000" maxLength="19" required /></div>
-
-                        <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
-                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">Son Kullanma (Ay)</label><input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value.replace(/\D/g, ''))} placeholder="AA" maxLength="2" required /></div>
-                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">Son Kullanma (Yıl)</label><input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value.replace(/\D/g, ''))} placeholder="YY" maxLength="2" required /></div>
-                            <div className="form-group" style={{ flex: 1 }}><label className="form-label">CVV</label><input type="password" placeholder="***" className="form-input" value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, ''))} maxLength="4" required /></div>
-                        </div>
-
-                        <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 10, opacity: (loading || isInfoLoading || infoError || !buyerInfo.companyName) ? 0.6 : 1 }} disabled={loading || isInfoLoading || infoError || !buyerInfo.companyName}>{loading ? <><div className="loading-spinner" style={{ width: 18, height: 18, borderTopColor: 'white' }} /> İşleniyor...</> : <><CreditCardIcon style={{ width: 20, height: 20 }} /> Güvenli Ödeme Yap (Tosla)</>}</button>
-                    </form>
-
-                    <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
-                        <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', padding: '16px 24px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', marginBottom: '20px' }}>
-                            <img src="/user_logo3.png" alt="Troy" style={{ height: 32, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#0ea5e9; font-weight:900; font-size:18px; font-style: italic;">troy</span>'); }} />
-                            <img src="/user_logo2.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#1d4ed8; font-weight:900; font-size:22px; font-style: italic;">VISA</span>'); }} />
-                            <img src="/user_logo1.png" alt="Mastercard" style={{ height: 32, width: 'auto', objectFit: 'contain' }} onError={(e) => { e.target.style.display = 'none'; e.target.insertAdjacentHTML('afterend', '<span style="color:#dc2626; font-weight:bold; font-size:16px;">mastercard</span>'); }} />
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '24px', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', height: '32px' }}>
-                                <div style={{ width: 28, height: 28, background: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
-                                <div style={{ textAlign: 'left', lineHeight: '1.2' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.5px' }}>256 BIT SSL</div><div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>GÜVENLİ ÖDEME</div></div>
+                            <div className="form-group" style={{ marginBottom: 15 }}>
+                                <label className="form-label">İşlem Yapan Firma (Referans)</label>
+                                <div style={{ position: 'relative' }}>
+                                    <input type="text" className="form-input" value={infoError ? 'Hata oluştu!' : (buyerInfo.companyName || (isInfoLoading ? 'Yükleniyor...' : 'FİRMA BİLGİSİ EKSİK!'))} disabled style={{ backgroundColor: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#fff1f2' : '#f8f9fa', cursor: 'not-allowed', color: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '#dc2626' : (isInfoLoading ? '#6c757d' : '#1e293b'), fontWeight: 'bold', border: infoError || (!isInfoLoading && !buyerInfo.companyName) ? '1px solid #fda4af' : '1px solid var(--border)' }} />
+                                    {isInfoLoading && <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}><div className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /></div>}
+                                </div>
+                                <small style={{ color: infoError ? '#dc2626' : '#6c757d', marginTop: 4, display: 'block' }}>Güvenlik gereği sadece firma adınız Tosla'ya iletilir.</small>
                             </div>
+
+                            <div className="form-group" style={{ marginBottom: 15 }}><label className="form-label">Kredi Kartı Numarası</label><input type="text" className="form-input" value={cardNumber} onChange={e => { let val = e.target.value.replace(/\D/g, ''); let parts = val.match(/.{1,4}/g); setCardNumber(parts ? parts.join(' ') : val); }} placeholder="0000 0000 0000 0000" maxLength="19" required /></div>
+
+                            <div style={{ display: 'flex', gap: 15, marginBottom: 20 }}>
+                                <div className="form-group" style={{ flex: 1 }}><label className="form-label">Ay</label><input type="text" className="form-input" value={expireMonth} onChange={e => setExpireMonth(e.target.value.replace(/\D/g, ''))} placeholder="AA" maxLength="2" required /></div>
+                                <div className="form-group" style={{ flex: 1 }}><label className="form-label">Yıl</label><input type="text" className="form-input" value={expireYear} onChange={e => setExpireYear(e.target.value.replace(/\D/g, ''))} placeholder="YY" maxLength="2" required /></div>
+                                <div className="form-group" style={{ flex: 1 }}><label className="form-label">CVV</label><input type="password" placeholder="***" className="form-input" value={cvv} onChange={e => setCvv(e.target.value.replace(/\D/g, ''))} maxLength="4" required /></div>
+                            </div>
+
+                            <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 10, opacity: (loading || isInfoLoading || infoError || !buyerInfo.companyName) ? 0.6 : 1 }} disabled={loading || isInfoLoading || infoError || !buyerInfo.companyName}>{loading ? <><div className="loading-spinner" style={{ width: 18, height: 18, borderTopColor: 'white' }} /> İşleniyor...</> : <><CreditCardIcon style={{ width: 20, height: 20 }} /> Güvenli Ödeme Yap (Tosla)</>}</button>
+                        </form>
+
+                        <div style={{ marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>
+                            <p style={{ marginBottom: 16 }}>Ödemeleriniz <strong style={{ color: 'var(--text-primary)' }}>Tosla</strong> güvencesiyle 256-bit SSL ile şifrelenmektedir.</p>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '24px', padding: '16px 24px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '12px', marginBottom: '20px' }}>
+                                <img src="/user_logo3.png" alt="Troy" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/user_logo2.png" alt="Visa" style={{ height: 24, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/user_logo1.png" alt="Mastercard" style={{ height: 32, width: 'auto', objectFit: 'contain' }} />
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingLeft: '24px', borderLeft: '1px solid rgba(255, 255, 255, 0.1)', height: '32px' }}>
+                                    <div style={{ width: 28, height: 28, background: '#10b981', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg></div>
+                                    <div style={{ textAlign: 'left', lineHeight: '1.2' }}><div style={{ fontSize: '10px', fontWeight: 700, color: '#10b981', letterSpacing: '0.5px' }}>256 BIT SSL</div><div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>GÜVENLİ ÖDEME</div></div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}><Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link><span style={{ color: 'var(--border)' }}>|</span><Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İptal ve İade Koşulları</Link><span style={{ color: 'var(--border)' }}>|</span><Link href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik Politikası</Link></div>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}><Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link><span style={{ color: 'var(--border)' }}>|</span><Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>İptal ve İade Koşulları</Link><span style={{ color: 'var(--border)' }}>|</span><Link href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Gizlilik Politikası</Link></div>
                     </div>
                 </div>
 
@@ -296,10 +326,6 @@ export default function PaymentPage() {
                             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}><input type="checkbox" checked={isDebtChecked} onChange={handleDebtCheck} style={{ width: 20, height: 20 }} /><span style={{ fontWeight: 600, fontSize: 14 }}>Tüm borcumu öde</span></label>
                         </div>
                     )}
-
-                    <div style={{ marginTop: 'auto', padding: '24px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', color: 'var(--text-secondary)', fontSize: '14px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                        <span style={{ whiteSpace: 'nowrap' }}><strong>TOSLA,</strong> bir</span><img src="https://upload.wikimedia.org/wikipedia/commons/8/87/Akbank_logo.svg" alt="Akbank" style={{ height: '18px', opacity: 1, flexShrink: 0 }} /><span style={{ whiteSpace: 'nowrap' }}>ödeme yöntemidir.</span>
-                    </div>
                 </div>
             </div>
         </div>

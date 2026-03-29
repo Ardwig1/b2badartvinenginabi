@@ -50,6 +50,9 @@ export async function POST(req) {
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 // 1 day
         });
+        
+        // Extra cookie to force client update
+        cookieStore.set('showroom_ts', Date.now().toString(), { path: '/' });
 
         return NextResponse.json({ success: true });
     } catch (e) {

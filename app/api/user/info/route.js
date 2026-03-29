@@ -31,7 +31,11 @@ export async function GET() {
 
         // 2. Impersonation (Showroom) Logic
         const cookieStore = await cookies();
+        const allCookies = cookieStore.getAll();
+        console.log('INFO API: All Cookies:', allCookies.map(c => c.name));
+        
         const impId = cookieStore.get('impersonate_company_id')?.value;
+        console.log('INFO API: Impersonate Cookie Value:', impId);
         
         const isRepMetadata = user.user_metadata?.role === 'representative';
         const { data: repRecord } = await adminSupabase

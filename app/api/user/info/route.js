@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET() {
-    const debugInfo = {};
     try {
         const supabase = await createClient();
         const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -32,7 +31,7 @@ export async function GET() {
 
         // 2. Impersonation (Showroom) Logic
         const cookieStore = await cookies();
-        const impId = cookieStore.get('impersonate_company_id')?.value;
+        let impId = cookieStore.get('impersonate_company_id')?.value;
         
         const isRepMetadata = user.user_metadata?.role === 'representative';
         const { data: repRecord } = await adminSupabase.from('customer_representatives').select('id').eq('id', user.id).maybeSingle();
@@ -43,20 +42,18 @@ export async function GET() {
         let targetCompanyId = profile.company_id;
         let isImpersonating = false;
 
+        // Force Showroom if authorized and cookie exists
         if (canImpersonate && impId && impId !== 'undefined' && impId !== '') {
             targetCompanyId = impId;
             isImpersonating = true;
         }
 
-        debugInfo.isImpersonating = isImpersonating;
-        debugInfo.targetCompanyId = targetCompanyId;
-
-        // 3. Fetch Company & Price Group (Exact same query as Dashboard)
+        // 3. Fetch Company & Price Group (Exact same query as Dashboard Page)
         let discount = 0;
         let companyData = null;
 
         if (targetCompanyId) {
-            const { data: company, error: compErr } = await adminSupabase
+            const { data: company } = await adminSupabase
                 .from('companies')
                 .select('*, price_group:price_groups(name, discount_percent)')
                 .eq('id', targetCompanyId)
@@ -64,14 +61,12 @@ export async function GET() {
             
             if (company) {
                 companyData = company;
+                // Bayinin fiyat grubu iskontosunu al
                 discount = Number(company.price_group?.discount_percent) || 0;
-                debugInfo.foundDiscount = discount;
-            } else if (compErr) {
-                debugInfo.error = compErr.message;
             }
         }
 
-        // 4. Fallback
+        // 4. Fallback (Sadece showroom dışındaysak kendi iskontosu)
         if (discount === 0 && !isImpersonating) {
             discount = Number(profile.discount_rate) || 0;
         }
@@ -87,12 +82,11 @@ export async function GET() {
             discountPercent: discount,
             isImpersonating,
             isPrepaymentLocked: companyData?.is_prepayment_locked || false,
-            riskLimit: Number(companyData?.risk_limit) || 0,
-            _debug: debugInfo
+            riskLimit: Number(companyData?.risk_limit) || 0
         });
 
     } catch (err) {
         console.error('API Error:', err);
-        return NextResponse.json({ error: 'Sunucu hatası', details: err.message }, { status: 500 });
+        return NextResponse.json({ error: 'Sunucu hatası' }, { status: 500 });
     }
 }

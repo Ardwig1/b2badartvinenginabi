@@ -14,7 +14,7 @@ export default function PaymentPage() {
     const [cvv, setCvv] = useState('');
 
     const [cartTotal, setCartTotal] = useState(null);
-    const [isCartLoading, setIsCartLoading] = useState(false);
+    const [isCartLoading, setIsCartLoading] = useState(true); // Start loading
     const [isCartChecked, setIsCartChecked] = useState(true);
     const [isDebtChecked, setIsDebtChecked] = useState(false);
 
@@ -35,16 +35,9 @@ export default function PaymentPage() {
     });
 
     const fetchUserAndSettings = useCallback(async () => {
-        let backupName = '';
-        if (typeof window !== 'undefined') {
-            backupName = localStorage.getItem('storedCompanyName') || '';
-            if (backupName) {
-                setBuyerInfo(prev => ({ ...prev, companyName: backupName }));
-                setIsInfoLoading(false);
-            }
-        }
-
+        setIsInfoLoading(true);
         try {
+            // Force bypass cache
             const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store' });
             if (infoRes.ok) {
                 const data = await infoRes.json();
@@ -55,7 +48,12 @@ export default function PaymentPage() {
                     companyName: data.companyName || '',
                     currentBalance: Number(data.currentBalance) || 0
                 });
-                setPricingSettings(prev => ({ ...prev, discountPercent: Number(data.discountPercent) || 0 }));
+                
+                // CRITICAL: Update discount directly
+                setPricingSettings(prev => ({
+                    ...prev,
+                    discountPercent: Number(data.discountPercent) || 0
+                }));
             }
 
             const [marginRes, usdRes, ratesRes] = await Promise.all([
@@ -64,7 +62,9 @@ export default function PaymentPage() {
                 fetch('/api/rates')
             ]);
             
-            const [m, u, r] = await Promise.all([marginRes.json(), usdRes.json(), ratesRes.json()]);
+            const m = await marginRes.json();
+            const u = await usdRes.json();
+            const r = await ratesRes.json();
 
             setPricingSettings(prev => ({
                 ...prev,
@@ -74,7 +74,7 @@ export default function PaymentPage() {
                 rates: r ?? prev.rates
             }));
         } catch (e) {
-            console.error(e);
+            console.error('Payment Page Fetch Error:', e);
         } finally {
             setIsInfoLoading(false);
         }
@@ -91,12 +91,12 @@ export default function PaymentPage() {
         fetchUserAndSettings();
     }, [fetchUserAndSettings]);
 
-    // CART CALCULATION LOGIC
+    // Recalculate cart total whenever items OR pricingSettings change
     useEffect(() => {
-        const items = Object.values(cartItems || {});
-        const hasItems = items.some(i => i.qty > 0);
+        const itemsArray = Object.values(cartItems || {});
+        const hasItems = itemsArray.some(i => i.qty > 0);
         
-        if (hasItems) {
+        if (hasItems && !isInfoLoading) {
             setIsCartLoading(true);
             const totals = calculateCartTotals(
                 cartItems, 
@@ -106,17 +106,19 @@ export default function PaymentPage() {
                 pricingSettings.usdRate, 
                 pricingSettings.rates
             );
+            
             setCartTotal(totals.grandTotal);
+            
+            // Auto-fill amount if coming from cart or no amount set
             if ((!amount || amount === '0.00' || context === 'cart') && isCartChecked) {
                 setAmount(totals.grandTotal.toFixed(2));
             }
             setIsCartLoading(false);
-        } else {
-            // Only clear if we are sure there are NO items
+        } else if (!hasItems) {
             setCartTotal(null);
             setIsCartLoading(false);
         }
-    }, [cartItems, pricingSettings, isCartChecked, context, amount]);
+    }, [cartItems, pricingSettings, isCartChecked, context, isInfoLoading]);
 
     useEffect(() => {
         if (toslaData) document.getElementById("tosla3dForm")?.submit();

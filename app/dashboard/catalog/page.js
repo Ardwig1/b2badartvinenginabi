@@ -578,7 +578,8 @@ export default function DealerCatalog() {
                                 <th>Ürün Adı</th>
                                 <th style={{ width: 40, textAlign: 'center' }} title="Ürün Resmi"><PhotoIcon style={{ width: 18, height: 18 }} /></th>
                                 <th>Birim</th>
-                                <th style={{ textAlign: 'center' }}>İskonto</th>
+                                <th style={{ textAlign: 'center' }}>Bayi İsk.</th>
+                                <th style={{ textAlign: 'center' }}>Kampanya</th>
                                 <th style={{ textAlign: 'right' }}>Fiyat (KDV Dahil)</th>
                                 <th style={{ textAlign: 'center' }}>İstanbul</th>
                                 <th style={{ textAlign: 'center' }}>Depo</th>
@@ -617,15 +618,11 @@ export default function DealerCatalog() {
                                             ) : '-'}
                                         </td>
                                         <td style={{ fontSize: 12, color: p.is_campaign ? '#000' : 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 800, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>
-                                            {discountPercent > 0 ? (
-                                                <>
-                                                    %{discountPercent}
-                                                    {Number(p.discount_rate) > 0 && ` + %${p.discount_rate}`}
-                                                </>
-                                            ) : (
-                                                Number(p.discount_rate) > 0 ? <>%{p.discount_rate}</> : ''
-                                            )}
+                                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary)' }}>
+                                            {discountPercent > 0 ? `%${discountPercent}` : '-'}
+                                        </td>
+                                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#b91c1c' }}>
+                                            {Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}
                                         </td>
                                         <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
                                             <div

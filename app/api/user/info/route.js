@@ -57,16 +57,22 @@ export async function GET() {
         let companyData = null;
 
         if (targetCompanyId) {
-            const { data: company } = await adminSupabase
+            console.log('INFO API: Fetching data for company:', targetCompanyId);
+            const { data: company, error: compErr } = await adminSupabase
                 .from('companies')
                 .select('*, price_group:price_groups(discount_percent)')
                 .eq('id', targetCompanyId)
                 .maybeSingle();
             
+            if (compErr) console.error('INFO API: Company fetch error:', compErr);
+
             if (company) {
                 companyData = company;
                 // Get discount from company's price group
                 discount = Number(company.price_group?.discount_percent) || 0;
+                console.log('INFO API: Found company discount:', discount, 'from group:', company.price_group);
+            } else {
+                console.log('INFO API: No company found for ID:', targetCompanyId);
             }
         }
 

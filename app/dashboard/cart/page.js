@@ -79,6 +79,15 @@ export default function DealerCart() {
 
     useEffect(() => { fetchUser(); }, [fetchUser]);
 
+    if (loading) {
+        return (
+            <div className="page-wrapper" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                <div className="loading-spinner" style={{ width: 48, height: 48, border: '4px solid var(--border)', borderTopColor: 'var(--primary)' }} />
+                <div style={{ marginTop: 20, fontWeight: 600, color: 'var(--text-secondary)', fontSize: 15 }}>Sepet Hesaplanıyor...</div>
+            </div>
+        );
+    }
+
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
         let marginBase = (Number(p.profit_margin) || 36) / 100;

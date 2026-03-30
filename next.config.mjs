@@ -5,9 +5,9 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'pub-56f4ab060d934f85a7d1fec80dd03ee2.r2.dev',
+        hostname: 'cdn.omigroups.com',
         port: '',
-        pathname: '/**', // R2 bucketindeki tüm klasörlere izin ver
+        pathname: '/**', 
       },
       {
         protocol: 'https',

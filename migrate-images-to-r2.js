@@ -35,7 +35,7 @@ async function migrateImages() {
             const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID?.replace(/"/g, '') || '21de8c75d53421e25b014e5a275d1f1d';
             const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.replace(/"/g, '') || '61c5aae3080bd6f10f7399f4737bb45673c75b62762bd79985be773faaf4570c';
             const r2BucketName = process.env.R2_BUCKET_NAME?.replace(/"/g, '') || 'b2b';
-            const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/"/g, '') || 'https://pub-56f4ab060d934f85a7d1fec80dd03ee2.r2.dev';
+            const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/"/g, '') || 'https://cdn.omigroups.com';
 
             // Request Vercel to do the heavily lifting (download, resize, upload to R2, DB update)
             const response = await fetch(VERCEL_URL, {

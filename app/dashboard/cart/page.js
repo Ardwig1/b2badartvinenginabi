@@ -111,6 +111,8 @@ export default function DealerCart() {
         const v = afterDisc * 0.20;
         const grand = afterDisc + v;
         const liability = grand - companyBalance;
+        
+        // RISK LIMIT LOGIC: 0 means UNLIMITED
         const riskExc = companyRiskLimit > 0 && liability > companyRiskLimit;
         const excAmt = riskExc ? (liability - companyRiskLimit) : 0;
         const prepay = (isPrepaymentLocked && companyBalance < grand) || riskExc;

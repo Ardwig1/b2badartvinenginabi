@@ -61,7 +61,7 @@ export default function CompaniesPage() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [priceGroups, setPriceGroups] = useState([]);
   
-  // Edit Modal States
+  // EDIT MODAL STATE
   const [editModal, setEditModal] = useState({ show: false, company: null });
   const [editFormData, setEditFormData] = useState({ ...EMPTY_FORM });
   const [editLoading, setEditLoading] = useState(false);
@@ -236,14 +236,10 @@ export default function CompaniesPage() {
 
   const handleAddCompany = async (e) => {
     e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-
+    setFormError(''); setFormSuccess('');
     if (formData.password !== formData.confirmPassword) {
-      setFormError('Şifreler eşleşmiyor.');
-      return;
+      setFormError('Şifreler eşleşmiyor.'); return;
     }
-
     setFormLoading(true);
     try {
       const res = await fetch('/api/admin/create-company', {
@@ -251,56 +247,28 @@ export default function CompaniesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      const result = await res.json();
-      if (!res.ok) {
-        setFormError(result.error || 'Bir hata oluştu.');
-      } else {
-        setFormSuccess(`"${formData.companyName}" başarıyla eklendi!`);
-        setFormData(EMPTY_FORM);
-        fetchData();
-        setTimeout(() => { setShowModal(false); setFormSuccess(''); }, 2000);
-      }
-    } catch (err) {
-      setFormError('Sunucu hatası: ' + err.message);
-    }
-    setFormLoading(false);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteModal.company?.id) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/create-company?id=${deleteModal.company.id}`, { method: 'DELETE' });
       if (res.ok) {
+        setFormSuccess('Firma başarıyla eklendi!');
         fetchData();
-        setDeleteModal({ show: false, company: null, step: 1 });
+        setTimeout(() => setShowModal(false), 2000);
       } else {
-        const error = await res.json();
-        alert('Hata: ' + error.message);
+        const result = await res.json();
+        setFormError(result.error || 'Bir hata oluştu.');
       }
-    } catch (e) {
-      alert('Hata: ' + e.message);
-    }
-    setLoading(false);
+    } catch (err) { setFormError(err.message); }
+    setFormLoading(false);
   };
 
   const sortedAndFiltered = useCallback(() => {
     const list = companies.filter(c => 
       c.name?.toLowerCase().includes(search.toLowerCase()) || 
       c.tax_number?.includes(search) ||
-      c.email?.toLowerCase().includes(search.toLowerCase()) ||
-      c.city?.toLowerCase().includes(search.toLowerCase()) ||
       c.dealer_code?.toLowerCase().includes(search.toLowerCase())
     );
-
     if (sortConfig.key) {
       list.sort((a, b) => {
-        let aVal = a[sortConfig.key] || '';
-        let bVal = b[sortConfig.key] || '';
-        
-        if (typeof aVal === 'string') aVal = aVal.toLocaleLowerCase('tr-TR');
-        if (typeof bVal === 'string') bVal = bVal.toLocaleLowerCase('tr-TR');
-
+        let aVal = (a[sortConfig.key] || '').toString().toLocaleLowerCase('tr-TR');
+        let bVal = (b[sortConfig.key] || '').toString().toLocaleLowerCase('tr-TR');
         if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
         return 0;
@@ -318,24 +286,21 @@ export default function CompaniesPage() {
           <h1 className="page-title">Firma Yönetimi</h1>
           <p className="page-subtitle">Kayıtlı firmalar ve onay işlemleri</p>
         </div>
-        <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormError(''); setFormSuccess(''); setFormData(EMPTY_FORM); }}>
-          + Firma Ekle
-        </button>
+        <button className="btn btn-primary" onClick={() => { setShowModal(true); setFormError(''); setFormData(EMPTY_FORM); }}>+ Firma Ekle</button>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <div className="tabs" style={{ marginBottom: 0 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+        <div className="tabs">
           {['all', 'pending', 'approved', 'rejected', 'history'].map(f => (
-            <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-              {statusMap[f]}
-            </button>
+            <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>{statusMap[f]}</button>
           ))}
         </div>
       </div>
+
       {filter !== 'history' && (
         <div className="search-bar" style={{ marginBottom: 20 }}>
           <MagnifyingGlassIcon style={{ width: 14, height: 14 }} />
-          <input placeholder="Firma adı, vergi no, şehir, bayi kodu..." value={search} onChange={e => setSearch(e.target.value)} />
+          <input placeholder="Firma adı, vergi no, bayi kodu..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
       )}
 
@@ -343,94 +308,66 @@ export default function CompaniesPage() {
         <div className="loading-center"><div className="loading-spinner" /></div>
       ) : filter === 'history' ? (
         <div className="card" style={{ padding: 0 }}>
-          {activities.length === 0 ? (
-            <div className="empty-state" style={{ padding: 40 }}><ClockIcon style={{ width: 32, height: 32 }} /><p>Geçmiş bulunamadı.</p></div>
-          ) : (
             <div className="table-wrapper">
               <table>
-                <thead>
-                  <tr>
-                    <th>Firma</th>
-                    <th>Tarih</th>
-                    <th>İşlem Tipi</th>
-                    <th>Detay</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>Firma</th><th>Tarih</th><th>İşlem</th><th>Detay</th></tr></thead>
                 <tbody>
                   {activities.map(act => (
                     <tr key={act.id}>
-                      <td style={{ fontWeight: 600 }}>{act.companies?.name || 'Bilinmiyor'}</td>
-                      <td style={{ color: 'var(--text-secondary)' }}>{new Date(act.created_at).toLocaleString('tr-TR')}</td>
-                      <td>
-                        <span className="badge" style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
-                          {act.action_type === 'login' && 'Giriş Yaptı'}
-                          {act.action_type === 'search' && 'Ürün Aradı'}
-                          {act.action_type === 'cart_add' && 'Sepete Ekledi'}
-                          {act.action_type === 'order_placed' && 'Sipariş Verdi'}
-                          {act.action_type === 'invoice_view' && 'Hesap Görüntüledi'}
-                          {!['login','search','cart_add','order_placed','invoice_view'].includes(act.action_type) && act.action_type}
-                        </span>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {act.action_type === 'search' && act.details?.text ? `Aranan: "${act.details?.text}"` : JSON.stringify(act.details || {})}
-                      </td>
+                      <td style={{ fontWeight: 600 }}>{act.companies?.name}</td>
+                      <td>{new Date(act.created_at).toLocaleString('tr-TR')}</td>
+                      <td>{act.action_type}</td>
+                      <td>{JSON.stringify(act.details)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
         </div>
       ) : (
         <div className="card" style={{ padding: 0 }}>
-          {displayList.length === 0 ? (
-            <div className="empty-state" style={{ padding: 40 }}><BuildingOfficeIcon style={{ width: 32, height: 32 }} /></div>
-          ) : (
-            <div className="table-wrapper">
-              <table>
-                <thead>
-                  <tr>
-                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Firma Adı</th>
-                    <th>Bayi Kodu</th>
-                    <th>Şehir</th>
-                    <th>Vergi No</th>
-                    <th>Yetkili</th>
-                    <th>Fiyat Grubu</th>
-                    <th>Durum</th>
-                    <th>İşlemler</th>
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Firma Adı</th>
+                  <th>Bayi Kodu</th>
+                  <th>Şehir</th>
+                  <th>Yetkili</th>
+                  <th>Fiyat Grubu</th>
+                  <th>Durum</th>
+                  <th>İşlemler</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayList.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 600 }}><Link href={`/admin/companies/${c.id}`} className="btn btn-ghost btn-sm" style={{ color: 'var(--brand)' }}>{c.name} ›</Link></td>
+                    <td style={{ fontWeight: 600 }}>{c.dealer_code || '-'}</td>
+                    <td>{c.city || '-'}</td>
+                    <td>{c.contact_person || '-'}</td>
+                    <td>
+                      <select className="form-select" style={{ fontSize: 12 }} value={c.price_group_id || ''} onChange={e => updatePriceGroup(c.id, e.target.value)}>
+                        <option value="">-</option>
+                        {priceGroups.map(pg => <option key={pg.id} value={pg.id}>{pg.name}</option>)}
+                      </select>
+                    </td>
+                    <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="btn btn-sm" onClick={() => enterShowroom(c.id)} title="Showroom"><ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} /></button>
+                        <button className="btn btn-sm" onClick={() => setRiskModal({ show: true, company: c, value: c.risk_limit || '0' })}><ExclamationCircleIcon style={{ width: 16, height: 16 }} /></button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => handleEditOpen(c)}>✎</button>
+                        <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => {
+                            setDeleteModal({ show: true, company: c, step: 1 });
+                        }}>🗑</button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {displayList.map(c => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 600 }}>
-                        <Link href={`/admin/companies/${c.id}`} className="btn btn-ghost btn-sm" style={{ color: 'var(--brand)' }}>{c.name} ›</Link>
-                      </td>
-                      <td style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{c.dealer_code || '-'}</td>
-                      <td>{c.city || '-'}</td>
-                      <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
-                      <td>{c.contact_person || '-'}</td>
-                      <td>
-                        <select className="form-select" style={{ fontSize: 13 }} value={c.price_group_id || ''} onChange={e => updatePriceGroup(c.id, e.target.value)}>
-                          <option value="">-</option>
-                          {priceGroups.map(pg => <option key={pg.id} value={pg.id}>{pg.name}</option>)}
-                        </select>
-                      </td>
-                      <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
-                      <td>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-sm" onClick={() => enterShowroom(c.id)} title="Showroom"><ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} /></button>
-                          <button className="btn btn-sm" onClick={() => setRiskModal({ show: true, company: c, value: c.risk_limit || '0' })}><ExclamationCircleIcon style={{ width: 16, height: 16 }} /></button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => handleEditOpen(c)}>✎</button>
-                          <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteModal({ show: true, company: c, step: 1 })}>🗑</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
@@ -442,15 +379,13 @@ export default function CompaniesPage() {
                 <h2 style={{ fontSize: 20, fontWeight: 600 }}>Yeni Firma Ekle</h2>
                 <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>×</button>
             </div>
-            {formError && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fee2e2', color: '#dc2626', borderRadius: 8 }}>{formError}</div>}
-            {formSuccess && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#d1fae5', color: '#059669', borderRadius: 8 }}>{formSuccess}</div>}
             <form onSubmit={handleAddCompany}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Firma Adı *</label><input className="form-input" required value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} /></div>
                 <div><label className="form-label">Vergi No *</label><input className="form-input" required value={formData.taxNumber} onChange={e => setFormData({...formData, taxNumber: e.target.value})} /></div>
                 <div><label className="form-label">Vergi Dairesi</label><input className="form-input" value={formData.taxOffice} onChange={e => setFormData({...formData, taxOffice: e.target.value})} /></div>
                 <div><label className="form-label">Yetkili Kişi *</label><input className="form-input" required value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} /></div>
-                <div><label className="form-label">E-posta *</label><input className="form-input" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
+                <div><label className="form-label">E-posta (Arka Plan İçin) *</label><input className="form-input" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
                 <div><label className="form-label">Telefon</label><input className="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
                 <div><label className="form-label">İl</label><input className="form-input" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
                 <div><label className="form-label">İlçe</label><input className="form-input" value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} /></div>
@@ -468,7 +403,7 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Firma Düzenle Modal (FULL MATCH WITH IMAGE 2) */}
+      {/* Firma Düzenle Modal (DESIGN MATCHED TO ADD MODAL) */}
       {editModal.show && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
@@ -502,7 +437,7 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Delete and Risk Modals (Original Styles) */}
+      {/* Delete and Risk Modals */}
       {deleteModal.show && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: 400, textAlign: 'center' }}>

@@ -327,13 +327,13 @@ export default function CompaniesPage() {
         <div className="tabs" style={{ marginBottom: 0 }}>
           {['all', 'pending', 'approved', 'rejected', 'history'].map(f => (
             <button key={f} className={`tab ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
-              {f === 'all' ? 'Tümü' : statusMap[f]}
+              {statusMap[f]}
             </button>
           ))}
         </div>
       </div>
       {filter !== 'history' && (
-        <div className="search-bar">
+        <div className="search-bar" style={{ marginBottom: 20 }}>
           <MagnifyingGlassIcon style={{ width: 14, height: 14 }} />
           <input placeholder="Firma adı, vergi no, şehir, bayi kodu..." value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -390,8 +390,8 @@ export default function CompaniesPage() {
               <table>
                 <thead>
                   <tr>
-                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>Firma Adı</th>
-                    <th onClick={() => requestSort('dealer_code')} style={{ cursor: 'pointer', userSelect: 'none' }}>Bayi Kodu</th>
+                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Firma Adı</th>
+                    <th>Bayi Kodu</th>
                     <th>Şehir</th>
                     <th>Vergi No</th>
                     <th>Yetkili</th>
@@ -404,69 +404,23 @@ export default function CompaniesPage() {
                   {displayList.map(c => (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 600 }}>
-                        <Link href={`/admin/companies/${c.id}`} className="btn btn-ghost btn-sm" style={{ 
-                          color: 'var(--brand)', 
-                          textDecoration: 'none', 
-                          background: 'rgba(56, 189, 248, 0.1)',
-                          border: '1px solid rgba(56, 189, 248, 0.2)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          padding: '4px 12px'
-                        }}>
-                          {c.name}
-                          <span style={{ fontSize: 16 }}>›</span>
-                        </Link>
+                        <Link href={`/admin/companies/${c.id}`} className="btn btn-ghost btn-sm" style={{ color: 'var(--brand)' }}>{c.name} ›</Link>
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{c.dealer_code || '-'}</td>
                       <td>{c.city || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
                       <td>{c.contact_person || '-'}</td>
                       <td>
-                        <select 
-                          className="form-select" 
-                          style={{ padding: '5px 28px 5px 8px', fontSize: 13, width: 'auto' }}
-                          value={c.price_group_id || ''}
-                          onChange={e => updatePriceGroup(c.id, e.target.value)}
-                        >
+                        <select className="form-select" style={{ fontSize: 13 }} value={c.price_group_id || ''} onChange={e => updatePriceGroup(c.id, e.target.value)}>
                           <option value="">-</option>
-                          {priceGroups.map(pg => (
-                            <option key={pg.id} value={pg.id}>{pg.name}</option>
-                          ))}
+                          {priceGroups.map(pg => <option key={pg.id} value={pg.id}>{pg.name}</option>)}
                         </select>
                       </td>
                       <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          {c.status !== 'approved' && (
-                            <button className="btn btn-success btn-sm" onClick={() => updateStatus(c.id, 'approved')}>✓ Onay</button>
-                          )}
-                          <button 
-                            className="btn btn-sm"
-                            style={{ 
-                              backgroundColor: c.is_prepayment_locked ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)',
-                              borderColor: c.is_prepayment_locked ? 'rgba(239, 68, 68, 0.3)' : 'rgba(34, 197, 94, 0.3)',
-                              color: c.is_prepayment_locked ? '#dc2626' : '#16a34a',
-                              padding: '4px 8px', display: 'flex', alignItems: 'center'
-                            }}
-                            onClick={() => togglePrepaymentLock(c.id, c.is_prepayment_locked)}
-                          >
-                            {c.is_prepayment_locked ? <LockClosedIcon style={{ width: 16, height: 16 }} /> : <LockOpenIcon style={{ width: 16, height: 16 }} />}
-                          </button>
-                          <button 
-                            className="btn btn-sm"
-                            style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: '#d97706', padding: '4px 8px' }}
-                            onClick={() => setRiskModal({ show: true, company: c, value: c.risk_limit || '0' })}
-                          >
-                            <ExclamationCircleIcon style={{ width: 16, height: 16 }} />
-                          </button>
-                          <button 
-                            className="btn btn-sm"
-                            style={{ backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#2563eb', padding: '4px 8px' }}
-                            onClick={() => enterShowroom(c.id)}
-                          >
-                            <ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} />
-                          </button>
+                          <button className="btn btn-sm" onClick={() => enterShowroom(c.id)} title="Showroom"><ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} /></button>
+                          <button className="btn btn-sm" onClick={() => setRiskModal({ show: true, company: c, value: c.risk_limit || '0' })}><ExclamationCircleIcon style={{ width: 16, height: 16 }} /></button>
                           <button className="btn btn-ghost btn-sm" onClick={() => handleEditOpen(c)}>✎</button>
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteModal({ show: true, company: c, step: 1 })}>🗑</button>
                         </div>
@@ -480,21 +434,31 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Firma Ekle Modal */}
+      {/* Firma Ekle Modal (Original Full Fields) */}
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 600 }}>Yeni Firma Ekle</h2>
-                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
+                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>×</button>
             </div>
+            {formError && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fee2e2', color: '#dc2626', borderRadius: 8 }}>{formError}</div>}
+            {formSuccess && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#d1fae5', color: '#059669', borderRadius: 8 }}>{formSuccess}</div>}
             <form onSubmit={handleAddCompany}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Firma Adı *</label><input className="form-input" required value={formData.companyName} onChange={e => setFormData({...formData, companyName: e.target.value})} /></div>
                 <div><label className="form-label">Vergi No *</label><input className="form-input" required value={formData.taxNumber} onChange={e => setFormData({...formData, taxNumber: e.target.value})} /></div>
-                <div><label className="form-label">Yetkili *</label><input className="form-input" required value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} /></div>
+                <div><label className="form-label">Vergi Dairesi</label><input className="form-input" value={formData.taxOffice} onChange={e => setFormData({...formData, taxOffice: e.target.value})} /></div>
+                <div><label className="form-label">Yetkili Kişi *</label><input className="form-input" required value={formData.contactPerson} onChange={e => setFormData({...formData, contactPerson: e.target.value})} /></div>
                 <div><label className="form-label">E-posta *</label><input className="form-input" type="email" required value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} /></div>
+                <div><label className="form-label">Telefon</label><input className="form-input" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} /></div>
+                <div><label className="form-label">İl</label><input className="form-input" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} /></div>
+                <div><label className="form-label">İlçe</label><input className="form-input" value={formData.district} onChange={e => setFormData({...formData, district: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" value={formData.branch} onChange={e => setFormData({...formData, branch: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 16 }}><h3>Giriş Bilgileri</h3></div>
                 <div><label className="form-label">Bayi Kodu *</label><input className="form-input" required value={formData.dealerCode} onChange={e => setFormData({...formData, dealerCode: e.target.value.toUpperCase()})} /></div>
+                <div><label className="form-label">Kullanıcı Kodu *</label><input className="form-input" required value={formData.userCode} onChange={e => setFormData({...formData, userCode: e.target.value})} /></div>
                 <div><label className="form-label">Şifre *</label><input className="form-input" type="password" required value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} /></div>
                 <div><label className="form-label">Şifre Tekrar *</label><input className="form-input" type="password" required value={formData.confirmPassword} onChange={e => setFormData({...formData, confirmPassword: e.target.value})} /></div>
               </div>
@@ -510,18 +474,24 @@ export default function CompaniesPage() {
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
               <h2 style={{ fontSize: 20, fontWeight: 600 }}>Firma Bilgilerini Düzenle</h2>
-              <button onClick={() => setEditModal({ show: false, company: null })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
+              <button onClick={() => setEditModal({ show: false, company: null })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>×</button>
             </div>
             {editMessage.text && <div style={{ marginBottom: 16, padding: '10px 14px', background: editMessage.type === 'error' ? '#fee2e2' : '#d1fae5', color: editMessage.type === 'error' ? '#dc2626' : '#059669', borderRadius: 8 }}>{editMessage.text}</div>}
             <form onSubmit={handleEditSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Firma Adı</label><input className="form-input" value={editFormData.companyName} onChange={e => setEditFormData({...editFormData, companyName: e.target.value})} /></div>
                 <div><label className="form-label">Vergi Numarası</label><input className="form-input" value={editFormData.taxNumber} onChange={e => setEditFormData({...editFormData, taxNumber: e.target.value})} /></div>
+                <div><label className="form-label">Vergi Dairesi</label><input className="form-input" value={editFormData.taxOffice} onChange={e => setEditFormData({...editFormData, taxOffice: e.target.value})} /></div>
                 <div><label className="form-label">Yetkili Kişi</label><input className="form-input" value={editFormData.contactPerson} onChange={e => setEditFormData({...editFormData, contactPerson: e.target.value})} /></div>
                 <div><label className="form-label">E-posta</label><input className="form-input" type="email" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
                 <div><label className="form-label">Telefon</label><input className="form-input" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
-                <div><label className="form-label">Şehir</label><input className="form-input" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} /></div>
+                <div><label className="form-label">İl</label><input className="form-input" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} /></div>
+                <div><label className="form-label">İlçe</label><input className="form-input" value={editFormData.district} onChange={e => setEditFormData({...editFormData, district: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" value={editFormData.branch} onChange={e => setEditFormData({...editFormData, branch: e.target.value})} /></div>
+                <div style={{ gridColumn: '1 / -1', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 16 }}><h3>Giriş Bilgileri</h3></div>
                 <div><label className="form-label">Bayi Kodu</label><input className="form-input" value={editFormData.dealerCode} onChange={e => setEditFormData({...editFormData, dealerCode: e.target.value.toUpperCase()})} /></div>
+                <div><label className="form-label">Kullanıcı Kodu</label><input className="form-input" value={editFormData.userCode} onChange={e => setEditFormData({...editFormData, userCode: e.target.value})} /></div>
                 <div><label className="form-label">Yeni Şifre</label><input className="form-input" type="password" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} placeholder="Boş bırakırsanız değişmez" /></div>
                 {editFormData.password && <div><label className="form-label">Şifre Tekrar</label><input className="form-input" type="password" value={editFormData.confirmPassword} onChange={e => setEditFormData({...editFormData, confirmPassword: e.target.value})} /></div>}
               </div>
@@ -531,10 +501,11 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Delete and Risk Modals (Simplified for Safety) */}
+      {/* Delete and Risk Modals (Original Styles) */}
       {deleteModal.show && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: 400, textAlign: 'center' }}>
+            <TrashIcon style={{ width: 48, height: 48, color: 'var(--danger)', margin: '0 auto 16px' }} />
             <h3>Firma Silinecek</h3>
             <p><strong>{deleteModal.company?.name}</strong> silinecek. Emin misiniz?</p>
             <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'center' }}><button className="btn btn-ghost" onClick={() => setDeleteModal({ show: false, company: null, step: 1 })}>İptal</button><button className="btn btn-danger" onClick={confirmDelete}>Evet, Sil</button></div>
@@ -546,7 +517,7 @@ export default function CompaniesPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: 400 }}>
             <h3>Risk Limiti</h3>
-            <p><strong>{riskModal.company?.name}</strong> için limit (0 = sınırsız):</p>
+            <p><strong>{riskModal.company?.name}</strong> için borç limiti (0 = sınırsız):</p>
             <input type="number" className="form-input" style={{ marginTop: 16 }} value={riskModal.value} onChange={e => setRiskModal({...riskModal, value: e.target.value})} />
             <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end' }}><button className="btn btn-ghost" onClick={() => setRiskModal({ show: false, company: null, value: '' })}>İptal</button><button className="btn btn-primary" disabled={riskLoading} onClick={async () => {
               setRiskLoading(true);

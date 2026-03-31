@@ -60,193 +60,34 @@ export default function CompaniesPage() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [priceGroups, setPriceGroups] = useState([]);
-  const [editModal, setEditModal] = useState({ show: false, company: null, value: '' });
-  const [editFormData, setEditFormData] = useState({ password: '', confirmPassword: '', userCode: '', dealerCode: '' });
+  const [editModal, setEditModal] = useState({ show: false, company: null });
+  const [editFormData, setEditFormData] = useState({ 
+    companyName: '', taxNumber: '', taxOffice: '', contactPerson: '', 
+    email: '', phone: '', city: '', district: '', address: '', branch: '',
+    dealerCode: '', userCode: '', password: '', confirmPassword: ''
+  });
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
 
-  // Delete Modal States
-  const [deleteModal, setDeleteModal] = useState({ show: false, company: null, step: 1 });
-
-  // Risk Limit Modal States
-  const [riskModal, setRiskModal] = useState({ show: false, company: null, value: '' });
-  const [riskLoading, setRiskLoading] = useState(false);
-
-  // Sorting State
-  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
-
-  const requestSort = (key) => {
-    let direction = 'asc';
-    if (sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/create-company?filter=${filter}`);
-      const result = await res.json();
-      setCompanies(result.companies || []);
-      setPriceGroups(result.priceGroups || []);
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  }, [filter]);
-
-  const fetchActivities = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/activities');
-      const data = await res.json();
-      setActivities(data.activities || []);
-    } catch (e) {
-      console.error(e);
-    }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (filter === 'history') { fetchActivities(); }
-    else { fetchData(); }
-  }, [filter, fetchData, fetchActivities]);
-
-  const updateStatus = async (id, status) => {
-    await fetch('/api/admin/create-company', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status })
+  // Handle Edit Click
+  const handleEditOpen = (c) => {
+    setEditFormData({
+      companyName: c.name || '',
+      taxNumber: c.tax_number || '',
+      taxOffice: c.tax_office || '',
+      contactPerson: c.contact_person || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      city: c.city || '',
+      district: c.district || '',
+      address: c.address || '',
+      branch: c.branch || '',
+      dealerCode: c.dealer_code || '',
+      userCode: c.user_code || '',
+      password: '',
+      confirmPassword: ''
     });
-    fetchData();
-  };
-
-  const togglePrepaymentLock = async (id, currentValue) => {
-    try {
-      const res = await fetch('/api/admin/create-company', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, is_prepayment_locked: !currentValue })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(`Kilit değiştirilemedi!\nLütfen Supabase SQL Editor'e gidip '006_prepayment_lock.sql' dosyasını çalıştırdığınıza emin olun.\nSistem Hatası: ${data.error || 'Bilinmiyor'}`);
-      }
-    } catch (e) {
-      alert(`İletişim Hatası: ${e.message}`);
-    }
-    fetchData(); // refresh UI
-  };
-
-  const enterShowroom = async (companyId) => {
-    try {
-      const res = await fetch('/api/admin/impersonate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyId })
-      });
-      if (res.ok) {
-        router.push(`/admin/showroom/${companyId}`);
-      } else {
-        const d = await res.json();
-        alert('Showroom başlatılamadı: ' + d.error);
-      }
-    } catch (e) {
-      alert('İletişim hatası: ' + e.message);
-    }
-  };
-
-  const updatePriceGroup = async (id, price_group_id) => {
-    await fetch('/api/admin/create-company', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, price_group_id })
-    });
-    fetchData();
-  };
-
-  const autoFillDealerCode = async (city) => {
-    const trimmedCity = city?.trim();
-    if (!trimmedCity || trimmedCity.length < 2) return;
-    
-    // Autofill if dealerCode is empty OR it looks like one of our auto-generated codes (has a dash)
-    const currentCode = formData.dealerCode || '';
-    if (!currentCode || currentCode.includes('-')) {
-      try {
-        const res = await fetch(`/api/admin/next-dealer-code?city=${encodeURIComponent(trimmedCity)}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.nextCode) {
-            setFormData(prev => ({ ...prev, dealerCode: data.nextCode }));
-          }
-        }
-      } catch (e) {
-        console.error('Bayi kodu oluşturma hatası:', e);
-      }
-    }
-  };
-
-  const update = (field) => (e) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddCompany = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    setFormSuccess('');
-
-    const pw = formData.password.trim();
-    const cpw = formData.confirmPassword.trim();
-
-    if (pw !== cpw) {
-      setFormError('Şifreler eşleşmiyor.');
-      return;
-    }
-    if (pw.length < 6) {
-      setFormError('Şifre en az 6 karakter olmalı.');
-      return;
-    }
-
-    setFormLoading(true);
-    try {
-      const res = await fetch('/api/admin/create-company', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-      const result = await res.json();
-      if (!res.ok) {
-        setFormError(result.error || 'Bir hata oluştu.');
-      } else {
-        setFormSuccess(`"${formData.companyName}" başarıyla eklendi!`);
-        setFormData(EMPTY_FORM);
-        fetchData();
-        setTimeout(() => { setShowModal(false); setFormSuccess(''); }, 2000);
-      }
-    } catch (err) {
-      setFormError('Sunucu hatası: ' + err.message);
-    }
-    setFormLoading(false);
-  };
-
-  const confirmDelete = async () => {
-    if (!deleteModal.company?.id) return;
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/admin/create-company?id=${deleteModal.company.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchData();
-        setDeleteModal({ show: false, company: null, step: 1 });
-      } else {
-        const error = await res.json();
-        alert('Hata: ' + error.message);
-      }
-    } catch (e) {
-      alert('Hata: ' + e.message);
-    }
-    setLoading(false);
+    setEditModal({ show: true, company: c });
   };
 
   const handleEditSubmit = async (e) => {
@@ -265,15 +106,25 @@ export default function CompaniesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editModal.company.id,
-          password: editFormData.password || undefined,
-          user_code: editFormData.userCode || undefined,
-          dealer_code: editFormData.dealerCode || undefined
+          name: editFormData.companyName,
+          tax_number: editFormData.taxNumber,
+          tax_office: editFormData.taxOffice,
+          contact_person: editFormData.contactPerson,
+          email: editFormData.email,
+          phone: editFormData.phone,
+          city: editFormData.city,
+          district: editFormData.district,
+          address: editFormData.address,
+          branch: editFormData.branch,
+          dealer_code: editFormData.dealerCode,
+          user_code: editFormData.userCode,
+          password: editFormData.password || undefined
         })
       });
       if (res.ok) {
         setEditMessage({ type: 'success', text: 'Bilgiler başarıyla güncellendi!' });
         fetchData();
-        setTimeout(() => setEditModal({ show: false, company: null, value: '' }), 1500);
+        setTimeout(() => setEditModal({ show: false, company: null }), 1500);
       } else {
         const data = await res.json();
         setEditMessage({ type: 'error', text: data.error || 'Güncelleme başarısız!' });
@@ -509,7 +360,7 @@ export default function CompaniesPage() {
                           >
                             <ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} />
                           </button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setEditModal({ show: true, company: c, value: '' })}>✎</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleEditOpen(c)}>✎</button>
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteModal({ show: true, company: c, step: 1 })}>🗑</button>
                         </div>
                       </td>
@@ -620,7 +471,7 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Edit Credentials Modal */}
+      {/* Firma Düzenle Modal */}
       {editModal.show && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
@@ -629,14 +480,13 @@ export default function CompaniesPage() {
         }}>
           <div style={{
             background: 'var(--bg-card)', borderRadius: 12, padding: 32,
-            width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
+            width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
+            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600 }}>Bilgileri Düzenle</h2>
-              <button onClick={() => setEditModal({ show: false, company: null, value: '' })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
+              <h2 style={{ fontSize: 20, fontWeight: 600 }}>Firma Bilgilerini Düzenle</h2>
+              <button onClick={() => setEditModal({ show: false, company: null })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
             </div>
-
-            <p style={{ marginBottom: 20, fontSize: 14, color: 'var(--text-muted)' }}>Müşteri: <strong>{editModal.company?.name}</strong></p>
 
             {editMessage.text && (
               <div style={{ marginBottom: 16, padding: '10px 14px', background: editMessage.type === 'error' ? '#fee2e2' : '#d1fae5', color: editMessage.type === 'error' ? '#dc2626' : '#059669', borderRadius: 8, fontSize: 14 }}>
@@ -645,29 +495,77 @@ export default function CompaniesPage() {
             )}
 
             <form onSubmit={handleEditSubmit} autoComplete="off">
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Bayi Kodu</label>
-                <input className="form-input" type="text" placeholder="B-1000 vs." value={editFormData.dealerCode} onChange={e => setEditFormData(prev => ({...prev, dealerCode: e.target.value}))} />
-              </div>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Kullanıcı (Cari) Kodu</label>
-                <input className="form-input" type="text" placeholder="CR001 vs." value={editFormData.userCode} onChange={e => setEditFormData(prev => ({...prev, userCode: e.target.value}))} />
-              </div>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Yeni Şifre Belirle (Boş bırakırsanız değişmez)</label>
-                <input className="form-input" type="password" placeholder="*******" value={editFormData.password} onChange={e => setEditFormData(prev => ({...prev, password: e.target.value}))} autoComplete="new-password" />
-              </div>
-              {editFormData.password && (
-                <div className="form-group" style={{ marginBottom: 24 }}>
-                  <label className="form-label">Yeni Şifre Tekrar</label>
-                  <input className="form-input" type="password" placeholder="*******" value={editFormData.confirmPassword} onChange={e => setEditFormData(prev => ({...prev, confirmPassword: e.target.value}))} autoComplete="new-password" />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Firma Adı</label>
+                    <input className="form-input" type="text" value={editFormData.companyName} onChange={e => setEditFormData({...editFormData, companyName: e.target.value})} />
                 </div>
-              )}
+                <div className="form-group">
+                    <label className="form-label">Vergi Numarası</label>
+                    <input className="form-input" type="text" value={editFormData.taxNumber} onChange={e => setEditFormData({...editFormData, taxNumber: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Vergi Dairesi</label>
+                    <input className="form-input" type="text" value={editFormData.taxOffice} onChange={e => setEditFormData({...editFormData, taxOffice: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Yetkili Kişi</label>
+                    <input className="form-input" type="text" value={editFormData.contactPerson} onChange={e => setEditFormData({...editFormData, contactPerson: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">E-posta</label>
+                    <input className="form-input" type="email" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Telefon</label>
+                    <input className="form-input" type="tel" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">İl</label>
+                    <input className="form-input" type="text" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">İlçe</label>
+                    <input className="form-input" type="text" value={editFormData.district} onChange={e => setEditFormData({...editFormData, district: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Adres</label>
+                    <input className="form-input" type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Branş / Tip</label>
+                    <input className="form-input" type="text" value={editFormData.branch} onChange={e => setEditFormData({...editFormData, branch: e.target.value})} />
+                </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setEditModal({ show: false, company: null, value: '' })}>İptal</button>
+                <div style={{ gridColumn: '1 / -1', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Giriş Bilgileri</h3>
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Bayi Kodu</label>
+                    <input className="form-input" type="text" value={editFormData.dealerCode} onChange={e => setEditFormData({...editFormData, dealerCode: e.target.value})} />
+                </div>
+                <div className="form-group">
+                    <label className="form-label">Kullanıcı Kodu</label>
+                    <input className="form-input" type="text" value={editFormData.userCode} onChange={e => setEditFormData({...editFormData, userCode: e.target.value})} />
+                </div>
+
+                <div className="form-group">
+                    <label className="form-label">Yeni Şifre (Boş bırakırsanız değişmez)</label>
+                    <input className="form-input" type="password" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} autoComplete="new-password" />
+                </div>
+                {editFormData.password && (
+                  <div className="form-group">
+                      <label className="form-label">Yeni Şifre Tekrar</label>
+                      <input className="form-input" type="password" value={editFormData.confirmPassword} onChange={e => setEditFormData({...editFormData, confirmPassword: e.target.value})} autoComplete="new-password" />
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setEditModal({ show: false, company: null })}>İptal</button>
                 <button type="submit" className="btn btn-primary" disabled={editLoading}>
-                  {editLoading ? 'Kaydediliyor...' : 'Kaydet'}
+                  {editLoading ? 'Güncelleniyor...' : 'Değişiklikleri Kaydet'}
                 </button>
               </div>
             </form>

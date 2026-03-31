@@ -139,20 +139,43 @@ export async function POST(request) {
     return NextResponse.json({ success: true, company });
 }
 
-// PATCH — Durum veya fiyat grubu güncelle
+// PATCH — Tüm bilgileri güncelle
 export async function PATCH(request) {
     const auth = await verifyAuthorized();
     if (!auth?.isAdmin) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
-    const { id, status, price_group_id, password, user_code, dealer_code, is_prepayment_locked, risk_limit } = await request.json();
+    const body = await request.json();
+    const { 
+        id, status, price_group_id, password, user_code, dealer_code, 
+        is_prepayment_locked, risk_limit,
+        name, tax_number, tax_office, contact_person, phone, address, 
+        city, district, branch, email
+    } = body;
+
     const adminSupabase = await getAdminClient();
     const updates = {};
+    
+    // Core Status & Financials
     if (status !== undefined) updates.status = status;
     if (price_group_id !== undefined) updates.price_group_id = price_group_id || null;
-    if (user_code !== undefined) updates.user_code = user_code;
-    if (dealer_code !== undefined) updates.dealer_code = dealer_code;
     if (is_prepayment_locked !== undefined) updates.is_prepayment_locked = is_prepayment_locked;
     if (risk_limit !== undefined) updates.risk_limit = risk_limit;
+
+    // Company Details
+    if (name !== undefined) updates.name = name;
+    if (tax_number !== undefined) updates.tax_number = tax_number;
+    if (tax_office !== undefined) updates.tax_office = tax_office;
+    if (contact_person !== undefined) updates.contact_person = contact_person;
+    if (phone !== undefined) updates.phone = phone;
+    if (address !== undefined) updates.address = address;
+    if (city !== undefined) updates.city = city;
+    if (district !== undefined) updates.district = district;
+    if (branch !== undefined) updates.branch = branch;
+    if (email !== undefined) updates.email = email;
+    
+    // Login Details
+    if (user_code !== undefined) updates.user_code = user_code;
+    if (dealer_code !== undefined) updates.dealer_code = dealer_code;
 
     // Update company table
     if (Object.keys(updates).length > 0) {
@@ -160,12 +183,24 @@ export async function PATCH(request) {
         if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // If password needs updating, find user and update
-    if (password && password.trim().length >= 6) {
+    // Auth & Profile Updates
+    if (password || contact_person || email) {
         const { data: profileList } = await adminSupabase.from('profiles').select('id').eq('company_id', id);
         if (profileList && profileList.length > 0) {
             for (const profile of profileList) {
-                await adminSupabase.auth.admin.updateUserById(profile.id, { password: password.trim() });
+                const userUpdates = {};
+                if (password && password.trim().length >= 6) userUpdates.password = password.trim();
+                if (email) userUpdates.email = email;
+                if (contact_person) userUpdates.user_metadata = { full_name: contact_person };
+
+                if (Object.keys(userUpdates).length > 0) {
+                    await adminSupabase.auth.admin.updateUserById(profile.id, userUpdates);
+                }
+
+                // Sync full_name to profile table too
+                if (contact_person) {
+                    await adminSupabase.from('profiles').update({ full_name: contact_person }).eq('id', profile.id);
+                }
             }
         }
     }

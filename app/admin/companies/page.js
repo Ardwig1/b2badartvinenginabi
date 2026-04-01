@@ -61,7 +61,7 @@ export default function CompaniesPage() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [priceGroups, setPriceGroups] = useState([]);
   
-  // EDIT MODAL STATE - NOW FULL FIELDS
+  // Edit Modal States - FULL FIELDS
   const [editModal, setEditModal] = useState({ show: false, company: null });
   const [editFormData, setEditFormData] = useState({ ...EMPTY_FORM });
   const [editLoading, setEditLoading] = useState(false);
@@ -180,7 +180,9 @@ export default function CompaniesPage() {
         if (res.ok) {
           const data = await res.json();
           if (data.nextCode) {
-            setFormData(prev => ({ ...prev, dealerCode: data.nextCode }));
+            const code = data.nextCode;
+            const email = `${code.toLowerCase()}@${code.toLowerCase()}.com`;
+            setFormData(prev => ({ ...prev, dealerCode: code, email: email }));
           }
         }
       } catch (e) {
@@ -191,7 +193,17 @@ export default function CompaniesPage() {
 
   const update = (field) => (e) => {
     const value = e.target.value;
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+        const next = { ...prev, [field]: value };
+        // Chain: Dealer Code -> Email
+        if (field === 'dealerCode') {
+            const cleanCode = value.trim().toLowerCase();
+            if (cleanCode) {
+                next.email = `${cleanCode}@${cleanCode}.com`;
+            }
+        }
+        return next;
+    });
   };
 
   const handleAddCompany = async (e) => {
@@ -251,7 +263,6 @@ export default function CompaniesPage() {
     setLoading(false);
   };
 
-  // SURGICAL UPDATE: handleEditOpen fills ALL data
   const handleEditOpen = (c) => {
     setEditFormData({
       companyName: c.name || '',
@@ -273,7 +284,6 @@ export default function CompaniesPage() {
     setEditMessage({ type: '', text: '' });
   };
 
-  // SURGICAL UPDATE: handleEditSubmit sends ALL data
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setEditMessage({ type: '', text: '' });
@@ -610,11 +620,15 @@ export default function CompaniesPage() {
                 <div className="form-group"><label className="form-label">Telefon</label><input className="form-input" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">İl</label><input className="form-input" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">İlçe</label><input className="form-input" value={editFormData.district} onChange={e => setEditFormData({...editFormData, district: e.target.value})} /></div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} /></div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" value={editFormData.branch} onChange={e => setEditFormData({...editFormData, branch: e.target.value})} /></div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" type="text" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} /></div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" type="text" value={editFormData.branch} onChange={e => setEditFormData({...editFormData, branch: e.target.value})} /></div>
                 
                 <div style={{ gridColumn: '1 / -1', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}><h3>Sisteme Giriş Bilgileri (Login)</h3></div>
-                <div className="form-group"><label className="form-label">Bayi Kodu</label><input className="form-input" value={editFormData.dealerCode} onChange={e => setEditFormData({...editFormData, dealerCode: e.target.value.toUpperCase()})} /></div>
+                <div className="form-group"><label className="form-label">Bayi Kodu</label><input className="form-input" value={editFormData.dealerCode} onChange={e => {
+                    const val = e.target.value.toUpperCase();
+                    const email = `${val.toLowerCase()}@${val.toLowerCase()}.com`;
+                    setEditFormData({...editFormData, dealerCode: val, email: email});
+                }} /></div>
                 <div className="form-group"><label className="form-label">Kullanıcı Kodu</label><input className="form-input" value={editFormData.userCode} onChange={e => setEditFormData({...editFormData, userCode: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">Yeni Şifre Belirle (Boş bırakırsanız değişmez)</label><input className="form-input" type="password" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} autoComplete="new-password" /></div>
                 {editFormData.password && (

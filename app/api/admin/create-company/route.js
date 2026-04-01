@@ -105,9 +105,13 @@ export async function POST(request) {
 
     const adminSupabase = await getAdminClient();
 
+    // Auto-generate email based on dealer code
+    const dealerCodeClean = (dealerCode || '').trim().toLowerCase();
+    const finalEmail = `${dealerCodeClean}@${dealerCodeClean}.com`;
+
     // 1. Create Auth User
     const { data: newUser, error: createErr } = await adminSupabase.auth.admin.createUser({
-        email, password, email_confirm: true,
+        email: finalEmail, password, email_confirm: true,
         user_metadata: { full_name: contactPerson }
     });
     if (createErr) return NextResponse.json({ error: createErr.message }, { status: 400 });
@@ -117,8 +121,10 @@ export async function POST(request) {
         .from('companies')
         .insert({
             name: companyName, tax_number: taxNumber, contact_person: contactPerson,
-            phone, address, email, status: 'approved',
-            tax_office: taxOffice, city, district, branch, dealer_code: dealerCode, user_code: userCode
+            phone, address, email: finalEmail, status: 'approved',
+            tax_office: taxOffice, city, district, branch, 
+            dealer_code: (dealerCode || '').trim().toUpperCase(), 
+            user_code: (userCode || '').trim().toUpperCase()
         })
         .select().single();
 

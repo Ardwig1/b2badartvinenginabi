@@ -12,16 +12,22 @@ export async function GET(req) {
 
         const supabase = await createClient();
         
-        // 1. Get prefix (first 3 chars of city, Turkish friendly)
-        // Clean special characters and take first 3
+        // 1. Get prefix (first 3 chars of city, ASCII friendly)
         let prefix = city.substring(0, 3)
-            .replace(/I/g, 'İ')
-            .replace(/İ/g, 'İ')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // Basic accent removal
+            .replace(/İ/g, 'I')
+            .replace(/ı/g, 'i')
             .replace(/Ğ/g, 'G')
+            .replace(/ğ/g, 'g')
             .replace(/Ü/g, 'U')
+            .replace(/ü/g, 'u')
             .replace(/Ş/g, 'S')
+            .replace(/ş/g, 's')
             .replace(/Ö/g, 'O')
-            .replace(/Ç/g, 'C');
+            .replace(/ö/g, 'o')
+            .replace(/Ç/g, 'C')
+            .replace(/ç/g, 'c')
+            .toUpperCase(); // Ensure final is uppercase ASCII
 
         // 2. Fetch all dealer codes for this city
         const { data: companies, error } = await supabase

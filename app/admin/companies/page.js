@@ -60,8 +60,10 @@ export default function CompaniesPage() {
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [priceGroups, setPriceGroups] = useState([]);
-  const [editModal, setEditModal] = useState({ show: false, company: null, value: '' });
-  const [editFormData, setEditFormData] = useState({ password: '', confirmPassword: '', userCode: '', dealerCode: '' });
+  
+  // EDIT MODAL STATE - NOW FULL FIELDS
+  const [editModal, setEditModal] = useState({ show: false, company: null });
+  const [editFormData, setEditFormData] = useState({ ...EMPTY_FORM });
   const [editLoading, setEditLoading] = useState(false);
   const [editMessage, setEditMessage] = useState({ type: '', text: '' });
 
@@ -131,7 +133,7 @@ export default function CompaniesPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(`Kilit değiştirilemedi!\nLütfen Supabase SQL Editor'e gidip '006_prepayment_lock.sql' dosyasını çalıştırdığınıza emin olun.\nSistem Hatası: ${data.error || 'Bilinmiyor'}`);
+        alert(`Kilit değiştirilemedi!\nSistem Hatası: ${data.error || 'Bilinmiyor'}`);
       }
     } catch (e) {
       alert(`İletişim Hatası: ${e.message}`);
@@ -249,6 +251,29 @@ export default function CompaniesPage() {
     setLoading(false);
   };
 
+  // SURGICAL UPDATE: handleEditOpen fills ALL data
+  const handleEditOpen = (c) => {
+    setEditFormData({
+      companyName: c.name || '',
+      taxNumber: c.tax_number || '',
+      taxOffice: c.tax_office || '',
+      contactPerson: c.contact_person || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      city: c.city || '',
+      district: c.district || '',
+      address: c.address || '',
+      branch: c.branch || '',
+      dealerCode: c.dealer_code || '',
+      userCode: c.user_code || '',
+      password: '',
+      confirmPassword: ''
+    });
+    setEditModal({ show: true, company: c });
+    setEditMessage({ type: '', text: '' });
+  };
+
+  // SURGICAL UPDATE: handleEditSubmit sends ALL data
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setEditMessage({ type: '', text: '' });
@@ -265,15 +290,25 @@ export default function CompaniesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editModal.company.id,
-          password: editFormData.password || undefined,
-          user_code: editFormData.userCode || undefined,
-          dealer_code: editFormData.dealerCode || undefined
+          name: editFormData.companyName,
+          tax_number: editFormData.taxNumber,
+          tax_office: editFormData.taxOffice,
+          contact_person: editFormData.contactPerson,
+          email: editFormData.email,
+          phone: editFormData.phone,
+          city: editFormData.city,
+          district: editFormData.district,
+          address: editFormData.address,
+          branch: editFormData.branch,
+          dealer_code: editFormData.dealerCode,
+          user_code: editFormData.userCode,
+          password: editFormData.password || undefined
         })
       });
       if (res.ok) {
         setEditMessage({ type: 'success', text: 'Bilgiler başarıyla güncellendi!' });
         fetchData();
-        setTimeout(() => setEditModal({ show: false, company: null, value: '' }), 1500);
+        setTimeout(() => setEditModal({ show: false, company: null }), 1500);
       } else {
         const data = await res.json();
         setEditMessage({ type: 'error', text: data.error || 'Güncelleme başarısız!' });
@@ -509,7 +544,7 @@ export default function CompaniesPage() {
                           >
                             <ArrowLeftStartOnRectangleIcon style={{ width: 16, height: 16 }} />
                           </button>
-                          <button className="btn btn-ghost btn-sm" onClick={() => setEditModal({ show: true, company: c, value: '' })}>✎</button>
+                          <button className="btn btn-ghost btn-sm" onClick={() => handleEditOpen(c)}>✎</button>
                           <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => setDeleteModal({ show: true, company: c, step: 1 })}>🗑</button>
                         </div>
                       </td>
@@ -522,275 +557,111 @@ export default function CompaniesPage() {
         </div>
       )}
 
-      {/* Firma Ekle Modal */}
+      {/* MODAL: ADD COMPANY */}
       {showModal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
-        }}>
-          <div style={{
-              background: 'var(--bg-card)', borderRadius: 12, padding: 32,
-              width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
                 <h2 style={{ fontSize: 20, fontWeight: 600 }}>Yeni Firma Ekle</h2>
                 <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
             </div>
-
-            {formError && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fee2e2', color: '#dc2626', borderRadius: 8, fontSize: 14 }}>{formError}</div>}
-            {formSuccess && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#d1fae5', color: '#059669', borderRadius: 8, fontSize: 14 }}>{formSuccess}</div>}
-
-            <form onSubmit={handleAddCompany} autoComplete="off">
+            {formError && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#fee2e2', color: '#dc2626', borderRadius: 8 }}>{formError}</div>}
+            {formSuccess && <div style={{ marginBottom: 16, padding: '10px 14px', background: '#d1fae5', color: '#059669', borderRadius: 8 }}>{formSuccess}</div>}
+            <form onSubmit={handleAddCompany}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Firma Adı *</label>
-                    <input className="form-input" type="text" placeholder="ABC Otomotiv Ltd. Şti." value={formData.companyName} onChange={update('companyName')} required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Vergi Numarası *</label>
-                    <input className="form-input" type="text" placeholder="1234567890" value={formData.taxNumber} onChange={update('taxNumber')} required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Vergi Dairesi</label>
-                    <input className="form-input" type="text" placeholder="Örn: Beyoğlu VD" value={formData.taxOffice} onChange={update('taxOffice')} />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Yetkili Kişi *</label>
-                    <input className="form-input" type="text" placeholder="Ad Soyad" value={formData.contactPerson} onChange={update('contactPerson')} required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">E-posta (Arka Plan İçin) *</label>
-                    <input className="form-input" type="email" placeholder="firma@email.com" value={formData.email} onChange={update('email')} required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Telefon</label>
-                    <input className="form-input" type="tel" placeholder="0532 000 00 00" value={formData.phone} onChange={update('phone')} id="modal-phone" />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">İl</label>
-                    <input className="form-input" type="text" placeholder="Örn: İstanbul" value={formData.city} onChange={update('city')} onBlur={(e) => autoFillDealerCode(e.target.value)} id="modal-city" />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">İlçe</label>
-                    <input className="form-input" type="text" placeholder="Örn: Kadıköy" value={formData.district} onChange={update('district')} id="modal-district" />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Adres</label>
-                    <input className="form-input" type="text" placeholder="Firma adresi" value={formData.address} onChange={update('address')} id="modal-address" />
-                </div>
-                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Branş / Tip</label>
-                    <input className="form-input" type="text" placeholder="Toptancı, Perakendeci, Servis vb." value={formData.branch} onChange={update('branch')} />
-                </div>
-
-                {/* Giriş Bilgileri */}
-                <div style={{ gridColumn: '1 / -1', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>Sisteme Giriş Bilgileri (Login)</h3>
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Bayi Kodu *</label>
-                    <input className="form-input" type="text" placeholder="Örn: B-1001" value={formData.dealerCode} onChange={update('dealerCode')} required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Kullanıcı Kodu *</label>
-                    <input className="form-input" type="text" placeholder="Örn: ADMIN" value={formData.userCode} onChange={update('userCode')} required />
-                </div>
-
-                <div className="form-group">
-                    <label className="form-label">Şifre *</label>
-                    <input className="form-input" type="password" placeholder="En az 6 karakter" value={formData.password} onChange={update('password')} autoComplete="new-password" required />
-                </div>
-                <div className="form-group">
-                    <label className="form-label">Şifre Tekrar *</label>
-                    <input className="form-input" type="password" placeholder="Şifreyi tekrarlayın" value={formData.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" required />
-                </div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Firma Adı *</label><input className="form-input" required value={formData.companyName} onChange={update('companyName')} /></div>
+                <div><label className="form-label">Vergi No *</label><input className="form-input" required value={formData.taxNumber} onChange={update('taxNumber')} /></div>
+                <div><label className="form-label">Vergi Dairesi</label><input className="form-input" value={formData.taxOffice} onChange={update('taxOffice')} /></div>
+                <div><label className="form-label">Yetkili Kişi *</label><input className="form-input" required value={formData.contactPerson} onChange={update('contactPerson')} /></div>
+                <div><label className="form-label">E-posta (Arka Plan İçin) *</label><input className="form-input" type="email" required value={formData.email} onChange={update('email')} /></div>
+                <div><label className="form-label">Telefon</label><input className="form-input" value={formData.phone} onChange={update('phone')} /></div>
+                <div><label className="form-label">İl</label><input className="form-input" value={formData.city} onChange={update('city')} onBlur={(e) => autoFillDealerCode(e.target.value)} /></div>
+                <div><label className="form-label">İlçe</label><input className="form-input" value={formData.district} onChange={update('district')} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" value={formData.address} onChange={update('address')} /></div>
+                <div style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" value={formData.branch} onChange={update('branch')} /></div>
+                <div style={{ gridColumn: '1 / -1', marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 16 }}><h3>Sisteme Giriş Bilgileri (Login)</h3></div>
+                <div><label className="form-label">Bayi Kodu *</label><input className="form-input" required value={formData.dealerCode} onChange={update('dealerCode')} /></div>
+                <div><label className="form-label">Kullanıcı Kodu *</label><input className="form-input" required value={formData.userCode} onChange={update('userCode')} /></div>
+                <div><label className="form-label">Şifre *</label><input className="form-input" type="password" required value={formData.password} onChange={update('password')} /></div>
+                <div><label className="form-label">Şifre Tekrar *</label><input className="form-input" type="password" required value={formData.confirmPassword} onChange={update('confirmPassword')} /></div>
               </div>
-
-              <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)} style={{ flex: 1, justifyContent: 'center' }}>İptal</button>
-                <button type="submit" className="btn btn-primary" disabled={formLoading} id="modal-submit" style={{ flex: 2, justifyContent: 'center' }}>
-                    {formLoading ? 'Ekleniyor...' : '+ Firma Ekle'}
-                </button>
-              </div>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24 }}><button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setShowModal(false)}>İptal</button><button type="submit" className="btn btn-primary" style={{ flex: 2 }} disabled={formLoading}>+ Firma Ekle</button></div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Edit Credentials Modal */}
+      {/* MODAL: EDIT COMPANY (MATCHING IMAGE 2) */}
       {editModal.show && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 12, padding: 32,
-            width: '100%', maxWidth: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600 }}>Bilgileri Düzenle</h2>
-              <button onClick={() => setEditModal({ show: false, company: null, value: '' })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
+              <h2 style={{ fontSize: 20, fontWeight: 600 }}>Firma Bilgilerini Düzenle</h2>
+              <button onClick={() => setEditModal({ show: false, company: null })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
             </div>
-
-            <p style={{ marginBottom: 20, fontSize: 14, color: 'var(--text-muted)' }}>Müşteri: <strong>{editModal.company?.name}</strong></p>
-
-            {editMessage.text && (
-              <div style={{ marginBottom: 16, padding: '10px 14px', background: editMessage.type === 'error' ? '#fee2e2' : '#d1fae5', color: editMessage.type === 'error' ? '#dc2626' : '#059669', borderRadius: 8, fontSize: 14 }}>
-                {editMessage.text}
+            {editMessage.text && <div style={{ marginBottom: 16, padding: '10px 14px', background: editMessage.type === 'error' ? '#fee2e2' : '#d1fae5', color: editMessage.type === 'error' ? '#dc2626' : '#059669', borderRadius: 8 }}>{editMessage.text}</div>}
+            <form onSubmit={handleEditSubmit}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Firma Adı</label><input className="form-input" value={editFormData.companyName} onChange={e => setEditFormData({...editFormData, companyName: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Vergi Numarası</label><input className="form-input" value={editFormData.taxNumber} onChange={e => setEditFormData({...editFormData, taxNumber: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Vergi Dairesi</label><input className="form-input" value={editFormData.taxOffice} onChange={e => setEditFormData({...editFormData, taxOffice: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Yetkili Kişi</label><input className="form-input" value={editFormData.contactPerson} onChange={e => setEditFormData({...editFormData, contactPerson: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">E-posta (Arka Plan İçin)</label><input className="form-input" type="email" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Telefon</label><input className="form-input" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">İl</label><input className="form-input" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">İlçe</label><input className="form-input" value={editFormData.district} onChange={e => setEditFormData({...editFormData, district: e.target.value})} /></div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Adres</label><input className="form-input" value={editFormData.address} onChange={e => setEditFormData({...editFormData, address: e.target.value})} /></div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}><label className="form-label">Branş / Tip</label><input className="form-input" value={editFormData.branch} onChange={e => setEditFormData({...editFormData, branch: e.target.value})} /></div>
+                
+                <div style={{ gridColumn: '1 / -1', marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}><h3>Sisteme Giriş Bilgileri (Login)</h3></div>
+                <div className="form-group"><label className="form-label">Bayi Kodu</label><input className="form-input" value={editFormData.dealerCode} onChange={e => setEditFormData({...editFormData, dealerCode: e.target.value.toUpperCase()})} /></div>
+                <div className="form-group"><label className="form-label">Kullanıcı Kodu</label><input className="form-input" value={editFormData.userCode} onChange={e => setEditFormData({...editFormData, userCode: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Yeni Şifre Belirle (Boş bırakırsanız değişmez)</label><input className="form-input" type="password" value={editFormData.password} onChange={e => setEditFormData({...editFormData, password: e.target.value})} autoComplete="new-password" /></div>
+                {editFormData.password && (
+                  <div className="form-group">
+                      <label className="form-label">Yeni Şifre Tekrar</label>
+                      <input className="form-input" type="password" value={editFormData.confirmPassword} onChange={e => setEditFormData({...editFormData, confirmPassword: e.target.value})} autoComplete="new-password" />
+                  </div>
+                )}
               </div>
-            )}
-
-            <form onSubmit={handleEditSubmit} autoComplete="off">
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Bayi Kodu</label>
-                <input className="form-input" type="text" placeholder="B-1000 vs." value={editFormData.dealerCode} onChange={e => setEditFormData(prev => ({...prev, dealerCode: e.target.value}))} />
-              </div>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Kullanıcı (Cari) Kodu</label>
-                <input className="form-input" type="text" placeholder="CR001 vs." value={editFormData.userCode} onChange={e => setEditFormData(prev => ({...prev, userCode: e.target.value}))} />
-              </div>
-              <div className="form-group" style={{ marginBottom: 16 }}>
-                <label className="form-label">Yeni Şifre Belirle (Boş bırakırsanız değişmez)</label>
-                <input className="form-input" type="password" placeholder="*******" value={editFormData.password} onChange={e => setEditFormData(prev => ({...prev, password: e.target.value}))} autoComplete="new-password" />
-              </div>
-              {editFormData.password && (
-                <div className="form-group" style={{ marginBottom: 24 }}>
-                  <label className="form-label">Yeni Şifre Tekrar</label>
-                  <input className="form-input" type="password" placeholder="*******" value={editFormData.confirmPassword} onChange={e => setEditFormData(prev => ({...prev, confirmPassword: e.target.value}))} autoComplete="new-password" />
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-                <button type="button" className="btn btn-ghost" onClick={() => setEditModal({ show: false, company: null, value: '' })}>İptal</button>
-                <button type="submit" className="btn btn-primary" disabled={editLoading}>
-                  {editLoading ? 'Kaydediliyor...' : 'Kaydet'}
-                </button>
+              <div style={{ display: 'flex', gap: 12, marginTop: 24, justifyContent: 'flex-end' }}>
+                <button type="button" className="btn btn-ghost" onClick={() => setEditModal({ show: false, company: null })}>İptal</button>
+                <button type="submit" className="btn btn-primary" disabled={editLoading}>Kaydet</button>
               </div>
             </form>
           </div>
         </div>
       )}
 
-      {/* Custom Delete Modal */}
+      {/* Delete Modal */}
       {deleteModal.show && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 16, padding: 32,
-            width: '100%', maxWidth: 420, boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-            border: '1px solid rgba(220,38,38,0.2)', position: 'relative', overflow: 'hidden'
-          }}>
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'var(--danger)' }} />
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
-              <div style={{ background: 'rgba(220,38,38,0.1)', color: 'var(--danger)', padding: 12, borderRadius: '50%' }}>
-                <TrashIcon style={{ width: 24, height: 24 }} />
-              </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: 400, textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <TrashIcon style={{ width: 48, height: 48, color: 'var(--danger)', margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Firma Silinecek</h3>
+            <p style={{ marginBottom: 24 }}><strong>{deleteModal.company?.name}</strong> silinecek. Emin misiniz?</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button className="btn btn-ghost" onClick={() => setDeleteModal({ show: false, company: null, step: 1 })}>İptal</button>
+              <button className="btn btn-danger" onClick={confirmDelete}>Evet, Sil</button>
             </div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Firma Silinecek</h2>
-            <button onClick={() => setDeleteModal({ show: false, company: null, step: 1 })} style={{ height: 32, width: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
-
-            {deleteModal.step === 1 ? (
-              <>
-                <p style={{ fontSize: 15, color: 'var(--text-secondary)', lineHeight: 1.6, marginBottom: 24 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>{deleteModal.company?.name}</strong> firmasını ve bu firmaya bağlı tüm kullanıcı hesaplarını silmek üzeresiniz.
-                </p>
-                <div style={{ background: 'rgba(220,38,38,0.05)', border: '1px solid rgba(220,38,38,0.2)', padding: 16, borderRadius: 8, marginBottom: 24 }}>
-                  <p style={{ margin: 0, fontSize: 13, color: 'var(--danger)' }}>⚠️ Bu işlem geri alınamaz. Silinen veriler kurtarılamaz!</p>
-                </div>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => setDeleteModal({ show: false, company: null, step: 1 })}>İptal</button>
-                  <button type="button" className="btn btn-danger" onClick={() => setDeleteModal(prev => ({ ...prev, step: 2 }))}>Evet, Sil</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p style={{ fontSize: 16, color: 'var(--text-primary)', fontWeight: 600, textAlign: 'center', marginBottom: 24 }}>
-                  Gerçekten emin misiniz?
-                </p>
-                <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-                  <button type="button" className="btn btn-ghost" onClick={() => setDeleteModal({ show: false, company: null, step: 1 })}>Hayır, Vazgeç</button>
-                  <button type="button" className="btn btn-danger" disabled={loading} onClick={confirmDelete}>
-                    {loading ? 'Siliniyor...' : 'Onaylıyorum, Tamamen Sil'}
-                  </button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}
 
       {/* Risk Limit Modal */}
       {riskModal.show && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: 16
-        }}>
-          <div style={{
-            background: 'var(--bg-card)', borderRadius: 12, padding: 32,
-            width: '100%', maxWidth: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 700 }}>Risk Limiti</h2>
-              <button onClick={() => setRiskModal({ show: false, company: null, value: '' })} style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: 'var(--text-secondary)' }}>×</button>
-            </div>
-            
-            <p style={{ marginBottom: 16, fontSize: 14, color: 'var(--text-secondary)' }}>
-              <strong style={{ color: 'var(--text-primary)' }}>{riskModal.company?.name}</strong> firması için maksimum borçlanma limiti belirleyin.
-            </p>
-
-            <div className="form-group" style={{ marginBottom: 20 }}>
-              <label className="form-label">Risk Limiti (PŞ)</label>
-              <input 
-                className="form-input"
-                type="number"
-                step="0.01"
-                value={riskModal.value}
-                onChange={(e) => setRiskModal(prev => ({ ...prev, value: e.target.value }))}
-                placeholder="Örn: 20000"
-                autoFocus
-              />
-              <p style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
-                Not: 0 girilirse limit uygulanmaz (Sınırsız).
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-              <button type="button" className="btn btn-ghost" onClick={() => setRiskModal({ show: false, company: null, value: '' })}>İptal</button>
-              <button 
-                type="button" 
-                className="btn btn-primary"
-                disabled={riskLoading}
-                onClick={async () => {
-                  setRiskLoading(true);
-                  try {
-                    const res = await fetch('/api/admin/create-company', {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ id: riskModal.company.id, risk_limit: riskModal.value })
-                    });
-                    if (res.ok) {
-                      fetchData();
-                      setRiskModal({ show: false, company: null, value: '' });
-                    } else {
-                      const d = await res.json();
-                      alert('Hata: ' + d.error);
-                    }
-                  } catch (e) {
-                    alert('Hata: ' + e.message);
-                  }
-                  setRiskLoading(false);
-                }}
-              >
-                {riskLoading ? 'Kaydediliyor...' : 'Limiti Güncelle'}
-              </button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
+          <div style={{ background: 'var(--bg-card)', borderRadius: 12, padding: 32, width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Risk Limiti</h3>
+            <p style={{ marginBottom: 16 }}><strong>{riskModal.company?.name}</strong> için borç limiti (0 = sınırsız):</p>
+            <input type="number" className="form-input" value={riskModal.value} onChange={e => setRiskModal({...riskModal, value: e.target.value})} style={{ marginTop: 10 }} />
+            <div style={{ marginTop: 20, display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={() => setRiskModal({ show: false, company: null, value: '' })}>İptal</button>
+              <button className="btn btn-primary" disabled={riskLoading} onClick={async () => {
+                setRiskLoading(true);
+                await fetch('/api/admin/create-company', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: riskModal.company.id, risk_limit: riskModal.value }) });
+                fetchData(); setRiskModal({ show: false, company: null, value: '' }); setRiskLoading(false);
+              }}>Güncelle</button>
             </div>
           </div>
         </div>

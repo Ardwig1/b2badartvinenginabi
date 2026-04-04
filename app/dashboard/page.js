@@ -142,7 +142,7 @@ export default async function DealerDashboard() {
                     <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}><CurrencyDollarIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Güncel Bakiye</div>
                     <div className="stat-value" style={{ color: company?.current_balance < 0 ? 'var(--danger)' : 'var(--success)' }}>
-                        ₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        {company?.current_balance < 0 ? '-' : ''}₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                         <span style={{ fontSize: 13, marginLeft: 4 }}>{company?.current_balance < 0 ? '(B)' : '(A)'}</span>
                     </div>
                 </div>

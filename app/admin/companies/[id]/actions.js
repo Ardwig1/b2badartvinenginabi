@@ -10,67 +10,26 @@ const supabase = createClient(
 
 export async function fetchCompanyDetail(id) {
     try {
-        const [compRes, actRes, cartActRes, ordRes, txRes, settingsRes, usdRes, rates] = await Promise.all([
+        const [compRes, actRes, ordRes, txRes, marginRes, usdRes, rates, cartRes, extraDiscRes] = await Promise.all([
             supabase.from('companies').select('*, profiles(*), price_group:price_groups(name, discount_percent)').eq('id', id).single(),
             supabase.from('user_activities').select('*').eq('company_id', id).order('created_at', { ascending: false }).limit(200),
-            supabase.from('user_activities').select('*').eq('company_id', id).in('action_type', ['cart_add', 'cart_update', 'cart_remove', 'cart_clear', 'order_placed']).order('created_at', { ascending: false }).limit(500),
-            supabase.from('orders').select('*').eq('company_id', id).order('created_at', { ascending: false }).limit(1),
+            supabase.from('orders').select('*').eq('company_id', id).order('created_at', { ascending: false }).limit(10),
             supabase.from('account_transactions').select('*').eq('company_id', id).order('created_at', { ascending: false }),
-            supabase.from('settings').select('*').eq('id', 1).single(),
+            supabase.from('price_groups').select('discount_percent').eq('name', 'GLOBAL_PROFIT_MARGIN').maybeSingle(),
             supabase.from('usd_rates').select('*').eq('id', 1).single(),
-            getExchangeRates()
+            getExchangeRates(),
+            supabase.from('cart_items').select('*, fullProduct:products(*)').eq('company_id', id),
+            supabase.from('company_extra_discounts').select('*, product:products(name, code, oem_no, brand)').eq('company_id', id)
         ]);
 
         if (compRes.error) throw compRes.error;
 
-        // Reconstruct Current Cart from Logs
-        const latestOrder = ordRes.data && ordRes.data.length > 0 ? ordRes.data[0] : null;
-        let resetTime = latestOrder ? new Date(latestOrder.created_at).getTime() : 0;
-
-        // Find the latest cart_clear or order_placed in the logs
-        const logActivities = cartActRes.data || [];
-        const latestResetLog = logActivities.find(a => ['cart_clear', 'order_placed'].includes(a.action_type));
-        if (latestResetLog) {
-            const logResetTime = new Date(latestResetLog.created_at).getTime();
-            if (logResetTime > resetTime) resetTime = logResetTime;
-        }
-
-        // Sort by time ascending to play back the actions
-        const cartActivities = logActivities
-            .filter(a => ['cart_add', 'cart_update', 'cart_remove'].includes(a.action_type))
-            .filter(a => new Date(a.created_at).getTime() > resetTime)
-            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-
-        const reconstructedCart = {};
-        cartActivities.forEach(act => {
-            const { id: prodId, qty, newQty } = act.details || {};
-            if (!prodId) return;
-
-            if (act.action_type === 'cart_add') {
-                if (!reconstructedCart[prodId]) {
-                    reconstructedCart[prodId] = { product: act.details, qty: 0 };
-                }
-                reconstructedCart[prodId].qty += (qty || 1);
-            } else if (act.action_type === 'cart_update') {
-                reconstructedCart[prodId] = { product: act.details, qty: newQty };
-            } else if (act.action_type === 'cart_remove') {
-                delete reconstructedCart[prodId];
-            }
-        });
-
-        // Convert cart map to array
-        const cartItemMap = Object.values(reconstructedCart).filter(item => item.qty > 0);
-
-        // Fetch full product details for accurate pricing
-        const productIds = cartItemMap.map(item => item.product.id);
-        let cartItems = [];
-        if (productIds.length > 0) {
-            const { data: fullProducts } = await supabase.from('products').select('*').in('id', productIds);
-            cartItems = cartItemMap.map(item => {
-                const fullProd = fullProducts?.find(p => p.id === item.product.id);
-                return { ...item, fullProduct: fullProd || item.product };
-            });
-        }
+        // Use direct cart items from the database
+        const cartItems = (cartRes.data || []).map(item => ({
+            ...item,
+            qty: item.quantity,
+            product: item.fullProduct
+        }));
 
         return {
             success: true,
@@ -80,13 +39,38 @@ export async function fetchCompanyDetail(id) {
                 orders: ordRes.data || [],
                 transactions: txRes.data || [],
                 cart: cartItems,
-                settings: settingsRes.data,
+                extraDiscounts: extraDiscRes.data || [],
+                settings: { margin: marginRes.data?.discount_percent || 36 },
                 usdSettings: usdRes.data,
                 marketRates: rates
             }
         };
     } catch (e) {
         console.error('fetchCompanyDetail Error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+export async function addExtraDiscount(companyId, productId, rate) {
+    try {
+        const { error } = await supabase
+            .from('company_extra_discounts')
+            .upsert({ company_id: companyId, product_id: productId, discount_rate: parseFloat(rate) }, { onConflict: 'company_id,product_id' });
+        if (error) throw error;
+        revalidatePath(`/admin/companies/${companyId}`);
+        return { success: true };
+    } catch (e) {
+        return { success: false, error: e.message };
+    }
+}
+
+export async function deleteExtraDiscount(id, companyId) {
+    try {
+        const { error } = await supabase.from('company_extra_discounts').delete().eq('id', id);
+        if (error) throw error;
+        revalidatePath(`/admin/companies/${companyId}`);
+        return { success: true };
+    } catch (e) {
         return { success: false, error: e.message };
     }
 }

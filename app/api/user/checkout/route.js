@@ -62,6 +62,25 @@ export async function POST(req) {
         });
 
         if (error) throw error;
+
+        // --- Mark Extra Discounts as USED ---
+        try {
+            const productIds = items.map(i => i.product_id);
+            const { error: updErr } = await adminSupabase
+                .from('company_extra_discounts')
+                .update({ 
+                    is_used: true, 
+                    used_at: new Date().toISOString() 
+                })
+                .eq('company_id', companyId)
+                .in('product_id', productIds)
+                .eq('is_used', false);
+            
+            if (updErr) console.error("Error marking extra discounts used:", updErr);
+        } catch (e) {
+            console.error("Cleanup extra discounts error:", e);
+        }
+
         return NextResponse.json(data);
     } catch (err) {
         console.error("CHECKOUT API ERROR:", err.message);

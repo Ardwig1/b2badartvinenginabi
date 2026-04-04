@@ -38,28 +38,52 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
     }, []);
 
     const handleSaveMargin = async () => {
-        setSavingMargin(true);
-        await fetch('/api/admin/margin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ margin: margin === '' ? 0 : margin })
-        });
-        setSavingMargin(false);
-        setSuccessMargin(true);
-        if (onMarginUpdate) onMarginUpdate(Number(margin === '' ? 0 : margin));
-        setTimeout(() => setSuccessMargin(false), 2500);
+        try {
+            setSavingMargin(true);
+            const res = await fetch('/api/admin/margin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ margin: margin === '' ? 0 : margin })
+            });
+            
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Kaydetme hatası');
+            }
+
+            setSuccessMargin(true);
+            if (onMarginUpdate) onMarginUpdate(Number(margin === '' ? 0 : margin));
+            setTimeout(() => setSuccessMargin(false), 2500);
+        } catch (error) {
+            console.error("Margin save error:", error);
+            alert("Kâr oranı kaydedilemedi: " + error.message);
+        } finally {
+            setSavingMargin(false);
+        }
     };
 
     const handleSaveUsd = async () => {
-        setSavingUsd(true);
-        await fetch('/api/admin/usd-settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ usd_rate: usdRate === '' ? 0 : usdRate, is_active: isUsdActive })
-        });
-        setSavingUsd(false);
-        setSuccessUsd(true);
-        setTimeout(() => setSuccessUsd(false), 2500);
+        try {
+            setSavingUsd(true);
+            const res = await fetch('/api/admin/usd-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ usd_rate: usdRate === '' ? 0 : usdRate, is_active: isUsdActive })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Kaydetme hatası');
+            }
+
+            setSuccessUsd(true);
+            setTimeout(() => setSuccessUsd(false), 2500);
+        } catch (error) {
+            console.error("USD settings save error:", error);
+            alert("Dolar kuru ayarları kaydedilemedi: " + error.message);
+        } finally {
+            setSavingUsd(false);
+        }
     };
 
     const toggleUsdActive = () => {

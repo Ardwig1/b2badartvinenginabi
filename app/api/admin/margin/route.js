@@ -10,19 +10,21 @@ const supabase = createClient(
 
 export async function GET() {
     try {
+        // Fetch the global margin setting, handle multiple results by taking the first one
         const { data, error } = await supabase
             .from('price_groups')
             .select('discount_percent')
             .eq('name', 'GLOBAL_PROFIT_MARGIN')
-            .single();
+            .limit(1);
 
-        if (error || !data) {
-            // Auto-heal if missing
-            await supabase.from('price_groups').insert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36 });
+        if (error || !data || data.length === 0) {
+            // If missing, create it with a default value of 36
+            // We use upsert to prevent issues if it was concurrently created
+            await supabase.from('price_groups').upsert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36 }, { onConflict: 'name' });
             return NextResponse.json({ margin: 36 });
         }
 
-        return NextResponse.json({ margin: data.discount_percent });
+        return NextResponse.json({ margin: data[0].discount_percent });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }

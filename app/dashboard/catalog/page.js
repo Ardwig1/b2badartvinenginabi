@@ -1,51 +1,25 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ShoppingCartIcon, PhotoIcon, CubeIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { ShoppingCartIcon, PhotoIcon, CubeIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
-
-const STOCK_STATUS = {
-    'in_stock': { label: 'Var', color: '#16a34a', bg: '#dcfce7', dot: '🟢' },
-    'low_stock': { label: 'Az Var', color: '#ca8a04', bg: '#fef9c3', dot: '🟡' },
-    'on_the_way': { label: 'Yolda', color: '#db2777', bg: '#fce7f3', dot: '🩷' },
-    'out_of_stock': { label: 'Yok', color: '#dc2626', bg: '#fee2e2', dot: '🔴' },
-    'special': { label: 'Özel Sipariş', color: '#7c3aed', bg: '#ede9fe', dot: '⭐' },
-};
-
-function getStockStatus(qty) {
-    if (qty > 10) return 'in_stock';
-    if (qty > 0) return 'low_stock';
-    return 'out_of_stock';
-}
 
 const getCircleStyle = (qty, size = 16) => {
     let bg, border, boxShadow;
-    if (qty > 15) {
-        bg = 'linear-gradient(135deg, #22c55e, #15803d)';
-        border = '1px solid #14532d';
-        boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
-    } else if (qty > 0) {
-        bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)';
-        border = '1px solid #1e293b';
-        boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`;
-    } else {
-        bg = 'linear-gradient(135deg, #ef4444, #991b1b)';
-        border = '1px solid #7f1d1d';
-        boxShadow = `0 0 ${size / 2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`;
-    }
-    return {
-        width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0
-    };
+    if (qty > 15) { bg = 'linear-gradient(135deg, #22c55e, #15803d)'; border = '1px solid #14532d'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
+    else if (qty > 0) { bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; border = '1px solid #1e293b'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`; }
+    else { bg = 'linear-gradient(135deg, #ef4444, #991b1b)'; border = '1px solid #7f1d1d'; boxShadow = `0 0 ${size / 2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
+    return { width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0 };
 };
 
 export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [hasSearched, setHasSearched] = useState(false);
-    const [viewMode, setViewMode] = useState('catalog'); // 'catalog' = görselsiz kompakt, 'list' = görselli
-    const perPage = viewMode === 'list' ? 15 : 10;
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
-    const [selectedImage, setSelectedImage] = useState(null); // Full-screen image modal state
+    const [hasSearched, setHasSearched] = useState(false);
+    const [viewMode, setViewMode] = useState('catalog');
+    const perPage = viewMode === 'list' ? 15 : 10;
+    const [selectedImage, setSelectedImage] = useState(null);
     const [discountPercent, setDiscount] = useState(0);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
@@ -54,37 +28,11 @@ export default function DealerCatalog() {
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty } = useCart();
     const [pendingQtys, setPendingQtys] = useState({});
-    const [userId, setUserId] = useState(null);
-    const [companyId, setCompanyId] = useState(null);
-
-    // Hover Tooltip State
-    const [hoveredRow, setHoveredRow] = useState(null);
+    
+    // Hover Tooltip States
     const [hoveredImage, setHoveredImage] = useState(null);
     const [hoveredPriceTooltip, setHoveredPriceTooltip] = useState(null);
-    const hoverTimeoutRef = useRef(null);
-    const mousePosRef = useRef({ x: 0, y: 0 });
 
-    const handleRowMouseEnter = (e, p) => {
-        mousePosRef.current = { x: e.clientX, y: e.clientY };
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = setTimeout(() => {
-            setHoveredRow({ product: p, x: mousePosRef.current.x, y: mousePosRef.current.y });
-        }, 1000);
-    };
-
-    const handleRowMouseMove = (e, p) => {
-        mousePosRef.current = { x: e.clientX, y: e.clientY };
-        if (hoveredRow && hoveredRow.product.id === p.id) {
-            setHoveredRow(prev => ({ ...prev, x: e.clientX, y: e.clientY }));
-        }
-    };
-
-    const handleRowMouseLeave = () => {
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        setHoveredRow(null);
-    };
-
-    // Filters
     const [brands, setBrands] = useState([]);
     const [carBrands, setCarBrands] = useState([]);
     const [carModels, setCarModels] = useState([]);
@@ -99,469 +47,180 @@ export default function DealerCatalog() {
 
     const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
 
-    const fetchSettingsAndFilters = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            // Force no-cache and include credentials for showroom sync
-            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { 
-                cache: 'no-store',
-                credentials: 'include' 
-            });
+            const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store', credentials: 'include' });
             if (infoRes.ok) {
-                const infoData = await infoRes.json();
-                
-                setUserId(infoData.userId || null);
-                setCompanyId(infoData.companyId || null);
-                setDiscount(Number(infoData.discountPercent) || 0);
-                
-                if (infoData.companyId && typeof window !== 'undefined') {
-                    localStorage.setItem('b2b_company_id', infoData.companyId);
-                }
+                const data = await infoRes.json();
+                setDiscount(Number(data.discountPercent) || 0);
             }
-
-            // 2. Fetch metadata for filters
             const metaRes = await fetch('/api/products/metadata');
-            if (metaRes.ok) {
-                const metaData = await metaRes.json();
-                setBrands(metaData.brands || []);
-                setCarBrands(metaData.carBrands || []);
-            }
-
-            // 3. Fetch rates and settings
-            const [ratesRes, marginRes, usdRes] = await Promise.all([
-                fetch('/api/rates'),
-                fetch('/api/admin/margin'),
-                fetch('/api/admin/usd-settings')
-            ]);
-
-            if (ratesRes.ok) {
-                const data = await ratesRes.json();
-                if (data?.USD && data?.EUR) setRates({ USD: data.USD, EUR: data.EUR });
-            }
-
-            if (marginRes.ok) {
-                const marginData = await marginRes.json();
-                if (marginData?.margin !== undefined) setGlobalMargin(marginData.margin);
-            }
-
-            if (usdRes.ok) {
-                const usdData = await usdRes.json();
-                if (usdData?.usd_rate !== undefined) setGlobalUsdRate(usdData.usd_rate);
-                if (usdData?.is_active !== undefined) setGlobalUsdActive(usdData.is_active);
-            }
-
-        } catch (e) {
-            console.error('Fetch catalog settings error:', e);
-        } finally {
-            setLoading(false);
-        }
+            if (metaRes.ok) { const data = await metaRes.json(); setBrands(data.brands || []); setCarBrands(data.carBrands || []); }
+            const [ratesRes, marginRes, usdRes] = await Promise.all([fetch('/api/rates'), fetch('/api/admin/margin'), fetch('/api/admin/usd-settings')]);
+            if (ratesRes.ok) { const d = await ratesRes.json(); setRates({ USD: d.USD || 1, EUR: d.EUR || 1 }); }
+            if (marginRes.ok) { const d = await marginRes.json(); setGlobalMargin(d.margin ?? 36); }
+            if (usdRes.ok) { const d = await usdRes.json(); setGlobalUsdRate(d.usd_rate || 0); setGlobalUsdActive(d.is_active || false); }
+        } catch (e) { console.error(e); } finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { fetchSettingsAndFilters(); }, [fetchSettingsAndFilters]);
+    useEffect(() => { fetchData(); }, [fetchData]);
 
     const searchProducts = async (e) => {
         if (e && e.key && e.key !== 'Enter') return;
-
         if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
-            setProducts([]);
-            setHasSearched(false);
+            alert('Lütfen arama yapmak için en az bir filtre seçin.');
             return;
         }
-
-        setLoading(true);
-        setHasSearched(true);
-        setCurrentPage(1);
-
+        setLoading(true); setHasSearched(true); setCurrentPage(1);
         try {
-            const response = await fetch('/api/products/search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    filterText: filterText.trim(),
-                    brand: filterBrand,
-                    carBrand: filterCarBrand,
-                    carModel: filterCarModel,
-                    is_new: checkNew,
-                    is_campaign: checkCampaign
-                })
-            });
-
-            if (!response.ok) throw new Error('Search failed');
+            const response = await fetch('/api/products/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel, is_new: checkNew, is_campaign: checkCampaign }) });
             const data = await response.json();
-
-            if (companyId && (filterText || filterBrand || filterCarBrand || filterCarModel)) {
-                fetch('/api/log-activity', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        company_id: companyId,
-                        action_type: 'search',
-                        details: {
-                            text: filterText.trim(),
-                            brand: filterBrand,
-                            carBrand: filterCarBrand,
-                            carModel: filterCarModel
-                        }
-                    })
-                }).catch(e => console.error('Search log error:', e));
-            }
-
             setProducts(data || []);
-        } catch (err) {
-            console.error('Search error:', err);
-            showToast('Ürünler yüklenirken bir sorun oluştu.');
-        } finally {
-            setLoading(false);
-        }
+        } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
     useEffect(() => {
+        setProducts([]);
+        setHasSearched(false);
+        setCurrentPage(1);
+    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkNew, checkCampaign]);
+
+    useEffect(() => {
         if (!filterCarBrand) { setCarModels([]); setFilterCarModel(''); return; }
-        
-        fetch(`/api/products/metadata?carBrand=${encodeURIComponent(filterCarBrand)}`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.carModels) setCarModels(data.carModels);
-                setFilterCarModel('');
-            })
-            .catch(err => console.error('Fetch models error:', err));
+        fetch(`/api/products/metadata?carBrand=${encodeURIComponent(filterCarBrand)}`).then(res => res.json()).then(data => { setCarModels(data.carModels || []); setFilterCarModel(''); });
     }, [filterCarBrand]);
 
     const getBaseTryPrice = (p) => {
         let initialPrice = Number(p.list_price) || 0;
         let marginBase = (Number(p.profit_margin) || 36) / 100;
-        let rawCost = initialPrice / (1 + marginBase);
-        let currentPrice = rawCost * (1 + (globalMargin / 100));
-
-        if (globalUsdActive && globalUsdRate !== null && globalUsdRate >= 0 && p.currency === 'USD') {
-            currentPrice = currentPrice * globalUsdRate;
-        } else {
-            if (p.currency === 'USD') currentPrice = currentPrice * rates.USD;
-            else if (p.currency === 'EUR') currentPrice = currentPrice * rates.EUR;
-        }
-
-        return currentPrice;
+        let price = (initialPrice / (1 + marginBase)) * (1 + (globalMargin / 100));
+        if (globalUsdActive && globalUsdRate > 0 && p.currency === 'USD') price = price * globalUsdRate;
+        else { if (p.currency === 'USD') price = price * rates.USD; else if (p.currency === 'EUR') price = price * rates.EUR; }
+        return price;
     };
 
     const getDiscountedPrice = (p) => {
-        const basePrice = getBaseTryPrice(p);
-        const productDiscount = Number(p.discount_rate) || 0;
-        const groupDiscount = discountPercent || 0;
-        const afterProductDiscount = basePrice * (1 - productDiscount / 100);
-        const afterGroupDiscount = afterProductDiscount * (1 - groupDiscount / 100);
-        return afterGroupDiscount;
+        const base = getBaseTryPrice(p);
+        return base * (1 - (Number(p.discount_rate) || 0) / 100) * (1 - discountPercent / 100);
     };
 
-    const getKdvPrice = (p) => {
-        return getDiscountedPrice(p) * 1.20;
-    };
+    const getKdvPrice = (p) => getDiscountedPrice(p) * 1.20;
 
     const filtered = products.filter(p => {
         if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
-        if (checkLow) {
-            const isMerkezLow = p.stock_merkez > 0 && p.stock_merkez <= 15;
-            const isDepoLow = p.stock_depo > 0 && p.stock_depo <= 15;
-            if (!isMerkezLow && !isDepoLow) return false;
-        }
-        if (checkNew) {
-            const oneWeekAgo = new Date();
-            oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-            if (new Date(p.created_at) < oneWeekAgo) return false;
-        }
+        if (checkLow) { if (!((p.stock_merkez > 0 && p.stock_merkez <= 15) || (p.stock_depo > 0 && p.stock_depo <= 15))) return false; }
         if (checkCampaign && !p.is_campaign) return false;
         return true;
     });
 
-    const currentChunk = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
-    const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
+    const perPageItems = useMemo(() => filtered.slice((currentPage - 1) * perPage, currentPage * perPage), [filtered, currentPage, perPage]);
 
     useEffect(() => {
-        let isCancelled = false;
-        const urls = chunkUrlHash ? chunkUrlHash.split('|') : [];
-        if (urls.length === 0) {
-            setPageImagesLoading(false);
-            return;
-        }
+        const urls = perPageItems.map(p => p.image_url).filter(Boolean);
+        if (urls.length === 0) { setPageImagesLoading(false); return; }
         setPageImagesLoading(true);
-        Promise.all(urls.map(url => {
-            return new Promise(resolve => {
-                const loadImg = (attempts) => {
-                    const img = new window.Image();
-                    img.onload = () => resolve(true);
-                    img.onerror = () => {
-                        if (attempts > 0) {
-                            setTimeout(() => loadImg(attempts - 1), 1000);
-                        } else {
-                            resolve(false);
-                        }
-                    };
-                    img.src = url;
-                };
-                loadImg(5);
-            });
-        })).then(() => {
-            if (!isCancelled) {
-                setPageImagesLoading(false);
-            }
+        let loadedCount = 0;
+        const total = urls.length;
+        const timeout = setTimeout(() => { setPageImagesLoading(false); }, 2500);
+        urls.forEach(url => {
+            const img = new window.Image();
+            img.onload = img.onerror = () => {
+                loadedCount++;
+                if (loadedCount === total) { clearTimeout(timeout); setPageImagesLoading(false); }
+            };
+            img.src = url;
         });
-        return () => { isCancelled = true; };
-    }, [chunkUrlHash]);
+        return () => clearTimeout(timeout);
+    }, [perPageItems]);
 
     const handleAddToCart = (p) => {
-        const raw = getPending(p.id);
-        if (!raw || raw === '0') return;
+        const raw = pendingQtys[p.id] || '1';
         const n = parseInt(raw, 10);
         if (isNaN(n) || n < 1) return;
-        const currentQty = safeCartQtys[p.id]?.qty || 0;
-        ctxSetQty(p.id, p, currentQty + n);
-        setPendingQtys(prev => {
-            const next = { ...prev };
-            delete next[p.id];
-            return next;
-        });
-        showToast(`${p.name} sepete eklendi (${n} adet)`);
-    };
-
-    const getPending = (id) => pendingQtys[id] ?? '';
-    const setPending = (id, val) => {
-        const raw = String(val);
-        if (raw === '' || /^\d+$/.test(raw)) {
-            setPendingQtys(prev => ({ ...prev, [id]: raw }));
-        }
-    };
-    const safeCartQtys = cartQtys || {};
-    const totalCartItems = Object.values(safeCartQtys).reduce((a, b) => a + (b.qty || 0), 0);
-
-    useEffect(() => {
-        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
-            setProducts([]);
-            setHasSearched(false);
-        }
-        setCurrentPage(1);
-    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkNew, checkCampaign]);
-
-    const clearFilters = () => {
-        setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText('');
-        setCheckIn(false); setCheckLow(false); setCheckNew(false); setCheckCampaign(false);
-        setProducts([]);
-        setHasSearched(false);
-        setCurrentPage(1);
+        ctxSetQty(p.id, p, (cartQtys[p.id]?.qty || 0) + n);
+        setPendingQtys(prev => { const next = { ...prev }; delete next[p.id]; return next; });
+        showToast(`${p.name} eklendi.`);
     };
 
     return (
-        <div className="page-wrapper">
-            <div style={{ 
-                background: 'linear-gradient(90deg, rgba(30, 64, 175, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)', 
-                border: '1px solid rgba(37, 99, 235, 0.2)',
-                color: 'var(--primary)', 
-                padding: '14px 20px', 
-                borderRadius: '16px', 
-                marginBottom: '24px', 
-                textAlign: 'center', 
-                fontWeight: '800', 
-                fontSize: '15px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                letterSpacing: '0.5px'
-            }}>
-                <span style={{ fontSize: '20px' }}>📦</span>
-                <span>SAAT 16:00’A KADAR VERİLEN SİPARİŞLER AYNI GÜN KARGO’DA</span>
-                <span style={{ fontSize: '20px' }}>🚚</span>
-            </div>
+        <div className="page-wrapper catalog-page">
+            <div className="shipping-banner">📦 SAAT 16:00’A KADAR VERİLEN SİPARİŞLER AYNI GÜN KARGO’DA 🚚</div>
+            <div className="stock-warning">🚨 ÖDEME ÖNCESİ STOK TEYİTİ İÇİN İLETİŞİME GEÇEBİLİRSİNİZ 🚨</div>
 
             <div className="page-header">
-                <div>
-                    <h1 className="page-title">Ürün Arama</h1>
-                    <p className="page-subtitle">{hasSearched ? `${filtered.length} ürün bulundu` : 'Ürün aramak için filtreleri kullanın'} • %{discountPercent} iskonto</p>
-                </div>
-                <a href="/dashboard/cart" className="btn btn-primary" id="go-cart" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <ShoppingCartIcon style={{ width: 18, height: 18 }} /> Sepet {totalCartItems > 0 && <span style={{ background: 'rgba(255,255,255,0.3)', borderRadius: 999, padding: '1px 8px', fontSize: 12 }}>{totalCartItems}</span>}
+                <div><h1 className="page-title">Ürün Arama</h1><p className="page-subtitle">{hasSearched ? `${filtered.length} ürün bulundu` : 'Ürün aramak için filtreleri kullanın'} • %{discountPercent} iskonto</p></div>
+                <a href="/dashboard/cart" className="btn btn-primary cart-link">
+                    <ShoppingCartIcon style={{ width: 18 }} /> Sepet {Object.values(cartQtys || {}).reduce((a, b) => a + (b.qty || 0), 0) > 0 && <span className="badge-qty">{Object.values(cartQtys || {}).reduce((a, b) => a + (b.qty || 0), 0)}</span>}
                 </a>
             </div>
 
-            <div className="card" style={{ marginBottom: 20, padding: 0, overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0, borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ borderRight: '1px solid var(--border)' }}>
+            <div className="card filter-card">
+                <div className="filter-grid">
+                    <div className="filter-inputs">
                         {[
                             { label: 'Marka', value: filterBrand, set: setFilterBrand, opts: brands },
                             { label: 'Araç Marka', value: filterCarBrand, set: setFilterCarBrand, opts: carBrands },
                             { label: 'Araç Model', value: filterCarModel, set: setFilterCarModel, opts: carModels },
                         ].map(({ label, value, set, opts }) => (
-                            <div key={label} style={{ display: 'grid', gridTemplateColumns: '130px 1fr', borderBottom: '1px solid var(--border)' }}>
-                                <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>{label}</div>
-                                <div style={{ padding: '6px 12px', display: 'flex', alignItems: 'center', background: '#fff' }}>
-                                    <select
-                                        className="form-select"
-                                        style={{ border: 'none', background: 'transparent', fontSize: 13, flex: 1, color: '#000' }}
-                                        value={value}
-                                        onChange={e => set(e.target.value)}
-                                    >
-                                        <option value="" style={{ color: '#000', background: '#fff' }}>HEPSİ</option>
-                                        {opts.map(o => <option key={o} value={o} style={{ color: '#000', background: '#fff' }}>{o}</option>)}
-                                    </select>
-                                </div>
+                            <div key={label} className="filter-row">
+                                <div className="filter-label">{label}</div>
+                                <div className="filter-control"><select value={value} onChange={e => set(e.target.value)}><option value="">HEPSİ</option>{opts.map(o => <option key={o} value={o}>{o}</option>)}</select></div>
                             </div>
                         ))}
-                        <div style={{ display: 'grid', gridTemplateColumns: '130px 1fr' }}>
-                            <div style={{ background: 'var(--primary)', color: '#fff', padding: '10px 16px', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center' }}>Genel Arama</div>
-                            <div style={{ background: '#fef08a', padding: '4px 8px', display: 'flex', alignItems: 'center' }}>
-                                <input
-                                    style={{ border: 'none', background: 'transparent', width: '100%', fontSize: 13, outline: 'none', color: '#000' }}
-                                    placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın (Enter'a basmayı unutmayın)"
-                                    value={filterText}
-                                    onChange={e => setFilterText(e.target.value.toLocaleUpperCase('tr-TR'))}
-                                    onKeyDown={searchProducts}
-                                    id="catalog-search"
-                                />
-                            </div>
+                        <div className="filter-row search-row">
+                            <div className="filter-label">Genel Arama</div>
+                            <div className="filter-control search-input"><input placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın (Enter'a basmayı unutmayın)" value={filterText} onChange={e => setFilterText(e.target.value.toUpperCase())} onKeyDown={searchProducts} /></div>
                         </div>
                     </div>
-                    <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div className="filter-checks">
                         {[
                             { label: 'Kampanya', val: checkCampaign, set: setCheckCampaign },
                             { label: 'Stokta Olanlar', val: checkIn, set: setCheckIn },
                             { label: 'Az Var', val: checkLow, set: setCheckLow },
                             { label: 'Yeni Ürün', val: checkNew, set: setCheckNew },
                         ].map(({ label, val, set }) => (
-                            <label key={label} style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
-                                <input type="checkbox" checked={val} onChange={e => set(e.target.checked)} style={{ width: 16, height: 16 }} />
-                                {label}
-                            </label>
+                            <label key={label} className="check-item"><input type="checkbox" checked={val} onChange={e => set(e.target.checked)} /> {label}</label>
                         ))}
                     </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', background: 'var(--bg-secondary)' }}>
-                    <button className="btn btn-primary" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={() => searchProducts()} id="search-btn">Ara</button>
-                    <button className="btn btn-danger" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px' }} onClick={clearFilters} id="clear-btn">Temizle</button>
-                    <button className="btn btn-ghost" style={{ borderRadius: 0, justifyContent: 'center', padding: '12px', background: '#1e293b', color: '#fff' }} onClick={() => { setViewMode(prev => prev === 'catalog' ? 'list' : 'catalog'); setCurrentPage(1); }} id="catalog-btn">{viewMode === 'catalog' ? '🖼️ Liste' : '📊 Katalog'}</button>
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center' }}>
-                        <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#16a34a' }} />
-                    </div>
+                <div className="filter-actions">
+                    <button className="btn btn-primary" onClick={() => searchProducts()}>Ara</button>
+                    <button className="btn btn-danger" onClick={() => { setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText(''); setProducts([]); setHasSearched(false); setCheckIn(false); setCheckLow(false); setCheckNew(false); setCheckCampaign(false); }}>Temizle</button>
+                    <button className="btn btn-ghost dark-btn" onClick={() => setViewMode(v => v === 'catalog' ? 'list' : 'catalog')}>{viewMode === 'catalog' ? '🖼️ Liste' : '📊 Katalog'}</button>
+                    <div className="status-indicator"><div className="status-dot" /></div>
                 </div>
             </div>
 
             {loading || pageImagesLoading ? (
-                <div className="card" style={{ padding: '40px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
-                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>
-                        {pageImagesLoading ? 'Katalog Görselleri Yükleniyor...' : 'Yükleniyor...'}
-                    </div>
-                </div>
-            ) : !hasSearched ? (
                 <div className="card" style={{ padding: '60px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--bg-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, color: 'var(--text-muted)' }}>
-                        <MagnifyingGlassIcon style={{ width: 32, height: 32 }} />
-                    </div>
-                    <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
-                        Katalogda Arama Yapın
-                    </div>
-                    <div style={{ color: 'var(--text-muted)', fontSize: 14, maxWidth: 400, textAlign: 'center' }}>
-                        Lütfen ilgili filtreleme seçeneklerini doldurup veya genel arama kısmına yazıp "Ara" düğmesine basın.
-                    </div>
+                    <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
+                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>{pageImagesLoading ? 'Ürün Görselleri Hazırlanıyor...' : 'Yükleniyor...'}</div>
                 </div>
             ) : filtered.length === 0 ? (
-                <div className="card"><div className="empty-state"><div className="empty-state-icon"><CubeIcon style={{ width: 32, height: 32 }} /></div><div className="empty-state-title">Ürün bulunamadı</div></div></div>
+                <div className="card empty-card">{hasSearched ? 'Ürün bulunamadı' : 'Arama yapmak için kriterleri girin'}</div>
             ) : viewMode === 'list' ? (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16 }}>
-                    {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
+                <div className="list-view-grid">
+                    {perPageItems.map(p => {
                         const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                         return (
-                            <div key={p.id} style={{
-                                background: p.is_campaign ? '#fef08a' : 'var(--bg-card)',
-                                border: p.is_campaign ? '1px solid #eab308' : '1px solid var(--border)',
-                                color: p.is_campaign ? '#000' : 'inherit',
-                                borderRadius: 12,
-                                overflow: 'hidden', display: 'flex', flexDirection: 'column',
-                                transition: 'box-shadow 0.2s, transform 0.2s', cursor: 'default',
-                                position: 'relative'
-                            }}
-                                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.15)'; e.currentTarget.style.transform = 'translateY(-2px)'; handleRowMouseEnter(e, p); }}
-                                onMouseMove={e => handleRowMouseMove(e, p)}
-                                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.transform = 'none'; handleRowMouseLeave(); }}
-                            >
-                                        <div style={{ width: '100%', aspectRatio: '1/1', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid var(--border)', overflow: 'hidden', cursor: 'zoom-in' }}
-                                            onClick={() => p.image_url && setSelectedImage({ url: p.image_url, name: p.name })}
-                                        >
-                                            {p.image_url ? (
-                                                <img src={p.image_url} alt={p.name || 'Ürün'} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 8 }} />
-                                            ) : (
-                                                <CubeIcon style={{ width: 48, height: 48, color: '#ccc' }} />
-                                            )}
+                            <div key={p.id} className={`product-card ${p.is_campaign ? 'campaign' : ''}`}>
+                                <div className="p-img" onClick={() => p.image_url && setSelectedImage({ url: p.image_url, name: p.name })}>{p.image_url ? <img src={p.image_url} loading="lazy" /> : <CubeIcon className="w-12 h-12 text-gray-300" />}</div>
+                                <div className="p-details">
+                                    <div className="p-code" style={{ color: '#2563eb' }}>{p.code}</div>
+                                    <div className="p-name" style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</div>
+                                    <div className="p-brand-row"><span className="p-brand" style={{ color: p.is_campaign ? '#000' : 'inherit' }}><strong>Marka:</strong> {p.brand}</span><span style={{ color: p.is_campaign ? '#000' : 'inherit' }}><strong>Birim:</strong> {p.unit || 'AD'}</span></div>
+                                    <div className="p-price" style={{ color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                    <div className="p-kdv">KDV Dahil</div>
+                                    <div className="p-stock"><div style={getCircleStyle(p.stock_merkez, 10)} /> İst. <div style={getCircleStyle(p.stock_depo, 10)} /> Depo</div>
+                                    <div className="p-action">
+                                        <div className="p-qty">
+                                            <button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>-</button>
+                                            <input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} />
+                                            <button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button>
                                         </div>
-                                <div style={{ padding: '8px 10px 0', fontSize: 11, fontFamily: 'monospace', color: 'var(--primary)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {p.code || '-'}
-                                </div>
-                                <div style={{ padding: '4px 10px 0', fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', minHeight: 34, lineHeight: '17px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                    {p.name}
-                                </div>
-                                <div style={{ padding: '4px 10px 0', display: 'flex', justifyContent: 'space-between', fontSize: 11, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>
-                                    <span style={{ fontWeight: 600, color: p.is_campaign ? '#b91c1c' : 'var(--danger)' }}>{p.brand || '-'}</span>
-                                    <span style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.unit || 'AD'}</span>
-                                </div>
-                                <div
-                                    style={{ padding: '6px 10px 0', fontSize: 16, fontWeight: 800, color: p.is_campaign ? '#1e40af' : 'var(--primary)', fontFamily: 'monospace', cursor: 'grab' }}
-                                    onMouseEnter={(e) => {
-                                        const rect = e.currentTarget.getBoundingClientRect();
-                                        setHoveredPriceTooltip({ product: p, x: rect.left, y: rect.top });
-                                    }}
-                                    onMouseLeave={() => setHoveredPriceTooltip(null)}
-                                >
-                                    ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                </div>
-                                <div style={{ padding: '0 10px', fontSize: 10, color: p.is_campaign ? 'rgba(0,0,0,0.6)' : 'var(--text-muted)' }}>KDV Dahil</div>
-                                <div style={{ padding: '6px 10px 0', display: 'flex', gap: 8, fontSize: 11, color: p.is_campaign ? '#000' : 'inherit' }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-                                        <div style={getCircleStyle(p.stock_merkez || 0, 12)} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
-                                        İst.
-                                    </span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
-                                        <div style={getCircleStyle(p.stock_depo || 0, 12)} title={p.stock_depo > 15 ? 'Stokta' : p.stock_depo > 0 ? 'Az Kaldı' : 'Stok Yok'} />
-                                        Depo
-                                    </span>
-                                </div>
-                                <div style={{ padding: '8px 10px 10px', marginTop: 'auto', display: 'flex', gap: 6, alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 36 }}>
-                                        <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
-                                            onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '1', 10); setPending(p.id, Math.max(1, (isNaN(cur) ? 1 : cur) - 1)); }}
-                                        >−</button>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            value={getPending(p.id)}
-                                            onChange={e => setPending(p.id, e.target.value)}
-                                            onClick={(e) => e.stopPropagation()}
-                                            placeholder="Ad."
-                                            style={{ width: 45, textAlign: 'center', fontSize: 14, fontWeight: 800, border: 'none', background: 'transparent', outline: 'none', color: '#000' }}
-                                        />
-                                        <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
-                                            onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '0', 10); setPending(p.id, (isNaN(cur) ? 1 : cur) + 1); }}
-                                            disabled={isOutOfStock}
-                                        >+</button>
+                                        <button className="btn btn-primary add-btn" onClick={() => handleAddToCart(p)}>🛒</button>
                                     </div>
-                                    {(() => {
-                                        const pVal = getPending(p.id);
-                                        const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
-                                        return (
-                                            <button
-                                                className="btn btn-primary btn-sm"
-                                                onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
-                                                disabled={isOutOfStock || isPendingEmpty}
-                                                style={{
-                                                    flex: 1,
-                                                    opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
-                                                    fontSize: 12,
-                                                    padding: '6px 0',
-                                                    cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
-                                                    filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
-                                                    transition: 'all 0.2s'
-                                                }}
-                                            >
-                                                {isOutOfStock ? 'Stok Yok' : '🛒 Ekle'}
-                                            </button>
-                                        );
-                                    })()}
                                 </div>
                             </div>
                         );
@@ -570,145 +229,29 @@ export default function DealerCatalog() {
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Marka</th>
-                                <th>Stok Kodu</th>
-                                <th>OEM No</th>
-                                <th>Ürün Adı</th>
-                                <th style={{ width: 40, textAlign: 'center' }} title="Ürün Resmi"><PhotoIcon style={{ width: 18, height: 18 }} /></th>
-                                <th>Birim</th>
-                                <th style={{ textAlign: 'center' }}>Bayi İsk.</th>
-                                <th style={{ textAlign: 'center' }}>Kampanya</th>
-                                <th style={{ textAlign: 'right' }}>Fiyat (KDV Dahil)</th>
-                                <th style={{ textAlign: 'center' }}>İstanbul</th>
-                                <th style={{ textAlign: 'center' }}>Depo</th>
-                                <th style={{ textAlign: 'center' }}>Koli Ad.</th>
-                                <th style={{ width: 80 }}>Sip.Mik.</th>
-                                <th>Sepete At</th>
-                            </tr>
-                        </thead>
+                        <thead><tr><th>MARKA</th><th>STOK KODU</th><th>OEM NO</th><th>ÜRÜN ADI</th><th style={{ textAlign: 'center' }}><PhotoIcon className="w-5" /></th><th>BİRİM</th><th>BAYİ İSK.</th><th>KAMPANYA</th><th style={{ textAlign: 'right' }}>FİYAT (KDV DAHİL)</th><th style={{ textAlign: 'center' }}>İSTANBUL</th><th style={{ textAlign: 'center' }}>DEPO</th><th>KOLİ AD.</th><th>SİP.MİK.</th><th>SEPETE AT</th></tr></thead>
                         <tbody>
-                            {filtered.slice((currentPage - 1) * perPage, currentPage * perPage).map(p => {
+                            {perPageItems.map(p => {
                                 const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
                                 return (
-                                    <tr key={p.id}
-                                        onMouseEnter={(e) => handleRowMouseEnter(e, p)}
-                                        onMouseMove={(e) => handleRowMouseMove(e, p)}
-                                        onMouseLeave={handleRowMouseLeave}
-                                        style={{ background: p.is_campaign ? '#fef08a' : 'transparent', color: p.is_campaign ? '#000' : 'inherit' }}
-                                    >
-                                        <td style={{ fontWeight: 600, fontSize: 13, color: p.is_campaign ? '#000' : 'inherit' }}>{p.brand || '-'}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: p.is_campaign ? '#1e40af' : 'var(--primary)', fontWeight: p.is_campaign ? 700 : 400 }}>{p.code}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 12, color: p.is_campaign ? 'rgba(0,0,0,0.7)' : 'var(--text-muted)' }}>{p.oem_no || '-'}</td>
-                                        <td style={{ fontWeight: 600, maxWidth: 220, color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            {p.image_url ? (
-                                                <div
-                                                    style={{ cursor: 'zoom-in', color: 'var(--primary)', display: 'flex', justifyContent: 'center' }}
-                                                    onMouseEnter={(e) => {
-                                                        const rect = e.currentTarget.getBoundingClientRect();
-                                                        setHoveredImage({ url: p.image_url, x: rect.left, y: rect.top });
-                                                    }}
-                                                    onMouseLeave={() => setHoveredImage(null)}
-                                                    onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}
-                                                >
-                                                    <PhotoIcon style={{ width: 20, height: 20 }} />
-                                                </div>
-                                            ) : '-'}
-                                        </td>
-                                        <td style={{ fontSize: 12, color: p.is_campaign ? '#000' : 'var(--text-muted)' }}>{p.unit || 'AD'}</td>
-                                        <td style={{ textAlign: 'center', fontWeight: 800, color: 'var(--primary)' }}>
-                                            {discountPercent > 0 ? `%${discountPercent}` : '-'}
-                                        </td>
-                                        <td style={{ textAlign: 'center', fontWeight: 800, color: '#b91c1c' }}>
-                                            {Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}
-                                        </td>
-                                        <td style={{ textAlign: 'right', fontFamily: 'monospace' }}>
-                                            <div
-                                                style={{ position: 'relative', display: 'inline-block', cursor: 'grab', color: 'var(--primary)', fontWeight: 700 }}
-                                                onMouseEnter={(e) => {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    setHoveredPriceTooltip({ product: p, x: rect.left, y: rect.top });
-                                                }}
-                                                onMouseLeave={() => setHoveredPriceTooltip(null)}
-                                            >
-                                                ₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                            </div>
-                                        </td>
-                                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                                            <div style={getCircleStyle(p.stock_merkez || 0, 16)} title={p.stock_merkez > 15 ? 'Stokta' : p.stock_merkez > 0 ? 'Az Kaldı' : 'Stok Yok'} />
-                                        </td>
-                                        <td style={{ textAlign: 'center', verticalAlign: 'middle' }}>
-                                            <div style={getCircleStyle(p.stock_depo || 0, 16)} title={p.stock_depo > 15 ? 'Stokta' : p.stock_depo > 0 ? 'Az Kaldı' : 'Stok Yok'} />
-                                        </td>
-                                        <td style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: p.is_campaign ? '#000' : 'inherit' }}>{p.box_quantity || 1}</td>
-                                        <td>
-                                            <div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 36 }}>
-                                                <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
-                                                    onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '1', 10); setPending(p.id, Math.max(1, (isNaN(cur) ? 1 : cur) - 1)); }}
-                                                >−</button>
-                                                <input
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    value={getPending(p.id)}
-                                                    onChange={e => setPending(p.id, e.target.value)}
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    placeholder="Ad."
-                                                    style={{ width: 45, textAlign: 'center', fontSize: 14, fontWeight: 800, border: 'none', background: 'transparent', outline: 'none', color: '#000' }}
-                                                />
-                                                <button className="btn btn-ghost btn-sm" style={{ padding: '0 10px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 18, color: '#000', fontWeight: 800 }}
-                                                    onClick={(e) => { e.stopPropagation(); const cur = parseInt(getPending(p.id) || '0', 10); setPending(p.id, (isNaN(cur) ? 1 : cur) + 1); }}
-                                                    disabled={isOutOfStock}
-                                                >+</button>
-                                            </div>
-                                        </td>
-                                        <td style={{ width: 100 }}>
+                                    <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>
+                                        <td data-label="Marka">{p.brand}</td>
+                                        <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{p.code}</td>
+                                        <td data-label="OEM No" style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.oem_no || '-'}</td>
+                                        <td data-label="Ürün Adı" className="font-bold">{p.name}</td>
+                                        <td data-label="Resim" className="text-center">{p.image_url ? (<div style={{ cursor: 'zoom-in', display: 'flex', justifyContent: 'center' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredImage({ url: p.image_url, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredImage(null)} onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}><PhotoIcon style={{ width: 20, color: p.is_campaign ? '#1e40af' : '#2563eb' }} /></div>) : '-'}</td>
+                                        <td data-label="Birim">{p.unit || 'AD'}</td>
+                                        <td data-label="Bayi İsk." className="text-center" style={{ fontWeight: 800, color: '#2563eb' }}>%{discountPercent}</td>
+                                        <td data-label="Kampanya" className="text-center" style={{ fontWeight: 800, color: '#dc2626' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
+                                        <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                        <td data-label="İstanbul"><div style={getCircleStyle(p.stock_merkez, 14)} /></td>
+                                        <td data-label="Depo"><div style={getCircleStyle(p.stock_depo, 14)} /></td>
+                                        <td data-label="Koli Ad." className="text-center">{p.box_quantity || 1}</td>
+                                        <td data-label="Sip.Mik."><div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 32 }}><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>−</button><input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} style={{ width: 35, textAlign: 'center', border: 'none', fontWeight: 800, fontSize: 13, background: 'transparent', outline: 'none', color: '#000' }} /><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button></div></td>
+                                        <td data-label="Sepete At">
                                             <div style={{ display: 'flex', gap: 4 }}>
-                                                {(() => {
-                                                    const pVal = getPending(p.id);
-                                                    const isPendingEmpty = !pVal || pVal === '0' || pVal.trim() === '';
-                                                    return (
-                                                        <button
-                                                            className="btn btn-primary btn-sm"
-                                                            onClick={(e) => { e.stopPropagation(); handleAddToCart(p); }}
-                                                            disabled={isOutOfStock || isPendingEmpty}
-                                                            style={{
-                                                                opacity: (isOutOfStock || isPendingEmpty) ? 0.35 : 1,
-                                                                whiteSpace: 'nowrap',
-                                                                cursor: (isOutOfStock || isPendingEmpty) ? 'not-allowed' : 'pointer',
-                                                                filter: (isOutOfStock || isPendingEmpty) ? 'grayscale(0.5)' : 'none',
-                                                                transition: 'all 0.2s',
-                                                                flex: 1
-                                                            }}
-                                                        >
-                                                            {isOutOfStock ? 'Yok' : '🛒 Ekle'}
-                                                        </button>
-                                                    );
-                                                })()}
-                                                <a 
-                                                    href={`/dashboard/orders?tab=items&search=${p.code}`}
-                                                    className="btn btn-sm"
-                                                    title="Ürün Geçmişi"
-                                                    style={{ 
-                                                        padding: '6px 12px', 
-                                                        background: '#475569', 
-                                                        color: '#fff', 
-                                                        fontSize: 11, 
-                                                        fontWeight: 700, 
-                                                        borderRadius: 8,
-                                                        border: 'none',
-                                                        textDecoration: 'none',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                    onMouseEnter={(e) => e.currentTarget.style.background = '#334155'}
-                                                    onMouseLeave={(e) => e.currentTarget.style.background = '#475569'}
-                                                >
-                                                    Geçmiş
-                                                </a>
+                                                <button className="btn btn-primary btn-sm" onClick={() => handleAddToCart(p)} disabled={isOutOfStock} style={{ whiteSpace: 'nowrap', minWidth: '80px', justifyContent: 'center' }}>{isOutOfStock ? 'Yok' : '🛒 Ekle'}</button>
+                                                <a href={`/dashboard/orders?tab=items&search=${p.code}`} className="btn btn-ghost btn-sm" style={{ background: '#475569', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>Geçmiş</a>
                                             </div>
                                         </td>
                                     </tr>
@@ -719,184 +262,102 @@ export default function DealerCatalog() {
                 </div>
             )}
 
-            {!loading && hasSearched && filtered.length > perPage && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
-                    <button
-                        className="btn btn-ghost"
-                        disabled={currentPage === 1}
-                        onClick={() => { setCurrentPage(prev => Math.max(1, prev - 1)); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        style={{ border: '1px solid var(--border)', background: currentPage === 1 ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === 1 ? 0.5 : 1, cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
-                    >
-                        Önceki
-                    </button>
-                    <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
-                        Sayfa {currentPage} / {Math.ceil(filtered.length / perPage)}
-                    </span>
-                    <button
-                        className="btn btn-ghost"
-                        disabled={currentPage === Math.ceil(filtered.length / perPage)}
-                        onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / perPage) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / perPage) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / perPage) ? 'not-allowed' : 'pointer' }}
-                    >
-                        Sonraki
-                    </button>
+            {filtered.length > perPage && (
+                <div className="pagination">
+                    <button className="btn btn-ghost" disabled={currentPage === 1} onClick={() => { setCurrentPage(prev => prev - 1); window.scrollTo({ top: 0 }); }}>Önceki</button>
+                    <span>Sayfa {currentPage} / {Math.ceil(filtered.length / perPage)}</span>
+                    <button className="btn btn-ghost" disabled={currentPage === Math.ceil(filtered.length / perPage)} onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0 }); }}>Sonraki</button>
                 </div>
             )}
 
+            {toast && <div className="toast toast-success">{toast}</div>}
+
+            {/* Hover Previews */}
             {hoveredImage && (
-                <div style={{
-                    position: 'fixed',
-                    left: Math.max(20, hoveredImage.x - 320),
-                    top: Math.max(20, hoveredImage.y - 150),
-                    width: 300,
-                    background: '#fff',
-                    border: '1px solid #ddd',
-                    boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-                    borderRadius: '12px',
-                    zIndex: 999999,
-                    overflow: 'hidden',
-                    pointerEvents: 'none'
-                }}>
-                    <div style={{ background: '#f8fafc', padding: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #eee' }}>
-                        <img src="/omi-logo-sidebar.png" alt="Omi Group" style={{ height: 24, objectFit: 'contain' }} />
-                    </div>
-                    <div style={{ padding: '12px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px' }}>
-                        <img
-                            src={hoveredImage.url}
-                            alt="Ürün"
-                            style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }}
-                            onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/300x200?text=G%C3%B6rsel+Bulunamad%C4%B1';
-                                e.target.style.opacity = '0.5';
-                            }}
-                        />
-                    </div>
-                </div>
+                <div style={{ position: 'fixed', left: Math.max(20, hoveredImage.x - 320), top: Math.max(20, hoveredImage.y - 150), width: 300, background: '#fff', border: '1px solid #ddd', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', borderRadius: '12px', zIndex: 999999, overflow: 'hidden', pointerEvents: 'none' }}><div style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={hoveredImage.url} style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} /></div></div>
             )}
 
             {hoveredPriceTooltip && (
-                <div style={{
-                    position: 'fixed',
-                    left: Math.max(20, hoveredPriceTooltip.x - 260),
-                    top: Math.max(20, hoveredPriceTooltip.y - 120),
-                    zIndex: 999999,
-                    pointerEvents: 'none',
-                    animation: 'fadeIn 0.2s ease forwards'
-                }}>
-                    <div style={{ textAlign: 'left', minWidth: 260, padding: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '12px', boxShadow: 'var(--shadow-xl)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Liste Fiyatı:</span>
-                            <span style={{ fontSize: 12 }}>
-                                {Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency || 'TRY'}
-                                {hoveredPriceTooltip.product.currency && hoveredPriceTooltip.product.currency !== 'TRY' && (
-                                    <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: 10, textAlign: 'right' }}>
-                                        (₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })})
-                                    </span>
-                                )}
-                            </span>
+                <div style={{ position: 'fixed', left: Math.max(20, hoveredPriceTooltip.x - 280), top: Math.max(20, hoveredPriceTooltip.y - 140), zIndex: 999999, pointerEvents: 'none' }}>
+                    <div style={{ textAlign: 'left', minWidth: 280, padding: '16px', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>Liste Fiyatı:</span><div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency}</div>{hoveredPriceTooltip.product.currency !== 'TRY' && (<div style={{ fontSize: 11, color: '#94a3b8' }}>(₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</div>)}</div></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
+                            <span style={{ fontSize: 13, color: '#94a3b8' }}>Ürün İskontosu (%{hoveredPriceTooltip.product.discount_rate}):</span>
+                            <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        {Number(hoveredPriceTooltip.product.discount_rate) > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Ürün İskontosu ({hoveredPriceTooltip.product.discount_rate}%):</span>
-                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
-                                    -₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                        )}
-                        {discountPercent > 0 && (
-                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-light)', paddingBottom: 6, marginBottom: 8 }}>
-                                <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>Grup İskontosu ({discountPercent}%):</span>
-                                <span style={{ fontSize: 12, color: 'var(--danger)' }}>
-                                    -₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
-                                </span>
-                            </div>
-                        )}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>İskontolu Fiyat:</span>
-                            <span style={{ fontWeight: 600, fontSize: 13 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
+                            <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{discountPercent}):</span>
+                            <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid var(--primary)', paddingTop: 8, marginTop: 4 }}>
-                            <span style={{ color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}>KDV Dahil (%20):</span>
-                            <span style={{ fontWeight: 700, color: 'var(--primary)', fontSize: 14 }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
                     </div>
                 </div>
             )}
 
-            {toast && <div className="toast toast-success">✓ {toast}</div>}
-
-            {/* Full Screen Image Modal */}
             {selectedImage && (
-                <div 
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        zIndex: 1000000,
-                        backdropFilter: 'blur(8px)',
-                        cursor: 'zoom-out'
-                    }}
-                    onClick={() => setSelectedImage(null)}
-                >
-                    <button 
-                        style={{
-                            position: 'absolute',
-                            top: 24,
-                            right: 24,
-                            background: 'rgba(255,255,255,0.1)',
-                            border: 'none',
-                            color: '#fff',
-                            width: 48,
-                            height: 48,
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            cursor: 'pointer',
-                            fontSize: 24,
-                            zIndex: 1000001
-                        }}
-                        onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
-                    >
-                        <XMarkIcon style={{ width: 24, height: 24 }} />
-                    </button>
-                    
-                    <div style={{ position: 'relative', width: '95vw', height: '95vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img 
-                            src={selectedImage.url} 
-                            alt={selectedImage.name} 
-                            style={{ 
-                                maxWidth: '100%', 
-                                maxHeight: '100%', 
-                                objectFit: 'contain', 
-                                borderRadius: 4, 
-                                boxShadow: '0 0 50px rgba(0,0,0,0.5)' 
-                            }} 
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                        <div style={{ 
-                            position: 'absolute', 
-                            bottom: 20, 
-                            left: '50%', 
-                            transform: 'translateX(-50%)',
-                            background: 'rgba(0,0,0,0.6)',
-                            padding: '8px 24px',
-                            borderRadius: 20,
-                            color: '#fff', 
-                            fontSize: 14, 
-                            fontWeight: 600,
-                            backdropFilter: 'blur(4px)',
-                            whiteSpace: 'nowrap',
-                            pointerEvents: 'none'
-                        }}>
-                            {selectedImage.name}
-                        </div>
-                    </div>
-                </div>
+                <div className="img-modal-overlay" onClick={() => setSelectedImage(null)}><div className="img-modal-content" onClick={e => e.stopPropagation()}><button className="img-modal-close" onClick={() => setSelectedImage(null)}>✕</button><img src={selectedImage.url} alt={selectedImage.name} /><div className="img-modal-caption">{selectedImage.name}</div></div></div>
             )}
+
+            <style jsx>{`
+                .shipping-banner { background: linear-gradient(90deg, rgba(30,64,175,0.1), rgba(37,99,235,0.1)); border: 1px solid rgba(37,99,235,0.2); color: var(--primary); padding: 12px; border-radius: 12px; text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 8px; }
+                .stock-warning { background: linear-gradient(90deg, rgba(185,28,28,0.1), rgba(220,38,38,0.1)); border: 1px solid rgba(220,38,38,0.2); color: #b91c1c; padding: 12px; border-radius: 12px; text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 20px; }
+                .badge-qty { background: rgba(255,255,255,0.3); border-radius: 99px; padding: 1px 6px; font-size: 11px; }
+                .filter-grid { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--border); }
+                .filter-inputs { border-right: 1px solid var(--border); }
+                .filter-row { display: grid; grid-template-columns: 130px 1fr; border-bottom: 1px solid var(--border); }
+                .filter-label { background: var(--primary); color: #fff; padding: 10px 16px; font-weight: 700; font-size: 13px; display: flex; align-items: center; }
+                .filter-control { padding: 6px 12px; display: flex; background: #fff; }
+                .filter-control select, .filter-control input { border: none; background: transparent; width: 100%; outline: none; font-size: 13px; color: #000; }
+                .search-input { background: #fef08a !important; }
+                .filter-checks { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+                .check-item { display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 14px; font-weight: 500; }
+                .filter-actions { display: grid; grid-template-columns: 1fr 1fr 1fr auto; background: var(--bg-secondary); }
+                .filter-actions button { border-radius: 0; padding: 12px; font-weight: 700; }
+                .dark-btn { background: #1e293b !important; color: #fff !important; }
+                .status-dot { width: 16px; height: 16px; border-radius: 50%; background: #16a34a; }
+                
+                .campaign-row, .campaign-row td { background: #fef08a !important; color: #000; }
+                .campaign-row td:nth-child(2) { color: #1e40af !important; }
+
+                .list-view-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+                .product-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+                .product-card.campaign { background: #fef08a; border-color: #eab308; }
+                .p-img { width: 100%; aspect-ratio: 1/1; background: #fff; display: flex; align-items: center; justifyContent: center; border-bottom: 1px solid var(--border); overflow: hidden; cursor: zoom-in; }
+                .p-img img { width: 100%; height: 100%; object-fit: contain; padding: 8px; }
+                .p-details { padding: 10px; flex: 1; display: flex; flex-direction: column; }
+                .p-code { font-size: 11px; font-family: monospace; color: var(--primary); font-weight: 700; }
+                .p-name { font-size: 12px; font-weight: 700; min-height: 34px; margin: 4px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+                .p-brand-row { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+                .p-price { font-size: 16px; font-weight: 800; color: var(--primary); font-family: monospace; margin-top: 4px; }
+                .p-kdv { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+                .p-stock { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; }
+                .p-action { margin-top: auto; padding-top: 10px; display: flex; gap: 6px; }
+                .p-qty { display: flex; align-items: center; background: #fff; border: 2px solid #000; borderRadius: 8px; height: 32px; overflow: hidden; }
+                .p-qty button { border: none; background: none; padding: 0 8px; font-weight: 800; color: #000; }
+                .p-qty input { width: 35px; border: none; text-align: center; font-weight: 800; font-size: 12px; outline: none; }
+                .add-btn { flex: 1; height: 32px; padding: 0; }
+                .pagination { display: flex; justify-content: center; align-items: center; padding: 24px 0; gap: 16px; }
+
+                .img-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justifyContent: center; z-index: 1000000; backdrop-filter: blur(8px); cursor: zoom-out; }
+                .img-modal-content { position: relative; width: 90vw; height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+                .img-modal-content img { max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 0 50px rgba(0,0,0,0.5); borderRadius: 8px; }
+                .img-modal-close { position: absolute; top: 20px; right: 20px; color: #fff; background: none; border: none; font-size: 32px; cursor: pointer; z-index: 1000001; }
+                .img-modal-caption { margin-top: 20px; color: #fff; font-weight: 700; background: rgba(0,0,0,0.6); padding: 10px 24px; border-radius: 30px; font-size: 15px; }
+
+                @media (max-width: 768px) {
+                    .filter-grid { grid-template-columns: 1fr; }
+                    .filter-inputs { border-right: none; }
+                    .filter-row { grid-template-columns: 1fr; border-bottom: 1px solid var(--border); }
+                    .filter-label { padding: 6px 12px; font-size: 11px; }
+                    .filter-control { padding: 8px 12px; }
+                    .filter-checks { flex-direction: row; flex-wrap: wrap; gap: 12px; border-top: 1px solid var(--border); }
+                    .check-item { background: var(--bg-surface); padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 12px; }
+                    .filter-actions { grid-template-columns: 1fr 1fr; gap: 8px; background: transparent; padding: 12px; }
+                    .filter-actions button { border-radius: 12px !important; }
+                    .list-view-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+                }
+            `}</style>
         </div>
     );
 }

@@ -10,15 +10,15 @@ const supabase = createClient(
 
 export async function GET() {
     try {
-        const { data: rateData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE').single();
-        const { data: activeData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE_ACTIVE').single();
+        const { data: rateData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE').limit(1);
+        const { data: activeData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE_ACTIVE').limit(1);
 
-        let usd_rate = rateData ? rateData.discount_percent : 0;
-        let is_active = activeData ? activeData.discount_percent === 1 : false;
+        let usd_rate = (rateData && rateData.length > 0) ? rateData[0].discount_percent : 0;
+        let is_active = (activeData && activeData.length > 0) ? activeData[0].discount_percent === 1 : false;
 
         // Auto-heal if missing
-        if (!rateData) await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE', discount_percent: 0 });
-        if (!activeData) await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE_ACTIVE', discount_percent: 0 });
+        if (!rateData || rateData.length === 0) await supabase.from('price_groups').upsert({ name: 'USD_FIXED_RATE', discount_percent: 0 }, { onConflict: 'name' });
+        if (!activeData || activeData.length === 0) await supabase.from('price_groups').upsert({ name: 'USD_FIXED_RATE_ACTIVE', discount_percent: 0 }, { onConflict: 'name' });
 
         return NextResponse.json({ usd_rate, is_active });
     } catch (e) {

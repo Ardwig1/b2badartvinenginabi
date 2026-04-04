@@ -66,6 +66,17 @@ export async function GET() {
             discount = Number(profile.discount_rate) || 0;
         }
 
+        // 4. Fetch Extra Discounts (Only unused ones)
+        let extraDiscounts = [];
+        if (targetCompanyId) {
+            const { data } = await adminSupabase
+                .from('company_extra_discounts')
+                .select('product_id, discount_rate')
+                .eq('company_id', targetCompanyId)
+                .eq('is_used', false); // Only unused
+            extraDiscounts = data || [];
+        }
+
         return NextResponse.json({
             userId: user.id,
             email: user.email,
@@ -74,7 +85,8 @@ export async function GET() {
             companyName: companyData?.name || profile?.full_name || 'B2B Kullanıcısı',
             fullName: profile?.full_name || 'B2B Kullanıcısı',
             currentBalance: Number(companyData?.current_balance) || 0,
-            discountPercent: discount, // BU ARTIK GARANTİ BAYİDEN GELİYOR
+            discountPercent: discount,
+            extraDiscounts: extraDiscounts, // Added this field
             isImpersonating,
             isPrepaymentLocked: companyData?.is_prepayment_locked || false,
             riskLimit: Number(companyData?.risk_limit) || 0,

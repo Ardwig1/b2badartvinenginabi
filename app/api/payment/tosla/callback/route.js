@@ -88,8 +88,35 @@ async function handleCallback(req, isGet) {
             // Credit the company account natively 
             if (finalCid) {
                 try {
-                    const tlAmount = amount > 500 ? amount / 100 : amount;
-                    console.log('[Tosla CB] Crediting', tlAmount, 'TL to company', finalCid);
+                    // CRITICAL FIX: The previous logic (amount > 500 ? amount / 100 : amount) was wrong.
+                    // Tosla returns the same format we sent them.
+                    // Let's use the amount directly from Tosla first, but verify it against our init log.
+                    let tlAmount = amount;
+
+                    console.log('[Tosla CB] Raw amount from gateway:', amount);
+
+                    if (orderId) {
+                        const { data: initAct } = await supabase.from('user_activities')
+                            .select('details')
+                            .eq('action_type', 'payment_init')
+                            .contains('details', { orderId: orderId })
+                            .maybeSingle();
+                        
+                        if (initAct?.details?.amount) {
+                            // In init, we sent amountLong in kurus (e.g. 587100)
+                            const expectedTl = parseFloat(initAct.details.amount) / 100;
+                            
+                            // If the gateway sent back a huge number (like 587100), it's kurus.
+                            // If it sent back 5871, it's TL.
+                            if (tlAmount > expectedTl * 50) { // Safety margin
+                                tlAmount = tlAmount / 100;
+                            }
+                            
+                            console.log('[Tosla CB] Expected TL from init:', expectedTl, 'Verified TL:', tlAmount);
+                        }
+                    }
+
+                    console.log('[Tosla CB] Final Crediting', tlAmount, 'TL to company', finalCid);
 
                     // Fetch balance
                     const { data: comp } = await supabase.from('companies').select('current_balance').eq('id', finalCid).single();

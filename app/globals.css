@@ -869,6 +869,122 @@ tbody tr:last-child td {
   }
 }
 
+/* =============================================
+   MOBILE APP OPTIMIZATIONS (Drastic No-Scroll)
+   ============================================= */
+
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    width: 100vw !important;
+    position: relative;
+  }
+
+  /* Hide sidebar on mobile devices */
+  aside, [class*="sidebar"] {
+    display: none !important;
+  }
+
+  /* Make main content span full width */
+  main, .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    padding-bottom: 100px !important; /* Extra space for new tall bottom nav */
+    overflow-x: hidden !important;
+  }
+
+  /* Adjust page wrappers for mobile */
+  .page-wrapper {
+    padding: 12px 10px !important;
+    margin-left: 0 !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  /* Compact headers for mobile */
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 12px;
+    margin-bottom: 20px !important;
+  }
+
+  .page-header .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* RADICAL: TABLE TO CARD CONVERSION */
+  .table-wrapper {
+    border: none !important;
+    background: transparent !important;
+    overflow: visible !important;
+  }
+
+  table, thead, tbody, th, td, tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  /* Hide table headers on mobile */
+  thead tr {
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+  }
+
+  tr {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    margin-bottom: 16px !important;
+    padding: 12px !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+
+  td {
+    border: none !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    position: relative !important;
+    padding-left: 45% !important;
+    text-align: right !important;
+    min-height: 40px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+  }
+
+  td:last-child {
+    border-bottom: none !important;
+  }
+
+  /* Add labels before data */
+  td::before {
+    content: attr(data-label);
+    position: absolute !important;
+    left: 12px !important;
+    width: 40% !important;
+    text-align: left !important;
+    font-weight: 700 !important;
+    color: var(--text-muted) !important;
+    font-size: 12px !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Grid Layouts Fix */
+  .stats-grid, .content-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Specific Fixes for account and cart */
+  .card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
+}
+
 /* Low stock pulse animation */
 @keyframes pulse {
 

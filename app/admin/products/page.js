@@ -8,6 +8,7 @@ export default function AdminProducts() {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [isCampaignOnly, setIsCampaignOnly] = useState(false);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [currentPage, setCurrentPage] = useState(1);
     const ITEMS_PER_PAGE = 10;
@@ -60,16 +61,48 @@ export default function AdminProducts() {
 
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-    // Client-side filtering based on search term
-    const filtered = search.trim()
-        ? products.filter(p => {
-            const term = search.trim().toLowerCase();
-            return (p.name && p.name.toLowerCase().includes(term)) ||
-                (p.code && p.code.toLowerCase().includes(term)) ||
-                (p.oem_no && p.oem_no.toLowerCase().includes(term)) ||
-                (p.brand && p.brand.toLowerCase().includes(term));
-        })
-        : products;
+    // Client-side filtering and sorting (Smart Order-Independent Regex Search)
+    const filtered = (() => {
+        let list = products;
+
+        if (search.trim()) {
+            const searchTerm = search.trim().toUpperCase();
+            const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
+            
+            const createTrRegex = (text) => {
+                const pattern = text
+                    .replace(/[Iİ]/g, '[Iİ]')
+                    .replace(/[OÖ]/g, '[OÖ]')
+                    .replace(/[UÜ]/g, '[UÜ]')
+                    .replace(/[CÇ]/g, '[CÇ]')
+                    .replace(/[GĞ]/g, '[GĞ]')
+                    .replace(/[SŞ]/g, '[SŞ]');
+                return new RegExp(pattern, 'i');
+            };
+
+            const wordRegexes = searchWords.map(word => createTrRegex(word));
+
+            list = products.filter(p => {
+                return wordRegexes.every(regex => {
+                    return (
+                        (p.name && regex.test(p.name)) ||
+                        (p.code && regex.test(p.code)) ||
+                        (p.oem_no && regex.test(p.oem_no)) ||
+                        (p.brand && regex.test(p.brand))
+                    );
+                });
+            });
+        }
+
+        if (isCampaignOnly) {
+            // Sort campaign items to the top
+            return [...list].sort((a, b) => {
+                if (a.is_campaign === b.is_campaign) return 0;
+                return a.is_campaign ? -1 : 1;
+            });
+        }
+        return list;
+    })();
 
     const openNew = () => {
         setEditing(null);
@@ -287,19 +320,90 @@ export default function AdminProducts() {
 
             <GlobalMarginSettings onMarginUpdate={setGlobalMargin} />
 
-            <div style={{ marginBottom: 20 }}>
-                <div className="search-bar" style={{ display: 'flex', gap: 8 }}>
-                    <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
-                        <span className="search-icon" style={{ position: 'absolute', left: 16, display: 'flex' }}><MagnifyingGlassIcon style={{ width: 14, height: 14 }} /></span>
+            <div style={{ marginBottom: 24, width: '100%' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', width: '100%' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        background: 'rgba(255, 255, 255, 0.95)', 
+                        borderRadius: '12px',
+                        border: '2px solid var(--border)',
+                        flex: 1, 
+                        minWidth: '250px',
+                        height: 50,
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        transition: 'all 0.2s ease',
+                        overflow: 'hidden'
+                    }} onFocusCapture={e => e.currentTarget.style.borderColor = 'var(--primary)'} onBlurCapture={e => e.currentTarget.style.borderColor = 'var(--border)'}>
+                        <span style={{ paddingLeft: 18, display: 'flex', color: 'var(--primary)' }}>
+                            <MagnifyingGlassIcon style={{ width: 20, height: 20, strokeWidth: 2.5 }} />
+                        </span>
                         <input
-                            placeholder="Ürün adı, kod, oem, marka ile filtrele..."
+                            placeholder="Ürün adı, kod, oem, marka ile akıllı filtrele..."
                             value={search}
                             onChange={e => { setSearch(e.target.value); setCurrentPage(1); }}
-                            style={{ width: '100%', paddingLeft: 40, paddingRight: 16, height: 44, borderRadius: 8, border: '1px solid var(--border)', outline: 'none' }}
+                            style={{ 
+                                flex: 1,
+                                padding: '0 16px', 
+                                height: '100%', 
+                                border: 'none', 
+                                outline: 'none',
+                                background: 'transparent',
+                                color: '#0f172a', // Koyu Lacivert
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                width: '100%'
+                            }}
                             id="product-search"
                         />
                     </div>
-                    {search.trim() && <button className="btn btn-ghost" onClick={() => { setSearch(''); setCurrentPage(1); }}>Temizle</button>}
+                    
+                    <button 
+                        onClick={() => { setIsCampaignOnly(!isCampaignOnly); setCurrentPage(1); }}
+                        style={{ 
+                            height: 50, 
+                            padding: '0 24px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 10,
+                            background: isCampaignOnly ? '#f59e0b' : '#f1f5f9',
+                            color: isCampaignOnly ? '#ffffff' : '#475569',
+                            border: `2px solid ${isCampaignOnly ? '#d97706' : '#e2e8f0'}`,
+                            fontWeight: 800,
+                            fontSize: '14px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            whiteSpace: 'nowrap',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s',
+                            boxShadow: isCampaignOnly ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none'
+                        }}
+                    >
+                        {isCampaignOnly ? '⭐ KAMPANYALILAR' : '☆ KAMPANYALILAR'}
+                    </button>
+
+                    {search.trim() && (
+                        <button 
+                            className="btn" 
+                            onClick={() => { setSearch(''); setCurrentPage(1); }} 
+                            style={{ 
+                                height: 50, 
+                                borderRadius: '12px', 
+                                border: '2px solid #fee2e2', 
+                                background: '#fef2f2',
+                                color: '#b91c1c',
+                                fontWeight: 700,
+                                padding: '0 20px',
+                                fontSize: '14px',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#fee2e2'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#fef2f2'}
+                        >
+                            TEMİZLE
+                        </button>
+                    )}
                 </div>
             </div>
 

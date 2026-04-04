@@ -28,8 +28,13 @@ function fmtTime(date) {
     return new Date(date).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function fmtMoney(n) {
-    return '₺' + Number(n || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+function fmtMoney(n, showSign = false) {
+    const val = Number(n || 0);
+    const absVal = Math.abs(val).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+    if (!showSign) return '₺' + absVal;
+    if (val > 0) return '+₺' + absVal;
+    if (val < 0) return '-₺' + absVal;
+    return '₺' + absVal;
 }
 
 export default function DealerAccountLedger() {
@@ -38,17 +43,13 @@ export default function DealerAccountLedger() {
     const [expandedRow, setExpandedRow] = useState(null);
     const [orderDetails, setOrderDetails] = useState({});
     const [loadingDetails, setLoadingDetails] = useState({});
-    const [dbError, setDbError] = useState(false);
     const [selectedYear, setSelectedYear] = useState(currentYear < 2026 ? 2026 : currentYear);
     const [selectedMonth, setSelectedMonth] = useState(null);
     const [totals, setTotals] = useState({ debt: 0, credit: 0, balance: 0 });
-    const supabase = createClient();
 
     const fetchTransactions = useCallback(async () => {
         setLoading(true);
-        
         try {
-            // Fetch balance and other info from our smart user info API
             const infoRes = await fetch('/api/user/info');
             if (infoRes.ok) {
                 const infoData = await infoRes.json();
@@ -74,50 +75,29 @@ export default function DealerAccountLedger() {
                 setTotals(prev => ({ ...prev, debt: tDebt, credit: tCredit }));
             }
         } catch (err) {
-            console.error('Fetch transactions error:', err);
+            console.error('Fetch error:', err);
         } finally {
             setLoading(false);
         }
     }, [selectedYear, selectedMonth]);
 
     useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
-const handleExpand = async (tx) => {
-    if (expandedRow === tx.id) { setExpandedRow(null); return; }
-    setExpandedRow(tx.id);
 
-    // If it's an order and we haven't fetched details yet
-    if ((tx.transaction_type === 'TOPTAN SATIŞ') && !orderDetails[tx.id]) {
-        setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
-
-        // Prefer order_id if available, fallback to document_no
-        const searchId = tx.order_id || tx.document_no;
-
-        try {
-            const res = await fetch(`/api/user/orders/${searchId}/items`);
-            if (res.ok) {
-                const data = await res.json();
-                setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
-            }
-        } catch (e) {
-            console.error('Fetch order items error:', e);
-        } finally {
-            setLoadingDetails(prev => ({ ...prev, [tx.id]: false }));
+    const handleExpand = async (tx) => {
+        if (expandedRow === tx.id) { setExpandedRow(null); return; }
+        setExpandedRow(tx.id);
+        if ((tx.transaction_type === 'TOPTAN SATIŞ') && !orderDetails[tx.id]) {
+            setLoadingDetails(prev => ({ ...prev, [tx.id]: true }));
+            const searchId = tx.order_id || tx.document_no;
+            try {
+                const res = await fetch(`/api/user/orders/${searchId}/items`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setOrderDetails(prev => ({ ...prev, [tx.id]: data || [] }));
+                }
+            } catch (e) { console.error(e); } finally { setLoadingDetails(prev => ({ ...prev, [tx.id]: false })); }
         }
-    }
-};
-
-    if (dbError) {
-        return (
-            <div className="page-wrapper">
-                <div className="card" style={{ padding: 40, textAlign: 'center', marginTop: 40 }}>
-                    <h2 style={{ color: 'var(--danger)', marginBottom: 16 }}>⚠️ Sistem Kurulumu Eksik</h2>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                        Cari Hesap tabloları bulunamadı. Lütfen yöneticinizle iletişime geçin.
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    };
 
     return (
         <div className="page-wrapper">
@@ -127,10 +107,28 @@ const handleExpand = async (tx) => {
                     <p className="page-subtitle">Borç, alacak ve bakiye dökümleri</p>
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
-                    <button className="btn btn-ghost" onClick={() => window.print()} title="Yazdır/PDF Olarak Kaydet">
-                        <DocumentTextIcon style={{ width: 18, height: 18, marginRight: 6 }} /> Ekstre İndir
+                    <button className="btn btn-ghost" onClick={() => window.print()}>
+                        <DocumentTextIcon style={{ width: 18, height: 18, marginRight: 6 }} /> Ekstre
                     </button>
-                    <a href="/dashboard/payment" className="btn btn-primary">💳 Ödeme Yap</a>
+                    <a href="/dashboard/payment" className="btn btn-primary">💳 Ödeme</a>
+                </div>
+            </div>
+
+            {/* MOBILE ONLY TOTALS */}
+            <div className="mobile-totals-grid">
+                <div className="m-stat-card border-danger">
+                    <span className="m-label">TOPLAM BORÇ</span>
+                    <span className="m-value color-danger">{fmtMoney(totals.debt)}</span>
+                </div>
+                <div className="m-stat-card border-success">
+                    <span className="m-label">TOPLAM ALACAK</span>
+                    <span className="m-value color-success">{fmtMoney(totals.credit)}</span>
+                </div>
+                <div className="m-stat-card border-primary">
+                    <span className="m-label">GÜNCEL BAKİYE</span>
+                    <span className={`m-value ${(totals.credit - totals.debt) < 0 ? 'color-danger' : 'color-success'}`}>
+                        {fmtMoney(totals.credit - totals.debt, true)}
+                    </span>
                 </div>
             </div>
 
@@ -139,49 +137,13 @@ const handleExpand = async (tx) => {
                 <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>YIL:</span>
                     {years.map(y => (
-                        <button
-                            key={y}
-                            onClick={() => { setSelectedYear(y); setSelectedMonth(null); setExpandedRow(null); }}
-                            style={{
-                                padding: '6px 16px',
-                                borderRadius: 6,
-                                border: '1px solid var(--border)',
-                                background: selectedYear === y && !selectedMonth ? 'var(--primary)' : 'var(--bg-surface)',
-                                color: selectedYear === y && !selectedMonth ? '#fff' : 'var(--text-secondary)',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                fontSize: 13,
-                                transition: 'all 0.15s'
-                            }}
-                        >
-                            {y}
-                        </button>
+                        <button key={y} onClick={() => { setSelectedYear(y); setSelectedMonth(null); setExpandedRow(null); }} style={{ padding: '6px 16px', borderRadius: 6, border: '1px solid var(--border)', background: selectedYear === y && !selectedMonth ? 'var(--primary)' : 'var(--bg-surface)', color: selectedYear === y && !selectedMonth ? '#fff' : 'var(--text-secondary)', fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>{y}</button>
                     ))}
                 </div>
-                
                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', borderTop: '1px solid var(--border-light)', paddingTop: 12 }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-muted)', marginRight: 8 }}>AY:</span>
                     {months.map(m => (
-                        <button
-                            key={m.id}
-                            onClick={() => { 
-                                setSelectedMonth(selectedMonth === m.id ? null : m.id); 
-                                setExpandedRow(null); 
-                            }}
-                            style={{
-                                padding: '6px 12px',
-                                borderRadius: 6,
-                                border: '1px solid var(--border)',
-                                background: selectedMonth === m.id ? 'var(--primary)' : 'var(--bg-tag)',
-                                color: selectedMonth === m.id ? '#fff' : 'var(--text-primary)',
-                                fontWeight: selectedMonth === m.id ? 700 : 500,
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                transition: 'all 0.15s'
-                            }}
-                        >
-                            {m.name}
-                        </button>
+                        <button key={m.id} onClick={() => { setSelectedMonth(selectedMonth === m.id ? null : m.id); setExpandedRow(null); }} style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: selectedMonth === m.id ? 'var(--primary)' : 'var(--bg-tag)', color: selectedMonth === m.id ? '#fff' : 'var(--text-primary)', fontWeight: selectedMonth === m.id ? 700 : 500, cursor: 'pointer', fontSize: 12 }}>{m.name}</button>
                     ))}
                 </div>
             </div>
@@ -205,93 +167,35 @@ const handleExpand = async (tx) => {
                             {loading ? (
                                 <tr><td colSpan="8"><div className="loading-center" style={{ padding: 40 }}><div className="loading-spinner" /></div></td></tr>
                             ) : transactions.length === 0 ? (
-                                <tr>
-                                    <td colSpan="8" style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                        <div style={{ fontSize: 32, marginBottom: 16 }}>📊</div>
-                                        <div style={{ fontSize: 16, fontWeight: 500 }}>{selectedYear} yılında cari hareket bulunmuyor</div>
-                                    </td>
-                                </tr>
+                                <tr><td colSpan="8" style={{ padding: 60, textAlign: 'center', color: 'var(--text-secondary)' }}><div style={{ fontSize: 32, marginBottom: 16 }}>📊</div><div style={{ fontSize: 16, fontWeight: 500 }}>Cari hareket bulunmuyor</div></td></tr>
                             ) : transactions.map(tx => {
                                 const isExpanded = expandedRow === tx.id;
-                                const isOrder = tx.transaction_type === 'TOPTAN SATIŞ';
                                 const vadeDate = tx.due_date ? fmt(tx.due_date) : fmt(addDays(tx.created_at, 7));
                                 return (
                                     <Fragment key={tx.id}>
-                                        <tr style={{ background: isExpanded ? 'rgba(37,99,235,0.03)' : 'transparent', transition: 'background 0.2s', borderBottom: isExpanded ? 'none' : undefined }}>
-                                            <td style={{ textAlign: 'center' }}>
-                                                <button
-                                                    onClick={() => handleExpand(tx)}
-                                                    className="btn btn-sm"
-                                                    style={{ background: isExpanded ? 'var(--primary)' : 'var(--bg-tag)', color: isExpanded ? '#fff' : 'var(--text-primary)', border: 'none', padding: '4px 12px' }}
-                                                >
-                                                    {isExpanded ? 'Gizle' : 'Detay'}
-                                                </button>
-                                            </td>
-                                            <td style={{ fontWeight: 500 }}>{fmtTime(tx.created_at)}</td>
-                                            <td style={{ color: 'var(--text-secondary)' }}>{vadeDate}</td>
-                                            <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{tx.document_no ? tx.document_no.slice(0, 8).toUpperCase() : '-'}</td>
-                                            <td>
-                                                <span style={{
-                                                    fontWeight: 600,
-                                                    color: tx.transaction_type === 'KREDİ KARTI' || tx.transaction_type === 'HAVALE/EFT' ? 'var(--success)' :
-                                                        tx.transaction_type === 'TOPTAN SATIŞ' ? 'var(--primary)' : 'var(--text-secondary)'
-                                                }}>
-                                                    {tx.transaction_type}
-                                                </span>
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: tx.debt > 0 ? 600 : 400, color: tx.debt > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
-                                                {tx.debt > 0 ? fmtMoney(tx.debt) : '0,00'}
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>
-                                                {tx.credit > 0 ? fmtMoney(tx.credit) : '0,00'}
-                                            </td>
-                                            <td style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>
-                                                {fmtMoney(tx.balance_after)}
-                                            </td>
+                                        <tr style={{ background: isExpanded ? 'rgba(37,99,235,0.03)' : 'transparent' }}>
+                                            <td data-label="Detay" style={{ textAlign: 'center' }}><button onClick={() => handleExpand(tx)} className="btn btn-sm" style={{ background: isExpanded ? 'var(--primary)' : 'var(--bg-tag)', color: isExpanded ? '#fff' : 'var(--text-primary)', border: 'none' }}>{isExpanded ? 'Gizle' : 'Detay'}</button></td>
+                                            <td data-label="Tarih" style={{ fontWeight: 500 }}>{fmtTime(tx.created_at)}</td>
+                                            <td data-label="Vade Tarih" style={{ color: 'var(--text-secondary)' }}>{vadeDate}</td>
+                                            <td data-label="Evrak No" style={{ fontFamily: 'monospace', fontSize: 13 }}>{tx.document_no ? tx.document_no.toUpperCase() : '-'}</td>
+                                            <td data-label="İşlem Türü"><span style={{ fontWeight: 600, color: tx.transaction_type === 'KREDİ KARTI' || tx.transaction_type === 'HAVALE/EFT' ? 'var(--success)' : tx.transaction_type === 'TOPTAN SATIŞ' ? 'var(--primary)' : 'var(--text-secondary)' }}>{tx.transaction_type}</span></td>
+                                            <td data-label="Borç" style={{ textAlign: 'right', fontWeight: tx.debt > 0 ? 600 : 400, color: tx.debt > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{tx.debt > 0 ? fmtMoney(tx.debt) : '0,00'}</td>
+                                            <td data-label="Alacak" style={{ textAlign: 'right', fontWeight: tx.credit > 0 ? 600 : 400, color: tx.credit > 0 ? 'var(--success)' : 'var(--text-muted)' }}>{tx.credit > 0 ? fmtMoney(tx.credit) : '0,00'}</td>
+                                            <td data-label="Bakiye" style={{ textAlign: 'right', fontWeight: 700, color: (tx.balance_after || 0) < 0 ? 'var(--danger)' : 'var(--text-primary)' }}>{fmtMoney(tx.balance_after)}</td>
                                         </tr>
                                         {isExpanded && (
-                                            <tr style={{ background: 'rgba(37,99,235,0.015)' }}>
-                                                <td colSpan="8" style={{ padding: '0 24px 20px 80px', borderTop: 'none' }}>
+                                            <tr>
+                                                <td colSpan="8" style={{ padding: '0 24px 20px 80px' }}>
                                                     <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius)', border: '1px solid var(--border)', marginTop: 4 }}>
-                                                        <h4 style={{ fontSize: 13, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12, fontWeight: 700, letterSpacing: '0.5px' }}>
-                                                            {isOrder ? `Sipariş İçeriği — ${tx.document_no?.slice(0, 8).toUpperCase()}` : 'İşlem Detayı'}
-                                                        </h4>
-                                                        {isOrder ? (
-                                                            loadingDetails[tx.id] ? (
-                                                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Yükleniyor...</div>
-                                                            ) : (orderDetails[tx.id] || []).length === 0 ? (
-                                                                <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>İçerik bulunamadı.</div>
-                                                            ) : (
-                                                                <table style={{ margin: 0, fontSize: 13, background: 'transparent' }}>
-                                                                    <thead style={{ background: 'transparent', borderBottom: '1px solid var(--border-light)' }}>
-                                                                        <tr>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)' }}>Ürün Kodu</th>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)' }}>Ürün Adı</th>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)' }}>OEM No</th>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)', textAlign: 'right' }}>Miktar</th>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)', textAlign: 'right' }}>Birim Fiyat</th>
-                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-secondary)', textAlign: 'right' }}>Tutar</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {orderDetails[tx.id].map(item => (
-                                                                            <tr key={item.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
-                                                                                <td style={{ padding: '8px 4px', fontFamily: 'monospace' }}>{item.product?.code || '-'}</td>
-                                                                                <td style={{ padding: '8px 4px', fontWeight: 500 }}>{item.product?.name}</td>
-                                                                                <td style={{ padding: '8px 4px', fontFamily: 'monospace', color: 'var(--text-secondary)', fontSize: 12 }}>{item.product?.oem_no || '-'}</td>
-                                                                                <td style={{ padding: '8px 4px', textAlign: 'right' }}>{item.quantity}</td>
-                                                                                <td style={{ padding: '8px 4px', textAlign: 'right' }}>{fmtMoney(item.unit_price)}</td>
-                                                                                <td style={{ padding: '8px 4px', textAlign: 'right', fontWeight: 600 }}>{fmtMoney(item.total_price)}</td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
+                                                        <h4 style={{ fontSize: 13, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12, fontWeight: 700 }}>{tx.transaction_type === 'TOPTAN SATIŞ' ? `Sipariş İçeriği` : 'İşlem Detayı'}</h4>
+                                                        {tx.transaction_type === 'TOPTAN SATIŞ' ? (
+                                                            loadingDetails[tx.id] ? <div>Yükleniyor...</div> : (
+                                                                <div className="table-wrapper"><table style={{ background: 'transparent' }}>
+                                                                    <thead><tr><th>Kod</th><th>Ürün</th><th style={{ textAlign: 'right' }}>Adet</th><th style={{ textAlign: 'right' }}>Fiyat</th><th style={{ textAlign: 'right' }}>Tutar</th></tr></thead>
+                                                                    <tbody>{(orderDetails[tx.id] || []).map(item => (<tr key={item.id}><td data-label="Kod">{item.product?.code}</td><td data-label="Ürün">{item.product?.name}</td><td data-label="Adet" style={{ textAlign: 'right' }}>{item.quantity}</td><td data-label="Fiyat" style={{ textAlign: 'right' }}>{fmtMoney(item.unit_price)}</td><td data-label="Tutar" style={{ textAlign: 'right' }}>{fmtMoney(item.total_price)}</td></tr>))}</tbody>
+                                                                </table></div>
                                                             )
-                                                        ) : (
-                                                            <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                                                <strong>Açıklama:</strong> {tx.description || '-'}
-                                                            </div>
-                                                        )}
+                                                        ) : (<div><strong>Açıklama:</strong> {tx.description || '-'}</div>)}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -301,24 +205,34 @@ const handleExpand = async (tx) => {
                             })}
                         </tbody>
                         {!loading && transactions.length > 0 && (
-                            <tfoot style={{ background: 'var(--bg-surface)', borderTop: '2px solid var(--border)' }}>
+                            <tfoot className="desktop-only-tfoot" style={{ background: 'var(--bg-surface)', borderTop: '2px solid var(--border)' }}>
                                 <tr>
                                     <td colSpan="5" style={{ textAlign: 'right', fontWeight: 700, padding: '16px 20px' }}>DÖNEM TOPLAMI</td>
-                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)', padding: '16px 20px', fontSize: 16 }}>
-                                        {fmtMoney(totals.debt)}
-                                    </td>
-                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)', padding: '16px 20px', fontSize: 16 }}>
-                                        {fmtMoney(totals.credit)}
-                                    </td>
-                                    <td style={{ textAlign: 'right', fontWeight: 800, color: totals.balance < 0 ? 'var(--danger)' : 'var(--text-primary)', padding: '16px 20px', fontSize: 18 }}>
-                                        {fmtMoney(totals.balance)}
-                                    </td>
+                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)', padding: '16px 20px', fontSize: 16 }}>{fmtMoney(totals.debt)}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--success)', padding: '16px 20px', fontSize: 16 }}>{fmtMoney(totals.credit)}</td>
+                                    <td style={{ textAlign: 'right', fontWeight: 800, color: (totals.credit - totals.debt) < 0 ? 'var(--danger)' : 'var(--text-primary)', padding: '16px 20px', fontSize: 18 }}>{fmtMoney(totals.credit - totals.debt, true)}</td>
                                 </tr>
                             </tfoot>
                         )}
                     </table>
                 </div>
             </div>
+
+            <style jsx>{`
+                .mobile-totals-grid { display: none; }
+                @media (max-width: 768px) {
+                    .mobile-totals-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
+                    .m-stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+                    .m-label { font-size: 11px; font-weight: 700; color: var(--text-muted); }
+                    .m-value { font-size: 20px; font-weight: 800; }
+                    .border-danger { border-left: 4px solid var(--danger); }
+                    .border-success { border-left: 4px solid var(--success); }
+                    .border-primary { border-left: 4px solid var(--primary); }
+                    .color-danger { color: var(--danger); }
+                    .color-success { color: var(--success); }
+                    .desktop-only-tfoot { display: none !important; }
+                }
+            `}</style>
         </div>
     );
 }

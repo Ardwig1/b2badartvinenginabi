@@ -42,3 +42,8 @@ next-env.d.ts
 
 .vercel
 .env*.local
+ 
+# Mobile Apps
+b2byedekparcamobil/
+jdk17/
+jdk17.zip

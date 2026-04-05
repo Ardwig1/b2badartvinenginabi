@@ -468,8 +468,7 @@ export default function AdminAccountLedger() {
                                 <td colSpan="7" style={{ textAlign: 'right', fontWeight: 700 }}>DÖNEM TOPLAMI</td>
                                 <td style={{ textAlign: 'right', color: 'var(--danger)', fontWeight: 700 }}>{fmtMoney(totals.debt)}</td>
                                 <td style={{ textAlign: 'right', color: 'var(--success)', fontWeight: 700 }}>{fmtMoney(totals.credit)}</td>
-                                <td style={{ textAlign: 'right', fontWeight: 800, color: (totals.credit - totals.debt) < 0 ? 'var(--danger)' : 'var(--text-primary)', fontSize: 16 }}>{fmtMoney(totals.credit - totals.debt, true)}</td>
-                            </tr>
+                                <td style={{ textAlign: 'right', fontWeight: 800, color: (totals.credit - totals.debt) < 0 ? 'var(--danger)' : 'var(--text-primary)', fontSize: 16, whiteSpace: 'nowrap' }}>{fmtMoney(totals.credit - totals.debt, true)}</td>                            </tr>
                         </tfoot>                    </table>
                 </div>
             </div>

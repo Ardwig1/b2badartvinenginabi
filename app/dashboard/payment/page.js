@@ -212,7 +212,7 @@ export default function PaymentPage() {
 
                 <div className="payment-side" style={{ flex: '0 0 320px', display: 'flex', flexDirection: 'column', gap: 20 }}>
                     {(cartTotal > 0 || isCartLoading) && (
-                        <div className="card" style={{ padding: 24, border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', cursor: 'pointer' }} onClick={() => { setIsCartChecked(true); setIsDebtChecked(false); }}>
+                        <div className="card" style={{ padding: 24, border: isCartChecked ? '2px solid var(--primary)' : '1px solid var(--border)', cursor: 'pointer' }} onClick={() => { setIsCartChecked(true); setIsDebtChecked(false); setAmount(cartTotal.toFixed(2)); }}>
                             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Sepet Ödemesi</h3>
                             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)', marginBottom: 12 }}>
                                 {isCartLoading ? '...' : `₺${cartTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}

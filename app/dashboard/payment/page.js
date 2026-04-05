@@ -207,6 +207,22 @@ export default function PaymentPage() {
                             </div>
                             <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={loading || !amount || amount === '0.00'}>{loading ? 'İşleniyor...' : 'Güvenli Ödeme Yap'}</button>
                         </form>
+
+                        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+                            <div style={{ display: 'flex', gap: 12, opacity: 0.8, filter: 'grayscale(0.2)' }}>
+                                <img src="/visa.png" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/troy.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
+                            </div>
+                            <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link>
+                                <span>•</span>
+                                <Link href="/iptal-ve-iade-kosullari" target="_blank" style={{ textDecoration: 'underline' }}>İptal ve İade Koşulları</Link>
+                            </div>
+                            <div style={{ fontSize: 11, color: 'var(--text-secondary)', textAlign: 'center', maxWidth: 400, lineHeight: 1.4 }}>
+                                "Güvenli Ödeme Yap" butonuna basarak sözleşmeleri okuduğunuzu ve onayladığınızı kabul etmiş sayılırsınız.
+                            </div>
+                        </div>
                     </div>
                 </div>
 

@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CreditCardIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useCart } from '@/components/CartProvider';
 
 export default function PaymentPage() {
@@ -211,9 +210,9 @@ export default function PaymentPage() {
 
                         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                             <div style={{ display: 'flex', gap: 16, opacity: 1, alignItems: 'center' }}>
-                                <Image src="/v-card.png" alt="Visa" width={44} height={28} unoptimized style={{ objectFit: 'contain' }} />
-                                <Image src="/m-card.png" alt="Mastercard" width={44} height={28} unoptimized style={{ objectFit: 'contain' }} />
-                                <Image src="/t-card.png" alt="Troy" width={44} height={28} unoptimized style={{ objectFit: 'contain' }} />
+                                <img src="/visa.png?v=3" alt="Visa" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/mastercard.png?v=3" alt="Mastercard" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/troy.png?v=3" alt="Troy" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
                             </div>
                             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                                 <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link>

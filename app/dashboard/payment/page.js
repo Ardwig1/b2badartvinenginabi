@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { CreditCardIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/components/CartProvider';
 
 export default function PaymentPage() {
@@ -209,10 +210,10 @@ export default function PaymentPage() {
                         </form>
 
                         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                            <div style={{ display: 'flex', gap: 12, opacity: 0.8, filter: 'grayscale(0.2)' }}>
-                                <img src="/visa.png" alt="Visa" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
-                                <img src="/mastercard.png" alt="Mastercard" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
-                                <img src="/troy.png" alt="Troy" style={{ height: 20, width: 'auto', objectFit: 'contain' }} />
+                            <div style={{ display: 'flex', gap: 16, opacity: 1 }}>
+                                <Image src="/visa.png" alt="Visa" width={44} height={28} style={{ objectFit: 'contain' }} />
+                                <Image src="/mastercard.png" alt="Mastercard" width={44} height={28} style={{ objectFit: 'contain' }} />
+                                <Image src="/troy.png" alt="Troy" width={44} height={28} style={{ objectFit: 'contain' }} />
                             </div>
                             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>
                                 <Link href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ textDecoration: 'underline' }}>Mesafeli Satış Sözleşmesi</Link>

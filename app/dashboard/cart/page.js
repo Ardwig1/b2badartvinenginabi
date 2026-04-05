@@ -94,6 +94,19 @@ export default function DealerCart() {
         return { subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand, isRiskExceeded: riskExc, exceededAmount: riskExc ? (liability - companyRiskLimit) : 0, needsPrepayment: (isPrepaymentLocked && companyBalance < grand) || riskExc, selectedCount: selected.length };
     }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked]);
 
+    const handleSetQty = (pid, p, q, unselected) => {
+        ctxSetQty(pid, p, q, unselected);
+        
+        // LOG ACTIVITY: CART REMOVE OR UPDATE
+        if (q === 0) {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'cart_remove', details: { id: pid, name: p.name, code: p.code } })
+            }).catch(e => console.error(e));
+        }
+    };
+
     const placeOrder = async () => {
         const selectedItems = cartItems.filter(i => isSelected(i.product.id));
         if (selectedItems.length === 0) return;
@@ -107,6 +120,16 @@ export default function DealerCart() {
             const p_items = selectedItems.map(i => ({ product_id: i.product.id, quantity: i.qty, unit_price: getDiscountedPrice(i.product), total_price: getDiscountedPrice(i.product) * i.qty }));
             const response = await fetch('/api/user/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', note: `[${shippingMethod}] ${note}`, totalAmount: totals.grandTotal, items: p_items }) });
             if (response.ok) {
+                // LOG ACTIVITY: ORDER PLACED
+                fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action_type: 'order_placed',
+                        details: { total: totals.grandTotal, itemCount: selectedItems.length, note }
+                    })
+                }).catch(e => console.error('Log order error:', e));
+
                 selectedItems.forEach(item => ctxSetQty(item.product.id, item.product, 0));
                 setSuccess(true);
             }
@@ -153,7 +176,7 @@ export default function DealerCart() {
                                         fetch('/api/log-activity', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ company_id: companyId, action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, qty: 1, source: 'cart_page' } })
+                                            body: JSON.stringify({ action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, qty: 1, source: 'cart_page' } })
                                         }).catch(e => console.error(e));
                                         setProductSearch(''); 
                                         setSearchProducts([]); 
@@ -171,8 +194,8 @@ export default function DealerCart() {
                     ) : (
                         <div className="cart-items-wrapper">
                             <div className="cart-controls">
-                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, false))}>☑ Tümünü Seç</button>
-                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => ctxSetQty(i.product.id, i.product, i.qty, true))}>☐ Kaldır</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => handleSetQty(i.product.id, i.product, i.qty, false))}>☑ Tümünü Seç</button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => cartItems.forEach(i => handleSetQty(i.product.id, i.product, i.qty, true))}>☐ Kaldır</button>
                                 <span className="selection-count">{totals.selectedCount} / {cartItems.length} seçili</span>
                             </div>
 
@@ -192,10 +215,10 @@ export default function DealerCart() {
                                                     </td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.brand || '-'}</td>
                                                     <td style={{ textAlign: 'right' }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                                    <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => ctxSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => ctxSetQty(p.id, p, qty + 1)}>+</button></div></td>
+                                                    <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty + 1)}>+</button></div></td>
                                                     <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                                    <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => ctxSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18 }} /></td>
-                                                    <td style={{ textAlign: 'center' }}><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => ctxSetQty(p.id, p, 0)}>✕</button></td>
+                                                    <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => handleSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18 }} /></td>
+                                                    <td style={{ textAlign: 'center' }}><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleSetQty(p.id, p, 0)}>✕</button></td>
                                                 </tr>
                                             );
                                         })}
@@ -212,19 +235,19 @@ export default function DealerCart() {
                                     return (
                                         <div key={p.id} className={`cart-card ${selected ? '' : 'unselected'}`}>
                                             <div className="cart-card-top">
-                                                <input type="checkbox" checked={selected} onChange={() => ctxSetQty(p.id, p, qty, selected)} />
+                                                <input type="checkbox" checked={selected} onChange={() => handleSetQty(p.id, p, qty, selected)} />
                                                 <div className="cart-card-info">
                                                     <div className="cart-card-name">{p.name}</div>
                                                     <div className="cart-card-sub">{p.code} {p.brand && `| ${p.brand}`}</div>
                                                     {extra && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}
                                                 </div>
-                                                <button className="cart-card-delete" onClick={() => ctxSetQty(p.id, p, 0)}><XMarkIcon style={{ width: 20 }} /></button>
+                                                <button className="cart-card-delete" onClick={() => handleSetQty(p.id, p, 0)}><XMarkIcon style={{ width: 20 }} /></button>
                                             </div>
                                             <div className="cart-card-bottom">
                                                 <div className="cart-qty-picker">
-                                                    <button onClick={() => ctxSetQty(p.id, p, qty - 1)}><MinusIcon style={{ width: 16 }} /></button>
+                                                    <button onClick={() => handleSetQty(p.id, p, qty - 1)}><MinusIcon style={{ width: 16 }} /></button>
                                                     <span>{qty}</span>
-                                                    <button onClick={() => ctxSetQty(p.id, p, qty + 1)}><PlusIcon style={{ width: 16 }} /></button>
+                                                    <button onClick={() => handleSetQty(p.id, p, qty + 1)}><PlusIcon style={{ width: 16 }} /></button>
                                                 </div>
                                                 <div className="cart-card-price">
                                                     <div className="unit">Birim: ₺{price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>

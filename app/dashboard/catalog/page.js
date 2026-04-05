@@ -53,7 +53,6 @@ export default function DealerCatalog() {
             const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store', credentials: 'include' });
             if (infoRes.ok) {
                 const data = await infoRes.json();
-                setCompanyId(data.companyId || '');
                 setDiscount(Number(data.discountPercent) || 0);
             }
             const metaRes = await fetch('/api/products/metadata');
@@ -78,6 +77,16 @@ export default function DealerCatalog() {
             const response = await fetch('/api/products/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel, is_new: checkNew, is_campaign: checkCampaign }) });
             const data = await response.json();
             setProducts(data || []);
+
+            // LOG ACTIVITY: SEARCH
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action_type: 'search',
+                    details: { filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel }
+                })
+            }).catch(e => console.error('Log search error:', e));
         } catch (err) { console.error(err); } finally { setLoading(false); }
     };
 
@@ -142,17 +151,14 @@ export default function DealerCatalog() {
         ctxSetQty(p.id, p, (cartQtys[p.id]?.qty || 0) + n);
 
         // LOG ACTIVITY: CART ADD
-        if (companyId) {
-            fetch('/api/log-activity', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    company_id: companyId,
-                    action_type: 'cart_add',
-                    details: { id: p.id, name: p.name, code: p.code, qty: n }
-                })
-            }).catch(e => console.error('Log cart error:', e));
-        }
+        fetch('/api/log-activity', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action_type: 'cart_add',
+                details: { id: p.id, name: p.name, code: p.code, qty: n }
+            })
+        }).catch(e => console.error('Log cart error:', e));
 
         setPendingQtys(prev => { const next = { ...prev }; delete next[p.id]; return next; });
         showToast(`${p.name} eklendi.`);

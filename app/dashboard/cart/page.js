@@ -176,7 +176,7 @@ export default function DealerCart() {
                                         fetch('/api/log-activity', {
                                             method: 'POST',
                                             headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, qty: 1, source: 'cart_page' } })
+                                            body: JSON.stringify({ company_id: companyId, action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, oem_no: p.oem_no, qty: 1, source: 'cart_page' } })
                                         }).catch(e => console.error(e));
                                         setProductSearch(''); 
                                         setSearchProducts([]); 

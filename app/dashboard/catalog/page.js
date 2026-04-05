@@ -78,13 +78,13 @@ export default function DealerCatalog() {
             const data = await response.json();
             setProducts(data || []);
 
-            // LOG ACTIVITY: SEARCH
+            // LOG ACTIVITY: SEARCH (Using 'text' as expected by admin panel)
             fetch('/api/log-activity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     action_type: 'search',
-                    details: { filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel }
+                    details: { text: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel }
                 })
             }).catch(e => console.error('Log search error:', e));
         } catch (err) { console.error(err); } finally { setLoading(false); }
@@ -156,7 +156,7 @@ export default function DealerCatalog() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 action_type: 'cart_add',
-                details: { id: p.id, name: p.name, code: p.code, qty: n }
+                details: { id: p.id, name: p.name, code: p.code, oem_no: p.oem_no, qty: n }
             })
         }).catch(e => console.error('Log cart error:', e));
 

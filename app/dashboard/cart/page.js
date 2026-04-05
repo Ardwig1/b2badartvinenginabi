@@ -134,7 +134,7 @@ export default function DealerCart() {
 
             <div className="cart-grid-container">
                 <div className="cart-left-col">
-                    <div className="card" style={{ marginBottom: 20 }}>
+                    <div className="card" style={{ marginBottom: 20, position: 'relative' }}>
                         <div className="card-title" style={{ marginBottom: 12 }}>Katalogdan Ekle</div>
                         <div className="search-bar" style={{ width: '100%' }}>
                             <span className="search-icon"><MagnifyingGlassIcon style={{ width: 14 }} /></span>
@@ -145,7 +145,7 @@ export default function DealerCart() {
                             }} />
                         </div>
                         {searchProducts.length > 0 && (
-                            <div className="search-results-overlay">
+                            <div className="search-results-overlay" style={{ top: 'calc(100% - 10px)', left: 24, right: 24, width: 'auto' }}>
                                 {searchProducts.map(p => (
                                     <div key={p.id} className="search-item" onClick={() => { ctxAddToCart(p); setProductSearch(''); setSearchProducts([]); }}>
                                         <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>

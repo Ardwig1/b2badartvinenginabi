@@ -53,6 +53,7 @@ export default function DealerCatalog() {
             const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store', credentials: 'include' });
             if (infoRes.ok) {
                 const data = await infoRes.json();
+                setCompanyId(data.companyId || '');
                 setDiscount(Number(data.discountPercent) || 0);
             }
             const metaRes = await fetch('/api/products/metadata');
@@ -139,6 +140,20 @@ export default function DealerCatalog() {
         const n = parseInt(raw, 10);
         if (isNaN(n) || n < 1) return;
         ctxSetQty(p.id, p, (cartQtys[p.id]?.qty || 0) + n);
+
+        // LOG ACTIVITY: CART ADD
+        if (companyId) {
+            fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    company_id: companyId,
+                    action_type: 'cart_add',
+                    details: { id: p.id, name: p.name, code: p.code, qty: n }
+                })
+            }).catch(e => console.error('Log cart error:', e));
+        }
+
         setPendingQtys(prev => { const next = { ...prev }; delete next[p.id]; return next; });
         showToast(`${p.name} eklendi.`);
     };

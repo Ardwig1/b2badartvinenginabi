@@ -147,7 +147,17 @@ export default function DealerCart() {
                         {searchProducts.length > 0 && (
                             <div className="search-results-overlay" style={{ top: 'calc(100% - 10px)', left: 24, right: 24, width: 'auto' }}>
                                 {searchProducts.map(p => (
-                                    <div key={p.id} className="search-item" onClick={() => { ctxAddToCart(p); setProductSearch(''); setSearchProducts([]); }}>
+                                    <div key={p.id} className="search-item" onClick={() => { 
+                                        ctxAddToCart(p); 
+                                        // LOG ACTIVITY: CART ADD (FROM CART PAGE)
+                                        fetch('/api/log-activity', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ company_id: companyId, action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, qty: 1, source: 'cart_page' } })
+                                        }).catch(e => console.error(e));
+                                        setProductSearch(''); 
+                                        setSearchProducts([]); 
+                                    }}>
                                         <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>
                                         <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                     </div>

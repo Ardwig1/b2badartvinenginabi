@@ -211,7 +211,7 @@ export default function PaymentPage() {
                         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                             <div style={{ display: 'flex', gap: 16, opacity: 1, alignItems: 'center' }}>
                                 <img src="/visa.png?v=3" alt="Visa" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
-                                <img src="/mastercard.png?v=3" alt="Mastercard" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
+                                <img src="/mastercard.png?v=3" alt="Mastercard" style={{ height: 34, width: 'auto', objectFit: 'contain' }} />
                                 <img src="/troy.png?v=3" alt="Troy" style={{ height: 28, width: 'auto', objectFit: 'contain' }} />
                             </div>
                             <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-secondary)', textAlign: 'center', flexWrap: 'wrap', justifyContent: 'center' }}>

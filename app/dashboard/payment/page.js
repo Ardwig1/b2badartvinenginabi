@@ -21,7 +21,7 @@ export default function PaymentPage() {
     const [cvv, setCvv] = useState('');
 
     const [isCartLoading, setIsCartLoading] = useState(true);
-    const [isCartChecked, setIsCartChecked] = useState(true);
+    const [isCartChecked, setIsCartChecked] = useState(false);
     const [isDebtChecked, setIsDebtChecked] = useState(false);
 
     const [loading, setLoading] = useState(false);

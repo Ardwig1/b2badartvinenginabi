@@ -103,7 +103,20 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                         </Link>
                     );
                 })}
+
+                {/* Mobile logout button */}
+                <button onClick={handleSignOut} className={`${styles.navItem} mobile-only-logout`} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
+                    <span className={styles.navIcon}><ArrowRightOnRectangleIcon style={{ width: 22, height: 22, color: 'var(--danger)' }} /></span>
+                    <span style={{ color: 'var(--danger)', fontSize: '10px', fontWeight: 800 }}>ÇIKIŞ</span>
+                </button>
             </nav>
+
+            <style jsx>{`
+                .mobile-only-logout { display: none !important; }
+                @media (max-width: 768px) {
+                    .mobile-only-logout { display: flex !important; }
+                }
+            `}</style>
 
             {/* Theme & User Info */}
             <div className={styles.userSection}>

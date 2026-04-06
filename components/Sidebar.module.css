@@ -230,7 +230,8 @@
         left: 0;
         right: 0;
         width: 100% !important;
-        height: 70px;
+        height: calc(70px + env(safe-area-inset-bottom));
+        padding-bottom: env(safe-area-inset-bottom);
         flex-direction: row;
         border-right: none;
         border-top: 1px solid var(--border);

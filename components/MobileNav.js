@@ -1,22 +1,31 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { 
     HomeIcon, MagnifyingGlassIcon, CreditCardIcon, 
     UserCircleIcon, Squares2X2Icon, BuildingLibraryIcon, 
     PhoneIcon, ChatBubbleLeftEllipsisIcon, ShoppingCartIcon,
     ClipboardDocumentListIcon, CurrencyDollarIcon, DocumentTextIcon,
-    XMarkIcon
+    XMarkIcon, ArrowRightOnRectangleIcon
 } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
+import { createClient } from '@/lib/supabase/client';
 
 export default function MobileNav() {
     const pathname = usePathname();
+    const router = useRouter();
     const { cartItems } = useCart();
     const [activeSubmenu, setActiveSubmenu] = useState(null);
     
     const totalCartItems = Object.values(cartItems || {}).reduce((a, b) => a + (b.qty || 0), 0);
+
+    const handleSignOut = async () => {
+        const supabase = createClient();
+        await supabase.auth.signOut();
+        router.push('/login');
+        router.refresh();
+    };
 
     if (pathname.startsWith('/admin') || pathname.startsWith('/rep') || pathname === '/login' || pathname === '/register') return null;
 
@@ -61,6 +70,14 @@ export default function MobileNav() {
                                     <span>{item.label}</span>
                                 </Link>
                             ))}
+                            {activeSubmenu === 'menu' && (
+                                <button className="sheet-item" onClick={handleSignOut} style={{ cursor: 'pointer', border: '1px solid rgba(220, 38, 38, 0.2)', background: 'rgba(220, 38, 38, 0.05)' }}>
+                                    <div className="sheet-icon-box" style={{ color: 'var(--danger)' }}>
+                                        <ArrowRightOnRectangleIcon style={{ width: 18, height: 18 }} />
+                                    </div>
+                                    <span style={{ color: 'var(--danger)' }}>Güvenli Çıkış</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

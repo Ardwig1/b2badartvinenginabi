@@ -12,6 +12,7 @@ import {
 import { useCart } from '@/components/CartProvider';
 import { createClient } from '@/lib/supabase/client';
 
+// Mobile navigation component with iOS safe area support
 export default function MobileNav() {
     const pathname = usePathname();
     const router = useRouter();

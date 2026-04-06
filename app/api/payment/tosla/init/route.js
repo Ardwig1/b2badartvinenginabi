@@ -50,7 +50,7 @@ export async function POST(req) {
             .replace(/[^a-zA-Z0-9\s]/g, '').trim().toUpperCase() || 'MUSTERI';
 
         // Tosla WAF drops connections with 204 No Content if orderId > 20 characters
-        const orderId = `B2B_${crypto.randomBytes(6).toString('hex')}`; // max 16 chars
+        const orderId = `B2B${crypto.randomBytes(6).toString('hex').toUpperCase()}`; // Alphanumeric only
 
         // Tosla dokümantasyonu bazlı Hash ve İstek Parametreleri
         // Tutar kuruşsuz long olmalı (örn. 10.00 TL -> 1000)
@@ -93,7 +93,7 @@ export async function POST(req) {
             orderId: orderId,
             amount: amountLong, 
             currency: '949', // TRY
-            installmentCount: '1',
+            installmentCount: '0', // Single shot
             callbackUrl: OK_URL,
             description: "B2B Yedek Parca Odemesi",
             customerEmail: buyerEmail || '',
@@ -131,10 +131,11 @@ export async function POST(req) {
                 success: true, 
                 threeDSessionId: data.ThreeDSessionId,
                 data: data,
-                companyName: finalCompanyName,
+                companyName: safeName, // Sanitized
                 processUrl: `${BASE_URL}/Payment/ProcessCardForm`
             });
-        } else {
+        }
+ else {
             console.error('Tosla API Error:', data);
             return NextResponse.json({ error: data.Message || data.errorMessage || 'Ödeme başlatılamadı.' }, { status: 400 });
         }

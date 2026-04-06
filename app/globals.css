@@ -880,9 +880,9 @@ tbody tr:last-child td {
     position: relative;
   }
 
-  /* Hide sidebar on mobile devices */
+  /* Show sidebar on mobile but it will be styled as bottom nav in Sidebar.module.css */
   aside, [class*="sidebar"] {
-    display: none !important;
+    display: flex !important;
   }
 
   /* Make main content span full width */

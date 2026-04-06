@@ -222,3 +222,68 @@
 .signOutBtn:hover {
     background: rgba(220, 38, 38, 0.2);
 }
+
+@media (max-width: 768px) {
+    .sidebar {
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        width: 100% !important;
+        height: 70px;
+        flex-direction: row;
+        border-right: none;
+        border-top: 1px solid var(--border);
+        background: var(--sidebar-bg);
+        overflow: visible;
+        padding: 0;
+    }
+
+    .logo, .collapseBtn, .userSection, .themeToggle, .userInfo {
+        display: none !important;
+    }
+
+    .nav {
+        flex-direction: row;
+        width: 100%;
+        padding: 0 10px;
+        gap: 5px;
+        overflow-x: auto;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .navItem {
+        flex-direction: column;
+        padding: 8px 12px;
+        min-width: 75px;
+        gap: 4px;
+        font-size: 10px;
+        text-align: center;
+        white-space: nowrap;
+        border-radius: 0;
+        border-left: none !important;
+    }
+
+    .navIcon {
+        width: auto;
+        margin: 0;
+    }
+
+    .navIcon svg {
+        width: 22px !important;
+        height: 22px !important;
+    }
+
+    .navItem.active {
+        color: var(--primary);
+        background: transparent;
+        border-bottom: 3px solid var(--primary);
+    }
+}

@@ -428,7 +428,7 @@ export default function CompaniesPage() {
                           if (d.is_new) parts.push(`Yeni Ürünler`);
                           if (d.in_stock) parts.push(`Sadece Stokta Olanlar`);
                           if (d.low_stock) parts.push(`Stoku Azalanlar`);
-                          return parts.length > 0 ? parts.join(' / ') : 'Kriter seçilmeden arama yapıldı';
+                          return parts.length > 0 ? parts.join(' / ') : 'Ürün listesini inceledi (Kriter seçilmedi)';
                         })()}
                         {act.action_type === 'cart_add' && `${act.details?.name || 'Ürün'} (${act.details?.qty} adet)`}
                         {act.action_type === 'order_placed' && `Sipariş Toplamı: ₺${act.details?.total?.toLocaleString('tr-TR')}`}

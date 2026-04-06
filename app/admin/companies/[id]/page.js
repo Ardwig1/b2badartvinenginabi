@@ -31,7 +31,17 @@ function ActivityIcon({ type }) {
 }
 
 function ActivityText({ act }) {
-    if (act.action_type === 'search') return <span>Aradı: <strong>{act.details?.text || act.details?.term || 'Bilinmiyor'}</strong> {act.details?.brand ? `(Marka: ${act.details.brand})` : ''}</span>;
+    if (act.action_type === 'search') {
+        const d = act.details || {};
+        const parts = [];
+        if (d.text) parts.push(`"${d.text}"`);
+        if (d.brand) parts.push(`Marka: ${d.brand}`);
+        if (d.carBrand) parts.push(`Araç: ${d.carBrand}`);
+        if (d.carModel) parts.push(`Model: ${d.carModel}`);
+        
+        if (parts.length === 0) return <span>Ürün listesini inceledi (Kriter seçilmedi)</span>;
+        return <span>Aradı: <strong>{parts.join(' / ')}</strong></span>;
+    }
     if (act.action_type === 'cart_add') return <span>Sepete Eklendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.qty} adet)</span>;
     if (act.action_type === 'cart_update') return <span>Sepet Güncellendi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''} ({act.details?.prevQty} → {act.details?.newQty} adet)</span>;
     if (act.action_type === 'cart_remove') return <span>Sepetten Silindi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''}</span>;

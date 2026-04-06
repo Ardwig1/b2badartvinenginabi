@@ -416,8 +416,21 @@ export default function CompaniesPage() {
                           {!['login','search','cart_add','order_placed','invoice_view'].includes(act.action_type) && act.action_type}
                         </span>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)' }}>
-                        {act.action_type === 'search' && act.details?.text ? `Aranan: "${act.details?.text}"` : JSON.stringify(act.details || {})}
+                      <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>
+                        {act.action_type === 'search' && (() => {
+                          const d = act.details || {};
+                          const parts = [];
+                          if (d.text) parts.push(`"${d.text}"`);
+                          if (d.brand) parts.push(`Marka: ${d.brand}`);
+                          if (d.carBrand) parts.push(`Araç: ${d.carBrand}`);
+                          if (d.carModel) parts.push(`Model: ${d.carModel}`);
+                          return parts.length > 0 ? parts.join(' / ') : 'Kriter seçilmeden arama yapıldı';
+                        })()}
+                        {act.action_type === 'cart_add' && `${act.details?.name || 'Ürün'} (${act.details?.qty} adet)`}
+                        {act.action_type === 'order_placed' && `Sipariş Toplamı: ₺${act.details?.total?.toLocaleString('tr-TR')}`}
+                        {act.action_type === 'payment_init' && `Ödeme Başlatıldı: ₺${(parseFloat(act.details?.amount || 0)/100).toLocaleString('tr-TR')}`}
+                        {act.action_type === 'payment_failed' && `Hata: ${act.details?.errMsg || 'Banka reddetti'}`}
+                        {!['search', 'cart_add', 'order_placed', 'payment_init', 'payment_failed'].includes(act.action_type) && JSON.stringify(act.details || {})}
                       </td>
                     </tr>
                   ))}

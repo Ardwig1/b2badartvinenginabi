@@ -166,7 +166,11 @@ export default function PaymentPage() {
             });
             const data = await res.json();
             if (res.ok && data.success) {
-                setToslaData({ ...data, cardNumber: cardNumber.replace(/\s/g, ''), expireDate: `${expireMonth}/${expireYear}` });
+                setToslaData({ 
+                    ...data, 
+                    cardNumber: cardNumber.replace(/\s/g, ''), 
+                    expireDate: `${expireMonth}${expireYear}` // Changed from ${expireMonth}/${expireYear}
+                });
             } else alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
         } catch (error) { alert('Hata oluştu.'); } finally { setLoading(false); }
     };
@@ -186,6 +190,7 @@ export default function PaymentPage() {
                 <form id="tosla3dForm" method="POST" action={toslaData.processUrl}>
                     <input type="hidden" name="ThreeDSessionId" value={toslaData.threeDSessionId} />
                     <input type="hidden" name="CardHolderName" value={buyerInfo.companyName} />
+                    <input type="hidden" name="CustomerName" value={buyerInfo.companyName} />
                     <input type="hidden" name="CardNo" value={toslaData.cardNumber} />
                     <input type="hidden" name="ExpireDate" value={toslaData.expireDate} />
                     <input type="hidden" name="Cvv" value={cvv} />

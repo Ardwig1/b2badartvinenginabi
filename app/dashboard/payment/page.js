@@ -192,12 +192,8 @@ export default function PaymentPage() {
                 <form id="tosla3dForm" method="POST" action={toslaData.processUrl}>
                     <input type="hidden" name="ThreeDSessionId" value={toslaData.threeDSessionId} />
                     <input type="hidden" name="CardHolderName" value={toslaData.companyName} />
-                    <input type="hidden" name="CustomerName" value={toslaData.companyName} />
                     <input type="hidden" name="CardNo" value={toslaData.cardNumber} />
-                    <input type="hidden" name="CardNumber" value={toslaData.cardNumber} />
                     <input type="hidden" name="ExpireDate" value={toslaData.expireDate} />
-                    <input type="hidden" name="ExpireMonth" value={toslaData.expireMonth} />
-                    <input type="hidden" name="ExpireYear" value={toslaData.expireYear} />
                     <input type="hidden" name="Cvv" value={cvv} />
                 </form>
             </div></div>

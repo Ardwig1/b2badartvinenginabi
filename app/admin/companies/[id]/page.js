@@ -38,6 +38,10 @@ function ActivityText({ act }) {
         if (d.brand) parts.push(`Marka: ${d.brand}`);
         if (d.carBrand) parts.push(`Araç: ${d.carBrand}`);
         if (d.carModel) parts.push(`Model: ${d.carModel}`);
+        if (d.is_campaign) parts.push(`Kampanyalı Ürünler`);
+        if (d.is_new) parts.push(`Yeni Ürünler`);
+        if (d.in_stock) parts.push(`Sadece Stokta Olanlar`);
+        if (d.low_stock) parts.push(`Stoku Azalanlar`);
         
         if (parts.length === 0) return <span>Ürün listesini inceledi (Kriter seçilmedi)</span>;
         return <span>Aradı: <strong>{parts.join(' / ')}</strong></span>;

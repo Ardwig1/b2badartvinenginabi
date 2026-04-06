@@ -424,6 +424,10 @@ export default function CompaniesPage() {
                           if (d.brand) parts.push(`Marka: ${d.brand}`);
                           if (d.carBrand) parts.push(`Araç: ${d.carBrand}`);
                           if (d.carModel) parts.push(`Model: ${d.carModel}`);
+                          if (d.is_campaign) parts.push(`Kampanyalı Ürünler`);
+                          if (d.is_new) parts.push(`Yeni Ürünler`);
+                          if (d.in_stock) parts.push(`Sadece Stokta Olanlar`);
+                          if (d.low_stock) parts.push(`Stoku Azalanlar`);
                           return parts.length > 0 ? parts.join(' / ') : 'Kriter seçilmeden arama yapıldı';
                         })()}
                         {act.action_type === 'cart_add' && `${act.details?.name || 'Ürün'} (${act.details?.qty} adet)`}

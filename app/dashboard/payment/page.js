@@ -171,13 +171,25 @@ export default function PaymentPage() {
         } catch (error) { alert('Hata oluştu.'); } finally { setLoading(false); }
     };
 
+    useEffect(() => {
+        if (toslaData) {
+            const form = document.getElementById('tosla3dForm');
+            if (form) {
+                form.submit();
+            }
+        }
+    }, [toslaData]);
+
     if (toslaData) {
         return (
             <div className="page-wrapper"><div style={{ padding: 40, textAlign: 'center' }}><h2>Yönlendiriliyorsunuz...</h2>
-                <form id="tosla3dForm" method="POST" action={toslaData.processUrl} style={{ display: 'none' }}>
-                    <input type="hidden" name="ThreeDSessionId" value={toslaData.threeDSessionId} /><input type="hidden" name="CardHolderName" value={buyerInfo.companyName} /><input type="hidden" name="CardNo" value={toslaData.cardNumber} /><input type="hidden" name="ExpireDate" value={toslaData.expireDate} /><input type="hidden" name="Cvv" value={cvv} /><input type="hidden" name="CustomerEmail" value={buyerInfo.email} /><input type="hidden" name="CustomerPhone" value={buyerInfo.phone} /><input type="hidden" name="CustomerName" value={buyerInfo.companyName} />
+                <form id="tosla3dForm" method="POST" action={toslaData.processUrl}>
+                    <input type="hidden" name="ThreeDSessionId" value={toslaData.threeDSessionId} />
+                    <input type="hidden" name="CardHolderName" value={buyerInfo.companyName} />
+                    <input type="hidden" name="CardNo" value={toslaData.cardNumber} />
+                    <input type="hidden" name="ExpireDate" value={toslaData.expireDate} />
+                    <input type="hidden" name="Cvv" value={cvv} />
                 </form>
-                <script dangerouslySetInnerHTML={{ __html: 'document.getElementById("tosla3dForm").submit();' }} />
             </div></div>
         );
     }

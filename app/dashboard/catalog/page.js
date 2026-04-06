@@ -14,8 +14,9 @@ const getCircleStyle = (qty, size = 16) => {
 export default function DealerCatalog() {
     const [products, setProducts] = useState([]);
     const [currentPage, setCurrentPage] = useState(1);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [pageImagesLoading, setPageImagesLoading] = useState(false);
+    const isSearchingRef = useRef(false);
     const [hasSearched, setHasSearched] = useState(false);
     const [viewMode, setViewMode] = useState('catalog');
     const perPage = viewMode === 'list' ? 15 : 10;
@@ -72,6 +73,7 @@ export default function DealerCatalog() {
             alert('Lütfen arama yapmak için en az bir filtre seçin.');
             return;
         }
+        isSearchingRef.current = true;
         setLoading(true); setHasSearched(true); setCurrentPage(1);
         try {
             const response = await fetch('/api/products/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel, is_new: checkNew, is_campaign: checkCampaign }) });
@@ -87,7 +89,11 @@ export default function DealerCatalog() {
                     details: { text: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel }
                 })
             }).catch(e => console.error('Log search error:', e));
-        } catch (err) { console.error(err); } finally { setLoading(false); }
+        } catch (err) { console.error(err); } finally { 
+            setLoading(false); 
+            // isSearchingRef will be set to false inside the image preloading useEffect 
+            // to ensure no flicker happens between data load and image load
+        }
     };
 
     useEffect(() => {
@@ -128,16 +134,29 @@ export default function DealerCatalog() {
 
     useEffect(() => {
         const urls = perPageItems.map(p => p.image_url).filter(Boolean);
-        if (urls.length === 0) { setPageImagesLoading(false); return; }
+        if (urls.length === 0) { 
+            setPageImagesLoading(false); 
+            isSearchingRef.current = false;
+            return; 
+        }
+        
         setPageImagesLoading(true);
         let loadedCount = 0;
         const total = urls.length;
-        const timeout = setTimeout(() => { setPageImagesLoading(false); }, 2500);
+        const timeout = setTimeout(() => { 
+            setPageImagesLoading(false); 
+            isSearchingRef.current = false;
+        }, 2500);
+
         urls.forEach(url => {
             const img = new window.Image();
             img.onload = img.onerror = () => {
                 loadedCount++;
-                if (loadedCount === total) { clearTimeout(timeout); setPageImagesLoading(false); }
+                if (loadedCount === total) { 
+                    clearTimeout(timeout); 
+                    setPageImagesLoading(false); 
+                    isSearchingRef.current = false;
+                }
             };
             img.src = url;
         });

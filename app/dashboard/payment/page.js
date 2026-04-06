@@ -143,8 +143,41 @@ export default function PaymentPage() {
         setIsDebtChecked(false);
     };
 
+    const validateCard = () => {
+        const cleanCard = cardNumber.replace(/\s/g, '');
+        if (cleanCard.length < 13 || cleanCard.length > 19) return 'Geçersiz kart numarası.';
+        
+        // Luhn Algorithm
+        let sum = 0;
+        for (let i = 0; i < cleanCard.length; i++) {
+            let intVal = parseInt(cleanCard.substr(cleanCard.length - 1 - i, 1));
+            if (i % 2 !== 0) {
+                intVal *= 2;
+                if (intVal > 9) intVal -= 9;
+            }
+            sum += intVal;
+        }
+        if (sum % 10 !== 0) return 'Kredi kartı numarası hatalı (Luhn check).';
+
+        const month = parseInt(expireMonth);
+        const year = parseInt(expireYear);
+        if (isNaN(month) || month < 1 || month > 12) return 'Geçersiz ay.';
+        
+        const now = new Date();
+        const currentYear = now.getFullYear() % 100;
+        const currentMonth = now.getMonth() + 1;
+        if (isNaN(year) || year < currentYear || (year === currentYear && month < currentMonth)) return 'Kartın son kullanma tarihi geçmiş.';
+
+        if (cvv.length < 3 || cvv.length > 4) return 'CVV 3 veya 4 haneli olmalıdır.';
+
+        return null;
+    };
+
     const handlePayment = async (e) => {
         e.preventDefault();
+        const error = validateCard();
+        if (error) { alert(error); return; }
+
         const numericAmount = parseFloat(amount);
         if (isNaN(numericAmount) || numericAmount <= 0) { alert('Geçerli bir tutar girin.'); return; }
         setLoading(true);

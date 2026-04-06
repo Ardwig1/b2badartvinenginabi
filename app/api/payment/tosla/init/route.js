@@ -95,6 +95,8 @@ export async function POST(req) {
             currency: '949', // TRY
             installmentCount: '0', // Single shot
             callbackUrl: OK_URL,
+            okUrl: OK_URL,
+            failUrl: OK_URL,
             description: "B2B Yedek Parca Odemesi",
             customerEmail: buyerEmail || '',
             customerPhone: buyerPhone || '',

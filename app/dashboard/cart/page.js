@@ -110,13 +110,34 @@ export default function DealerCart() {
     const placeOrder = async () => {
         const selectedItems = cartItems.filter(i => isSelected(i.product.id));
         if (selectedItems.length === 0) return;
-        if (totals.needsPrepayment) {
-            const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.grandTotal;
-            window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
-            return;
-        }
+
         setSubmitting(true);
         try {
+            // 1. ANLIK STOK KONTROLÜ
+            const stockCheckRes = await fetch('/api/products/stock-check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    items: selectedItems.map(i => ({ id: i.product.id, qty: i.qty }))
+                })
+            });
+            const stockData = await stockCheckRes.json();
+
+            if (!stockData.success) {
+                const failMsg = stockData.failures.map(f => `${f.name} (Kalan: ${f.available} adet)`).join('\n');
+                alert(`Sepetinizdeki bazı ürünler için yeterli stok kalmamıştır:\n\n${failMsg}`);
+                setSubmitting(false);
+                return;
+            }
+
+            // 2. ÖDEME KONTROLÜ (EĞER STOK VARSA)
+            if (totals.needsPrepayment) {
+                const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.grandTotal;
+                window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
+                return;
+            }
+
+            // 3. SİPARİŞİ OLUŞTUR
             const p_items = selectedItems.map(i => ({ product_id: i.product.id, quantity: i.qty, unit_price: getDiscountedPrice(i.product), total_price: getDiscountedPrice(i.product) * i.qty }));
             const response = await fetch('/api/user/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', note: `[${shippingMethod}] ${note}`, totalAmount: totals.grandTotal, items: p_items }) });
             if (response.ok) {
@@ -133,7 +154,10 @@ export default function DealerCart() {
                 selectedItems.forEach(item => ctxSetQty(item.product.id, item.product, 0));
                 setSuccess(true);
             }
-        } catch (error) { alert("Hata oluştu."); } finally { setSubmitting(false); }
+        } catch (error) { 
+            console.error("Order error:", error);
+            alert("Sipariş sırasında teknik bir hata oluştu."); 
+        } finally { setSubmitting(false); }
     };
 
     if (loading) return <div className="page-wrapper loading-center"><div className="loading-spinner" /></div>;

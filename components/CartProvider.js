@@ -11,6 +11,7 @@ export function CartProvider({ children }) {
     // Fetch cart from DB on mount
     useEffect(() => {
         const loadCart = async () => {
+            setCartItems({}); // Reset first to be safe
             try {
                 const res = await fetch('/api/user/cart');
                 if (res.ok) {
@@ -26,6 +27,9 @@ export function CartProvider({ children }) {
             }
         };
         loadCart();
+
+        // Optional: Listen for storage events or custom logout events if needed
+        // But the most important part is ensure handleSignOut or page reload clears this
     }, []);
 
     const syncItemToDB = async (productId, quantity, unselected) => {

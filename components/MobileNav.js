@@ -24,8 +24,7 @@ export default function MobileNav() {
     const handleSignOut = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        router.push('/login');
-        router.refresh();
+        window.location.href = '/login'; // Full reload to clear CartProvider state
     };
 
     if (pathname.startsWith('/admin') || pathname.startsWith('/rep') || pathname === '/login' || pathname === '/register') return null;

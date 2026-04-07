@@ -57,8 +57,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
     const handleSignOut = async () => {
         const supabase = createClient();
         await supabase.auth.signOut();
-        router.push('/login');
-        router.refresh();
+        window.location.href = '/login'; // Full reload to clear CartProvider state
     };
 
     return (

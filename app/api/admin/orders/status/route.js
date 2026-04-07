@@ -57,13 +57,14 @@ export async function POST(req) {
                     shipping_origin: shippingOrigin
                 }).eq('id', item.id);
 
-                // B. Reduce product stocks from specific bin
+                // B. Reduce product stocks from specific bin AND total
                 const stockColumn = shippingOrigin === 'İstanbul' ? 'stock_merkez' : 'stock_depo';
                 
-                const { data: prod } = await supabase.from('products').select(stockColumn).eq('id', item.product_id).single();
+                const { data: prod } = await supabase.from('products').select(`id, ${stockColumn}, stock_quantity`).eq('id', item.product_id).single();
                 if (prod) {
                     await supabase.from('products').update({
-                        [stockColumn]: Math.max(0, (prod[stockColumn] || 0) - item.quantity)
+                        [stockColumn]: Math.max(0, (prod[stockColumn] || 0) - item.quantity),
+                        stock_quantity: Math.max(0, (prod.stock_quantity || 0) - item.quantity)
                     }).eq('id', item.product_id);
                 }
             }

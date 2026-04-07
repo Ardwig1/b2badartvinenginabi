@@ -13,7 +13,11 @@ export function CartProvider({ children }) {
         const loadCart = async () => {
             setCartItems({}); // Reset first to be safe
             try {
-                const res = await fetch('/api/user/cart');
+                // Ensure we use a cache-busting timestamp to avoid stale responses
+                const res = await fetch(`/api/user/cart?t=${Date.now()}`, { 
+                    cache: 'no-store',
+                    headers: { 'Pragma': 'no-cache' }
+                });
                 if (res.ok) {
                     const dbCart = await res.json();
                     if (dbCart && typeof dbCart === 'object' && !dbCart.error) {
@@ -27,9 +31,6 @@ export function CartProvider({ children }) {
             }
         };
         loadCart();
-
-        // Optional: Listen for storage events or custom logout events if needed
-        // But the most important part is ensure handleSignOut or page reload clears this
     }, []);
 
     const syncItemToDB = async (productId, quantity, unselected) => {

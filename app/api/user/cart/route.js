@@ -70,7 +70,13 @@ export async function GET() {
             }
         });
 
-        return NextResponse.json(cartData);
+        return NextResponse.json(cartData, {
+            headers: {
+                'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            }
+        });
     } catch (err) {
         console.error("CART GET ERROR:", err.message);
         return NextResponse.json({ error: err.message }, { status: 500 });

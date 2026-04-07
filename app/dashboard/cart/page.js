@@ -3,6 +3,14 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon, TrashIcon, PlusIcon, MinusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
 
+const getCircleStyle = (qty, size = 12) => {
+    let bg, border, boxShadow;
+    if (qty > 15) { bg = 'linear-gradient(135deg, #22c55e, #15803d)'; border = '1px solid #14532d'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
+    else if (qty > 0) { bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; border = '1px solid #1e293b'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`; }
+    else { bg = 'linear-gradient(135deg, #ef4444, #991b1b)'; border = '1px solid #7f1d1d'; boxShadow = `0 0 ${size / 2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
+    return { width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, display: 'inline-block', flexShrink: 0 };
+};
+
 export default function DealerCart() {
     const { cartItems: contextCartItems, setQty: ctxSetQty, addToCart: ctxAddToCart, clearCart } = useCart();
 
@@ -226,7 +234,7 @@ export default function DealerCart() {
                             {/* FULL DESKTOP TABLE */}
                             <div className="table-wrapper desktop-only">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th style={{ textAlign: 'right' }}>Birim Fiyat</th><th style={{ textAlign: 'center' }}>Miktar</th><th style={{ textAlign: 'right' }}>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th style={{ textAlign: 'right' }}>Birim Fiyat</th><th style={{ textAlign: 'center' }}>Miktar</th><th style={{ textAlign: 'right' }}>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
@@ -238,6 +246,8 @@ export default function DealerCart() {
                                                         <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code} {extra && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}</div>
                                                     </td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.brand || '-'}</td>
+                                                    <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_merkez, 12)} /></td>
+                                                    <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_depo, 12)} /></td>
                                                     <td style={{ textAlign: 'right' }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                                     <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty + 1)}>+</button></div></td>
                                                     <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
@@ -263,7 +273,11 @@ export default function DealerCart() {
                                                 <div className="cart-card-info">
                                                     <div className="cart-card-name">{p.name}</div>
                                                     <div className="cart-card-sub">{p.code} {p.brand && `| ${p.brand}`}</div>
-                                                    {extra && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}
+                                                    <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_merkez, 10)} /> İstanbul</span>
+                                                        <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_depo, 10)} /> Depo</span>
+                                                    </div>
+                                                    {extra && <div style={{ marginTop: 6 }}><span className="extra-badge-sm" style={{ marginLeft: 0 }}>EK İSKONTO %{extra.discount_rate}</span></div>}
                                                 </div>
                                                 <button className="cart-card-delete" onClick={() => handleSetQty(p.id, p, 0)}><XMarkIcon style={{ width: 20 }} /></button>
                                             </div>

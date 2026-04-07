@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 
 const CartContext = createContext(null);
 
@@ -8,12 +9,10 @@ export function CartProvider({ children }) {
     const [cartItems, setCartItems] = useState({});
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // Fetch cart from DB on mount
+    // Fetch cart from DB on mount and when auth state changes
     useEffect(() => {
         const loadCart = async () => {
-            setCartItems({}); // Reset first to be safe
             try {
-                // Ensure we use a cache-busting timestamp to avoid stale responses
                 const res = await fetch(`/api/user/cart?t=${Date.now()}`, { 
                     cache: 'no-store',
                     headers: { 'Pragma': 'no-cache' }
@@ -23,6 +22,8 @@ export function CartProvider({ children }) {
                     if (dbCart && typeof dbCart === 'object' && !dbCart.error) {
                         setCartItems(dbCart);
                     }
+                } else {
+                    setCartItems({}); // If unauthorized, clear cart
                 }
             } catch (e) {
                 console.error('Failed to load cart from DB:', e);
@@ -30,7 +31,20 @@ export function CartProvider({ children }) {
                 setIsInitialLoad(false);
             }
         };
+
         loadCart();
+
+        // Listen for auth changes to re-fetch cart automatically
+        const supabase = createClient();
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+                loadCart();
+            } else if (event === 'SIGNED_OUT') {
+                setCartItems({});
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const syncItemToDB = async (productId, quantity, unselected) => {

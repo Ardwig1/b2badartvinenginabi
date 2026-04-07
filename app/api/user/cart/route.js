@@ -81,7 +81,10 @@ export async function GET() {
 export async function POST(req) {
     try {
         const companyId = await getEffectiveCompanyId();
-        if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        if (!companyId) {
+            console.error("CART POST: No companyId found, aborting sync to prevent data loss.");
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
         const { product_id, quantity, unselected } = await req.json();
@@ -122,7 +125,10 @@ export async function POST(req) {
 export async function DELETE() {
     try {
         const companyId = await getEffectiveCompanyId();
-        if (!companyId) return NextResponse.json({ success: true });
+        if (!companyId) {
+            console.error("CART DELETE: No companyId found, aborting clear to prevent data loss.");
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
 
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
         await adminSupabase.from('cart_items').delete().eq('company_id', companyId);

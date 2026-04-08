@@ -132,12 +132,14 @@ export default function DealerCatalog() {
 
     const getKdvPrice = (p) => getDiscountedPrice(p) * 1.20;
 
-    const filtered = products.filter(p => {
-        if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
-        if (checkLow) { if (!((p.stock_merkez > 0 && p.stock_merkez <= 15) || (p.stock_depo > 0 && p.stock_depo <= 15))) return false; }
-        if (checkCampaign && !p.is_campaign) return false;
-        return true;
-    });
+    const filtered = useMemo(() => {
+        return products.filter(p => {
+            if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
+            if (checkLow) { if (!((p.stock_merkez > 0 && p.stock_merkez <= 15) || (p.stock_depo > 0 && p.stock_depo <= 15))) return false; }
+            if (checkCampaign && !p.is_campaign) return false;
+            return true;
+        });
+    }, [products, checkIn, checkLow, checkCampaign]);
 
     const perPageItems = useMemo(() => filtered.slice((currentPage - 1) * perPage, currentPage * perPage), [filtered, currentPage, perPage]);
 
@@ -155,7 +157,7 @@ export default function DealerCatalog() {
         const timeout = setTimeout(() => { 
             setPageImagesLoading(false); 
             isSearchingRef.current = false;
-        }, 2500);
+        }, 1500); // Optimized for mobile: 1.5s max wait instead of 2.5s
 
         urls.forEach(url => {
             const img = new window.Image();
@@ -245,7 +247,20 @@ export default function DealerCatalog() {
             {loading || pageImagesLoading ? (
                 <div className="card" style={{ padding: '60px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3 }} />
-                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)' }}>{pageImagesLoading ? 'Ürün Görselleri Hazırlanıyor...' : 'Yükleniyor...'}</div>
+                    <div style={{ marginTop: 16, fontWeight: 600, color: 'var(--primary)', textAlign: 'center' }}>
+                        {loading ? 'Ürünler Aranıyor...' : 'Ürün Görselleri Hazırlanıyor...'}
+                        {pageImagesLoading && (
+                            <div style={{ marginTop: 12 }}>
+                                <button 
+                                    className="btn btn-ghost btn-sm" 
+                                    onClick={() => { setPageImagesLoading(false); isSearchingRef.current = false; }}
+                                    style={{ fontSize: 12, textDecoration: 'underline' }}
+                                >
+                                    Beklemeden sonuçları gör
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             ) : filtered.length === 0 ? (
                 <div className="card empty-card">{hasSearched ? 'Ürün bulunamadı' : 'Arama yapmak için kriterleri girin'}</div>

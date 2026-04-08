@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { MagnifyingGlassIcon, CubeIcon, ArchiveBoxIcon, PencilSquareIcon, CameraIcon } from '@heroicons/react/24/outline';
 import GlobalMarginSettings from '@/components/GlobalMarginSettings';
@@ -62,7 +62,7 @@ export default function AdminProducts() {
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
     // Client-side filtering and sorting (Smart Order-Independent Regex Search)
-    const filtered = (() => {
+    const filtered = useMemo(() => {
         let list = products;
 
         if (search.trim()) {
@@ -102,7 +102,7 @@ export default function AdminProducts() {
             });
         }
         return list;
-    })();
+    }, [products, search, isCampaignOnly]);
 
     const openNew = () => {
         setEditing(null);
@@ -268,8 +268,8 @@ export default function AdminProducts() {
         fetchProducts();
     };
 
-    const currentChunk = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-    const chunkUrlHash = currentChunk.map(p => p.image_url).filter(Boolean).join('|');
+    const currentChunk = useMemo(() => filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE), [filtered, currentPage]);
+    const chunkUrlHash = useMemo(() => currentChunk.map(p => p.image_url).filter(Boolean).join('|'), [currentChunk]);
 
     useEffect(() => {
         let isCancelled = false;

@@ -182,6 +182,7 @@ export default function DealerCart() {
 
     return (
         <div className="page-wrapper">
+            <div className="stock-warning" style={{ marginBottom: 20 }}>⚠️ DEPO İSTANBUL DIŞINDADIR - DEPO’DA OLAN ÜRÜNLER KARGO İLE GÖNDERİLMEKTEDİR ⚠️</div>
             <div className="page-header">
                 <div><h1 className="page-title">Sepetim & Sipariş Ver</h1><p className="page-subtitle">{cartItems.length} ürün çeşidi</p></div>
                 <a href="/dashboard/catalog" className="btn btn-ghost desktop-only">← Kataloğa Dön</a>
@@ -300,46 +301,51 @@ export default function DealerCart() {
                     )}
                 </div>
 
-                <div className="cart-right-col">
-                    <div className="card summary-card-sticky">
-                        <div className="card-title" style={{ marginBottom: 16 }}>Sipariş Özeti</div>
-                        <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        <hr className="divider" />
-                        <div className="summary-row grand"><span>Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        
-                        <div className="summary-form">
-                            <div className="form-group"><label className="form-label">Gönderim</label><select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}><option value="Kargo">Kargo</option><option value="Kurye">Kurye</option><option value="Elden">Elden</option></select></div>
-                            <div className="form-group"><textarea className="form-textarea" placeholder="Sipariş notu..." value={note} onChange={e => setNote(e.target.value)} /></div>
+                <div className="cart-summary-wrapper">
+                    <div className="card summary-card">
+                        <div className="summary-grid">
+                            <div className="summary-details">
+                                <div className="card-title" style={{ marginBottom: 16 }}>Sipariş Özeti</div>
+                                <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <hr className="divider" />
+                                <div className="summary-row grand"><span>Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                            </div>
+                            
+                            <div className="summary-actions-form">
+                                <div className="form-group"><label className="form-label">Gönderim Metodu</label><select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}><option value="Kargo">Kargo</option><option value="Kurye">Kurye</option><option value="Elden">Elden</option></select></div>
+                                <div className="form-group"><textarea className="form-textarea" placeholder="Sipariş notu ekleyin..." value={note} onChange={e => setNote(e.target.value)} style={{ height: 80 }} /></div>
+                                <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: totals.needsPrepayment ? 'var(--danger)' : undefined }}>
+                                    {submitting ? '...' : totals.needsPrepayment ? 'ÖDEME YAP' : `${totals.selectedCount} Ürünü Sipariş Et`}
+                                </button>
+                            </div>
                         </div>
-
-                        <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: totals.needsPrepayment ? 'var(--danger)' : undefined }}>
-                            {submitting ? '...' : totals.needsPrepayment ? 'ÖDEME YAP' : `${totals.selectedCount} Ürünü Sipariş Et`}
-                        </button>
                     </div>
                 </div>
             </div>
 
             <style jsx>{`
-                .cart-grid-container { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
+                .stock-warning { background: linear-gradient(90deg, rgba(185,28,28,0.1), rgba(220,38,38,0.1)); border: 1px solid rgba(220,38,38,0.2); color: #b91c1c; padding: 12px; border-radius: 12px; text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 20px; }
+                .cart-grid-container { display: flex; flex-direction: column; gap: 24px; }
+                .cart-summary-wrapper { margin-top: 10px; }
+                .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
                 .cart-controls { display: flex; gap: 10px; margin-bottom: 12px; align-items: center; }
                 .selection-count { marginLeft: auto; fontSize: 13px; color: var(--text-muted); }
                 .extra-badge-sm { background: #dcfce7; color: #16a34a; padding: 1px 6px; borderRadius: 4px; fontSize: 10px; fontWeight: 700; margin-left: 8px; }
                 .summary-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; }
                 .summary-row.discount { color: var(--danger); font-weight: 600; }
-                .summary-row.grand { font-size: 22px; font-weight: 800; color: var(--primary); margin-top: 12px; }
-                .summary-card-sticky { position: sticky; top: 24px; }
-                .checkout-btn { width: 100%; justify-content: center; height: 54px; margin-top: 16px; font-weight: 700; }
+                .summary-row.grand { font-size: 28px; font-weight: 800; color: var(--primary); margin-top: 12px; }
+                .checkout-btn { width: 100%; justify-content: center; height: 54px; margin-top: 16px; font-weight: 700; font-size: 18px; }
                 .search-results-overlay { position: absolute; top: 100%; left: 0; right: 0; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; z-index: 100; margin-top: 4px; box-shadow: var(--shadow-xl); }
                 .search-item { padding: 12px 16px; display: flex; justify-content: space-between; cursor: pointer; border-bottom: 1px solid var(--border-light); }
                 .search-item:hover { background: var(--bg-surface); }
 
                 .mobile-only { display: none; }
                 @media (max-width: 768px) {
+                    .summary-grid { grid-template-columns: 1fr; gap: 20px; }
                     .desktop-only { display: none !important; }
                     .mobile-only { display: block !important; }
-                    .cart-grid-container { grid-template-columns: 1fr; gap: 16px; }
                     .cart-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-sm); }
                     .cart-card.unselected { opacity: 0.6; }
                     .cart-card-top { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 16px; }

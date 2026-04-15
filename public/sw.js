@@ -1,4 +1,4 @@
-// v2 - Force Refresh
+// v3 - External Fetch Fix
 self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
@@ -8,6 +8,8 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Basic pass-through for now, required for PWA installability
-  event.respondWith(fetch(event.request));
+  // Only intercept same-origin requests to avoid CORS issues with external assets in Service Worker
+  if (event.request.url.startsWith(self.location.origin)) {
+    event.respondWith(fetch(event.request));
+  }
 });

@@ -4,36 +4,47 @@ import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 
 export default function HomeBanner() {
-    const [banners, setBanners] = useState(['/banner1.jpg', '/banner2.jpg', '/banner3.jpg']);
+    const [banners, setBanners] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchBanners = async () => {
-            const supabase = createClient();
-            
-            // 1. Fetch custom banners - order by display_order
-            const { data, error } = await supabase
-                .from('banners')
-                .select('image_url')
-                .eq('is_active', true)
-                .order('display_order', { ascending: true });
-            
-            // 2. Fetch hidden defaults
-            const { data: hiddenData } = await supabase
-                .from('price_groups')
-                .select('name')
-                .eq('discount_percent', -999);
-            
-            const hiddenIds = hiddenData ? hiddenData.map(d => d.name.replace('HIDDEN_BANNER_', '')) : [];
+            try {
+                const supabase = createClient();
+                
+                // 1. Fetch custom banners - order by display_order
+                const { data, error } = await supabase
+                    .from('banners')
+                    .select('image_url')
+                    .eq('is_active', true)
+                    .order('display_order', { ascending: true });
+                
+                console.log('Banner Fetch Result:', { data, error });
 
-            if (!error && data && data.length > 0) {
-                setBanners(data.map(b => b.image_url));
-            } else {
-                // Filter the default set
-                const defaults = ['/banner1.jpg', '/banner2.jpg', '/banner3.jpg'];
-                const filtered = defaults.filter((_, i) => !hiddenIds.includes(`def${i + 1}`));
-                if (filtered.length > 0) setBanners(filtered);
-                else setBanners([]); // No banners at all
+                // 2. Fetch hidden defaults
+                const { data: hiddenData, error: hiddenError } = await supabase
+                    .from('price_groups')
+                    .select('name')
+                    .eq('discount_percent', -999);
+                
+                console.log('Hidden Data Result:', { hiddenData, hiddenError });
+                
+                const hiddenIds = hiddenData ? hiddenData.map(d => d.name.replace('HIDDEN_BANNER_', '')) : [];
+
+                if (!error && data && data.length > 0) {
+                    const mappedBanners = data.map(b => b.image_url.trim());
+                    setBanners(mappedBanners);
+                } else {
+                    // Filter the default set
+                    const defaults = ['/banner1.jpg', '/banner2.jpg', '/banner3.jpg'];
+                    const filtered = defaults.filter((_, i) => !hiddenIds.includes(`def${i + 1}`));
+                    setBanners(filtered);
+                }
+            } catch (err) {
+                console.error('Banner fetch error:', err);
+            } finally {
+                setLoading(false);
             }
         };
         fetchBanners();
@@ -43,10 +54,13 @@ export default function HomeBanner() {
         if (banners.length <= 1) return;
         const timer = setInterval(() => {
             setCurrentIndex((prev) => (prev + 1) % banners.length);
-        }, 4000); // 4 seconds
+        }, 5000); // 5 seconds for better viewing
 
         return () => clearInterval(timer);
     }, [banners.length]);
+
+    if (loading) return <div style={{ width: '100%', aspectRatio: '1200/300', background: 'var(--bg-surface)', borderRadius: 'var(--radius-lg)', marginBottom: 20 }}></div>;
+    if (banners.length === 0) return null;
 
     return (
         <div style={{ marginBottom: 20 }}>
@@ -55,7 +69,6 @@ export default function HomeBanner() {
                 width: '100%', 
                 borderRadius: 'var(--radius-lg)', 
                 overflow: 'hidden', 
-                minHeight: 120, 
                 background: 'var(--bg-surface)',
                 aspectRatio: '1200 / 300'
             }}>
@@ -67,7 +80,7 @@ export default function HomeBanner() {
                     height: '100%'
                 }}>
                     {banners.map((src, i) => (
-                        <div key={src} style={{ minWidth: '100%', position: 'relative' }}>
+                        <div key={`${src}-${i}`} style={{ minWidth: '100%', position: 'relative' }}>
                             <Image
                                 src={src}
                                 alt={`Banner ${i + 1}`}
@@ -75,6 +88,7 @@ export default function HomeBanner() {
                                 height={300}
                                 style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
                                 priority={i === 0}
+                                unoptimized={true}
                             />
                         </div>
                     ))}

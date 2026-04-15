@@ -14,6 +14,7 @@ export default function AdminOrders() {
     const [isCancelling, setIsCancelling] = useState(false);
     const [cancelOrderId, setCancelOrderId] = useState(null);
     const [isShippingConfirm, setIsShippingConfirm] = useState(false);
+    const [pendingStatus, setPendingStatus] = useState(null);
     
     // When selected order changes, initialize item shipping data
     useEffect(() => {
@@ -152,6 +153,7 @@ export default function AdminOrders() {
             setIsCancelling(false);
             setCancelOrderId(null);
             setIsShippingConfirm(false);
+            setPendingStatus(null);
         } catch (e) {
             alert('Hata: ' + e.message);
         }
@@ -176,6 +178,7 @@ export default function AdminOrders() {
                 return;
             }
 
+            setPendingStatus(status);
             setIsShippingConfirm(true);
             return;
         }
@@ -540,7 +543,7 @@ export default function AdminOrders() {
                             <button 
                                 className="btn btn-primary" 
                                 style={{ justifyContent: 'center' }}
-                                onClick={() => executeStatusUpdate(selected.id, selected.status === 'preparing' ? 'shipped' : 'delivered')}
+                                onClick={() => executeStatusUpdate(selected.id, pendingStatus)}
                             >
                                 Onayla ve Kaydet
                             </button>

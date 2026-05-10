@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { EyeIcon, EyeSlashIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
 import styles from './auth.module.css';
 import Logo from '@/components/Logo';
 
@@ -12,9 +13,28 @@ function LoginContent() {
     const [dealerCode, setDealerCode] = useState('');
     const [userCode, setUserCode] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [isCapsLockOn, setIsCapsLockOn] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        const checkCapsLock = (e) => {
+            if (e.getModifierState && e.getModifierState('CapsLock')) {
+                setIsCapsLockOn(true);
+            } else {
+                setIsCapsLockOn(false);
+            }
+        };
+
+        window.addEventListener('keydown', checkCapsLock);
+        window.addEventListener('keyup', checkCapsLock);
+        return () => {
+            window.removeEventListener('keydown', checkCapsLock);
+            window.removeEventListener('keyup', checkCapsLock);
+        };
+    }, []);
 
     useEffect(() => {
         const savedDealer = localStorage.getItem('b2b_dealer_code');
@@ -65,6 +85,17 @@ function LoginContent() {
             } else {
                 localStorage.removeItem('b2b_dealer_code');
                 localStorage.removeItem('b2b_user_code');
+            }
+
+            // Activity log for Login
+            try {
+                await fetch('/api/log-activity', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action_type: 'login' })
+                });
+            } catch (logErr) {
+                console.error('Failed to log login activity:', logErr);
             }
 
             // Redirection logic
@@ -132,15 +163,53 @@ function LoginContent() {
 
                         <div className="form-group">
                             <label className="form-label">Şifre</label>
-                            <input
-                                className="form-input"
-                                type="password"
-                                placeholder="••••••••"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                required
-                                id="login-password"
-                            />
+                            <div style={{ position: 'relative' }}>
+                                <input
+                                    className="form-input"
+                                    type={showPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                    id="login-password"
+                                    style={{ paddingRight: '45px' }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '12px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: '4px',
+                                        cursor: 'pointer',
+                                        color: 'var(--text-muted)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        zIndex: 10
+                                    }}
+                                >
+                                    {showPassword ? <EyeSlashIcon style={{ width: 20 }} /> : <EyeIcon style={{ width: 20 }} />}
+                                </button>
+                            </div>
+                            {isCapsLockOn && (
+                                <div style={{ 
+                                    marginTop: '8px', 
+                                    color: '#fbbf24', 
+                                    fontSize: '12px', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '4px',
+                                    fontWeight: 600 
+                                }}>
+                                    <ExclamationTriangleIcon style={{ width: 14 }} />
+                                    <span>Dikkat: Caps Lock Açık!</span>
+                                </div>
+                            )}
                         </div>
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.5rem', fontSize: '14px', color: 'var(--text-secondary)' }}>

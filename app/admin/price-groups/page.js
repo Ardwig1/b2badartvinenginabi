@@ -8,7 +8,9 @@ export default function AdminPriceGroups() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', discount_percent: '' });
+    const [form, setForm] = useState({ name: '', discount_percent: '', rules: {} });
+    const [suppliers, setSuppliers] = useState([]);
+    const [newRule, setNewRule] = useState({ supplier: '', discount: '' });
     const [saving, setSaving] = useState(false);
     const supabase = createClient();
 
@@ -16,18 +18,44 @@ export default function AdminPriceGroups() {
         setLoading(true);
         const res = await fetchPriceGroups();
         setGroups(res.success && res.data ? res.data : []);
+
+        // Also fetch unique suppliers
+        const { data: prodData } = await supabase.from('products').select('supplier_brand');
+        if (prodData) {
+            const unique = Array.from(new Set(prodData.map(p => p.supplier_brand?.trim()).filter(Boolean))).sort();
+            setSuppliers(unique);
+        }
         setLoading(false);
-    }, []);
+    }, [supabase]);
 
     useEffect(() => { fetch(); }, [fetch]);
 
-    const openNew = () => { setEditing(null); setForm({ name: '', discount_percent: '' }); setShowModal(true); };
-    const openEdit = (g) => { setEditing(g); setForm({ name: g.name, discount_percent: g.discount_percent }); setShowModal(true); };
+    const openNew = () => { setEditing(null); setForm({ name: '', discount_percent: '', rules: {} }); setShowModal(true); };
+    const openEdit = (g) => { setEditing(g); setForm({ name: g.name, discount_percent: g.discount_percent, rules: g.rules || {} }); setShowModal(true); };
+
+    const addRule = () => {
+        if (!newRule.supplier || newRule.discount === '') return;
+        setForm(prev => ({
+            ...prev,
+            rules: { ...prev.rules, [newRule.supplier]: Number(newRule.discount) }
+        }));
+        setNewRule({ supplier: '', discount: '' });
+    };
+
+    const removeRule = (supplier) => {
+        const updated = { ...form.rules };
+        delete updated[supplier];
+        setForm(prev => ({ ...prev, rules: updated }));
+    };
 
     const save = async (e) => {
         e.preventDefault();
         setSaving(true);
-        const payload = { name: form.name, discount_percent: Number(form.discount_percent) };
+        const payload = { 
+            name: form.name, 
+            discount_percent: Number(form.discount_percent),
+            rules: form.rules 
+        };
 
         const res = await savePriceGroup(payload, editing?.id);
         if (!res.success) {
@@ -87,15 +115,70 @@ export default function AdminPriceGroups() {
 
             {showModal && (
                 <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+                    <div className="modal" style={{ maxWidth: 650 }} onClick={e => e.stopPropagation()}>
                         <div className="modal-header">
                             <h3 className="modal-title">{editing ? 'Grubu Düzenle' : 'Yeni Fiyat Grubu'}</h3>
                             <button className="modal-close" onClick={() => setShowModal(false)}>✕</button>
                         </div>
                         <form onSubmit={save}>
-                            <div className="form-group"><label className="form-label">Grup Adı *</label><input className="form-input" value={form.name} onChange={up('name')} placeholder="örn. A Grubu" required id="pg-name" /></div>
-                            <div className="form-group"><label className="form-label">İskonto Oranı (%) *</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_percent} onChange={up('discount_percent')} required id="pg-discount" /></div>
-                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                                <div style={{ borderRight: '1px solid var(--border)', paddingRight: 20 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', marginBottom: 12, textTransform: 'uppercase' }}>Genel Ayarlar</div>
+                                    <div className="form-group"><label className="form-label">Grup Adı *</label><input className="form-input" value={form.name} onChange={up('name')} placeholder="örn. A Grubu" required id="pg-name" /></div>
+                                    <div className="form-group"><label className="form-label">Genel İskonto Oranı (%) *</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_percent} onChange={up('discount_percent')} required id="pg-discount" /></div>
+                                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>💡 Özel bir kural tanımlanmamış tüm ürünlerde bu oran geçerli olur.</p>
+                                </div>
+
+                                <div>
+                                    <div style={{ fontSize: 13, fontWeight: 700, color: '#16a34a', marginBottom: 12, textTransform: 'uppercase' }}>Tedarikçi Bazlı Kurallar</div>
+                                    
+                                    <div style={{ background: 'var(--bg-surface)', padding: 12, borderRadius: 8, border: '1px solid var(--border)', marginBottom: 12 }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px auto', gap: 8, alignItems: 'flex-end' }}>
+                                            <div>
+                                                <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>Stok Firması</label>
+                                                <select className="form-select" style={{ height: 32, fontSize: 12, padding: '0 8px' }} value={newRule.supplier} onChange={e => setNewRule(prev => ({ ...prev, supplier: e.target.value }))}>
+                                                    <option value="">Seçiniz...</option>
+                                                    {suppliers.map(s => <option key={s} value={s}>{s}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>İsk.%</label>
+                                                <input type="number" className="form-input" style={{ height: 32, fontSize: 12, padding: '0 8px' }} value={newRule.discount} onChange={e => setNewRule(prev => ({ ...prev, discount: e.target.value }))} placeholder="10" />
+                                            </div>
+                                            <button type="button" className="btn btn-primary" style={{ height: 32, padding: '0 12px', fontSize: 12 }} onClick={addRule}>Ekle</button>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                                        {Object.entries(form.rules).length === 0 ? (
+                                            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 20 }}>Henüz özel kural eklenmedi.</p>
+                                        ) : (
+                                            <table style={{ width: '100%', fontSize: 12 }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                                        <th style={{ textAlign: 'left', padding: '4px 0' }}>Firma</th>
+                                                        <th style={{ textAlign: 'center', padding: '4px 0' }}>İsk.%</th>
+                                                        <th></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {Object.entries(form.rules).map(([s, d]) => (
+                                                        <tr key={s} style={{ borderBottom: '1px dashed var(--border)' }}>
+                                                            <td style={{ padding: '6px 0', fontWeight: 600 }}>{s}</td>
+                                                            <td style={{ textAlign: 'center' }}>%{d}</td>
+                                                            <td style={{ textAlign: 'right' }}>
+                                                                <button type="button" onClick={() => removeRule(s)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}>✕</button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowModal(false)}>İptal</button>
                                 <button type="submit" className="btn btn-primary" disabled={saving} id="save-pg-btn">{saving ? 'Kaydediliyor...' : 'Kaydet'}</button>
                             </div>

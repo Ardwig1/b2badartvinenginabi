@@ -409,11 +409,13 @@ export default function CompaniesPage() {
                       <td>
                         <span className="badge" style={{ background: 'var(--bg-canvas)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
                           {act.action_type === 'login' && 'Giriş Yaptı'}
+                          {act.action_type === 'logout' && 'Çıkış Yaptı'}
+                          {act.action_type === 'session_expired' && 'Oturum Süresi Doldu (Otomatik)'}
                           {act.action_type === 'search' && 'Ürün Aradı'}
                           {act.action_type === 'cart_add' && 'Sepete Ekledi'}
                           {act.action_type === 'order_placed' && 'Sipariş Verdi'}
                           {act.action_type === 'invoice_view' && 'Hesap Görüntüledi'}
-                          {!['login','search','cart_add','order_placed','invoice_view'].includes(act.action_type) && act.action_type}
+                          {!['login','logout','session_expired','search','cart_add','order_placed','invoice_view'].includes(act.action_type) && act.action_type}
                         </span>
                       </td>
                       <td style={{ color: 'var(--text-secondary)', fontSize: 13 }}>

@@ -26,7 +26,7 @@ export default function PaymentPage() {
 
     const [loading, setLoading] = useState(false);
     const [isInfoLoading, setIsInfoLoading] = useState(true);
-    const [toslaData, setToslaData] = useState(null);
+    const [qnbData, setQnbData] = useState(null);
     const [buyerInfo, setBuyerInfo] = useState({ email: '', phone: '', companyId: '', companyName: '', currentBalance: 0, discountPercent: 0, extraDiscounts: [] });
     const [context, setContext] = useState('');
     const [globalSettings, setGlobalSettings] = useState({ margin: 36, usdRate: 0, usdActive: false, rates: { USD: 1, EUR: 1 } });
@@ -182,7 +182,7 @@ export default function PaymentPage() {
         if (isNaN(numericAmount) || numericAmount <= 0) { alert('Geçerli bir tutar girin.'); return; }
         setLoading(true);
         try {
-            const res = await fetch('/api/payment/tosla/init', {
+            const res = await fetch('/api/payment/qnb/init', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -199,37 +199,30 @@ export default function PaymentPage() {
             });
             const data = await res.json();
             if (res.ok && data.success) {
-                setToslaData({ 
-                    ...data, 
-                    cardNumber: cardNumber.replace(/\s/g, ''), 
-                    expireDate: `${expireMonth}/${expireYear}`, // Standard MM/YY
-                    expireMonth,
-                    expireYear
-                });
+                if (data.is3D) {
+                    setQnbData(data);
+                } else {
+                    alert('Ödeme başarıyla tamamlandı.');
+                    window.location.href = '/dashboard/payment/result?success=true';
+                }
             } else alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
         } catch (error) { alert('Hata oluştu.'); } finally { setLoading(false); }
     };
 
     useEffect(() => {
-        if (toslaData) {
-            const form = document.getElementById('tosla3dForm');
-            if (form) {
-                form.submit();
-            }
+        if (qnbData?.html) {
+            // Create a temporary container for the bank's HTML form and submit it
+            const container = document.createElement('div');
+            container.innerHTML = qnbData.html;
+            document.body.appendChild(container);
+            const form = container.querySelector('form');
+            if (form) form.submit();
         }
-    }, [toslaData]);
+    }, [qnbData]);
 
-    if (toslaData) {
+    if (qnbData) {
         return (
-            <div className="page-wrapper"><div style={{ padding: 40, textAlign: 'center' }}><h2>Yönlendiriliyorsunuz...</h2>
-                <form id="tosla3dForm" method="POST" action={toslaData.processUrl}>
-                    <input type="hidden" name="ThreeDSessionId" value={toslaData.threeDSessionId} />
-                    <input type="hidden" name="CardHolderName" value={toslaData.companyName} />
-                    <input type="hidden" name="CardNo" value={toslaData.cardNumber} />
-                    <input type="hidden" name="ExpireDate" value={toslaData.expireDate} />
-                    <input type="hidden" name="Cvv" value={cvv} />
-                </form>
-            </div></div>
+            <div className="page-wrapper"><div style={{ padding: 40, textAlign: 'center' }}><h2>Banka sayfasına yönlendiriliyorsunuz...</h2><p>Lütfen bekleyiniz, bu işlem birkaç saniye sürebilir.</p></div></div>
         );
     }
 
@@ -239,10 +232,10 @@ export default function PaymentPage() {
 
             <div className="payment-layout" style={{ display: 'flex', gap: 24, maxWidth: 900, margin: '0 auto', alignItems: 'stretch' }}>
                 <div className="payment-main" style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div className="tosla-banner" style={{ padding: '20px 24px', background: 'linear-gradient(90deg, rgba(227, 24, 55, 0.1) 0%, rgba(227, 24, 55, 0.02) 100%)', border: '1px solid rgba(227, 24, 55, 0.2)', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '16px', color: 'var(--text-primary)' }}>
-                        <div style={{ background: '#e31837', color: 'white', padding: '4px 10px', borderRadius: '6px', fontWeight: 900, fontSize: '14px' }}>AKBANK</div>
-                        <div style={{ fontSize: '14px', fontWeight: 500 }}><strong style={{ color: '#e31837' }}>TOSLA</strong> altyapısı ile güvenli ödeme.</div>
-                        <div style={{ marginLeft: 'auto', background: '#10b981', color: 'white', padding: '4px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 700 }}>GÜVENLİ</div>
+                    <div className="qnb-banner" style={{ padding: '16px 24px', background: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', color: '#002b5b' }}>
+                        <img src="/qnb-logo.png" alt="QNB Finansbank" style={{ height: 44, width: 'auto', objectFit: 'contain', mixBlendMode: 'multiply' }} />
+                        <div style={{ fontSize: '15px', fontWeight: 500 }}><strong>QNB FİNANSBANK</strong> altyapısı ile güvenli ödeme.</div>
+                        <div style={{ marginLeft: 'auto', background: '#10b981', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px' }}>GÜVENLİ</div>
                     </div>
 
                     <div className="card payment-form-card" style={{ padding: 30 }}>
@@ -301,7 +294,7 @@ export default function PaymentPage() {
                 @media (max-width: 768px) {
                     .payment-layout { flex-direction: column !important; }
                     .payment-main { display: contents; }
-                    .tosla-banner { order: 1 !important; padding: 16px !important; gap: 12px !important; }
+                    .qnb-banner { order: 1 !important; padding: 16px !important; gap: 12px !important; }
                     .payment-side { order: 2 !important; flex: none !important; width: 100% !important; gap: 16px !important; }
                     .payment-form-card { order: 3 !important; padding: 20px !important; }
                 }

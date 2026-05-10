@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon, TrashIcon, PlusIcon, MinusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
+import { createClient } from '@/lib/supabase/client';
 
 const getCircleStyle = (qty, size = 12) => {
     let bg, border, boxShadow;
@@ -13,10 +14,29 @@ const getCircleStyle = (qty, size = 12) => {
 
 export default function DealerCart() {
     const { cartItems: contextCartItems, setQty: ctxSetQty, addToCart: ctxAddToCart, clearCart } = useCart();
+    const supabase = createClient();
 
     const cartItems = useMemo(() => {
         return Object.values(contextCartItems || {}).filter(item => item && item.qty > 0);
     }, [contextCartItems]);
+
+    // Refresh products when cart is opened to ensure latest prices/margins
+    useEffect(() => {
+        const refreshCartProducts = async () => {
+            if (cartItems.length === 0) return;
+            const ids = cartItems.map(i => i.product.id);
+            const { data, error } = await supabase.from('products').select('*').in('id', ids);
+            if (!error && data) {
+                data.forEach(p => {
+                    const current = contextCartItems[p.id];
+                    if (current && (current.product.cost_price !== p.cost_price || current.product.profit_margin !== p.profit_margin || current.product.list_price !== p.list_price)) {
+                        ctxSetQty(p.id, p, current.qty, !!current.unselected);
+                    }
+                });
+            }
+        };
+        refreshCartProducts();
+    }, []); // Only on mount to avoid loops, context will handle the rest if updated via other means
 
     const isSelected = (id) => !(contextCartItems[id]?.unselected);
 
@@ -36,6 +56,9 @@ export default function DealerCart() {
     const [submitting, setSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isShowroom, setIsShowroom] = useState(false);
+    const [bypassPrepayment, setBypassPrepayment] = useState(false);
+    const [bypassRiskLimit, setBypassRiskLimit] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
@@ -51,6 +74,7 @@ export default function DealerCart() {
                 setExtraDiscounts(infoData.extraDiscounts || []);
                 setIsPrepaymentLocked(infoData.isPrepaymentLocked || false);
                 setCompanyRiskLimit(Number(infoData.riskLimit) || 0);
+                setIsShowroom(!!infoData.isImpersonating);
             }
             const [ratesRes, marginRes, usdRes] = await Promise.all([
                 fetch('/api/rates'), fetch('/api/admin/margin'), fetch('/api/admin/usd-settings')
@@ -79,11 +103,31 @@ export default function DealerCart() {
 
     const getDiscountedPrice = useCallback((p) => {
         if (!p) return 0;
+        if (p.is_fixed_price && p.fixed_price_value > 0) {
+            let price = Number(p.fixed_price_value);
+            const cur = p.fixed_price_currency || 'TRY';
+            if (cur === 'USD' && rates?.USD) price *= rates.USD;
+            else if (cur === 'EUR' && rates?.EUR) price *= rates.EUR;
+            return price / 1.20;
+        }
         const base = getBaseTryPrice(p);
         const prodDiscount = Number(p.discount_rate || 0);
-        const groupDiscount = discountPercent || 0;
-        return base * (1 - prodDiscount / 100) * (1 - groupDiscount / 100);
-    }, [getBaseTryPrice, discountPercent]);
+        
+        let effectiveGroupDiscount = discountPercent || 0;
+        if (priceGroup?.rules && p.supplier_brand) {
+            const rule = priceGroup.rules[p.supplier_brand];
+            if (rule !== undefined) effectiveGroupDiscount = Number(rule);
+        }
+        if (p.is_fixed_price) effectiveGroupDiscount = 0;
+
+        const cartDiscount = Number(p.cart_discount_rate || 0);
+        
+        const afterProd = base * (1 - prodDiscount / 100);
+        const afterGroup = afterProd * (1 - effectiveGroupDiscount / 100);
+        const afterCart = afterGroup * (1 - cartDiscount / 100);
+        
+        return afterCart;
+    }, [getBaseTryPrice, discountPercent, priceGroup, rates]);
 
     const totals = useMemo(() => {
         const selected = cartItems.filter(i => isSelected(i.product.id));
@@ -139,7 +183,10 @@ export default function DealerCart() {
             }
 
             // 2. ÖDEME KONTROLÜ (EĞER STOK VARSA)
-            if (totals.needsPrepayment) {
+            // Admin bypass seçtiyse veya borç limiti/ön ödeme sorunu yoksa devam et
+            const shouldRedirectToPayment = totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit);
+            
+            if (shouldRedirectToPayment) {
                 const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.grandTotal;
                 window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
                 return;
@@ -147,8 +194,22 @@ export default function DealerCart() {
 
             // 3. SİPARİŞİ OLUŞTUR
             const p_items = selectedItems.map(i => ({ product_id: i.product.id, quantity: i.qty, unit_price: getDiscountedPrice(i.product), total_price: getDiscountedPrice(i.product) * i.qty }));
-            const response = await fetch('/api/user/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ companyId, shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', note: `[${shippingMethod}] ${note}`, totalAmount: totals.grandTotal, items: p_items }) });
+            const response = await fetch('/api/user/checkout', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify({ 
+                    companyId, 
+                    shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', 
+                    note: `[${shippingMethod}] ${note}`, 
+                    totalAmount: totals.grandTotal, 
+                    items: p_items,
+                    bypassPrepayment: bypassPrepayment,
+                    bypassRiskLimit: bypassRiskLimit
+                }) 
+            });
+            
             if (response.ok) {
+                const resData = await response.json();
                 // LOG ACTIVITY: ORDER PLACED
                 fetch('/api/log-activity', {
                     method: 'POST',
@@ -161,6 +222,9 @@ export default function DealerCart() {
 
                 selectedItems.forEach(item => ctxSetQty(item.product.id, item.product, 0));
                 setSuccess(true);
+            } else {
+                const errorData = await response.json();
+                alert(`Sipariş oluşturulamadı: ${errorData.error || 'Bilinmeyen bir hata oluştu.'}`);
             }
         } catch (error) { 
             console.error("Order error:", error);
@@ -211,6 +275,8 @@ export default function DealerCart() {
                                             headers: { 'Content-Type': 'application/json' },
                                             body: JSON.stringify({ company_id: companyId, action_type: 'cart_add', details: { id: p.id, name: p.name, code: p.code, oem_no: p.oem_no, qty: 1, source: 'cart_page' } })
                                         }).catch(e => console.error(e));
+                                        
+                                        // Close search results
                                         setProductSearch(''); 
                                         setSearchProducts([]); 
                                     }}>
@@ -314,10 +380,23 @@ export default function DealerCart() {
                             </div>
                             
                             <div className="summary-actions-form">
+                                {isShowroom && (
+                                    <div style={{ marginBottom: 15, padding: 12, background: 'rgba(37, 99, 235, 0.05)', borderRadius: 10, border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                                        <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase' }}>Admin Bypass Yetkileri</div>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', marginBottom: 6, color: 'var(--text-primary)' }}>
+                                            <input type="checkbox" checked={bypassPrepayment} onChange={e => setBypassPrepayment(e.target.checked)} style={{ width: 16, height: 16 }} />
+                                            Ön Ödeme Denetimini Atla
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, cursor: 'pointer', color: 'var(--text-primary)' }}>
+                                            <input type="checkbox" checked={bypassRiskLimit} onChange={e => setBypassRiskLimit(e.target.checked)} style={{ width: 16, height: 16 }} />
+                                            Risk Limiti Denetimini Atla
+                                        </label>
+                                    </div>
+                                )}
                                 <div className="form-group"><label className="form-label">Gönderim Metodu</label><select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}><option value="Kargo">Kargo</option><option value="Kurye">Kurye</option><option value="Elden">Elden</option></select></div>
                                 <div className="form-group"><textarea className="form-textarea" placeholder="Sipariş notu ekleyin..." value={note} onChange={e => setNote(e.target.value)} style={{ height: 80 }} /></div>
-                                <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: totals.needsPrepayment ? 'var(--danger)' : undefined }}>
-                                    {submitting ? '...' : totals.needsPrepayment ? 'ÖDEME YAP' : `${totals.selectedCount} Ürünü Sipariş Et`}
+                                <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? 'var(--danger)' : undefined }}>
+                                    {submitting ? '...' : (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? 'ÖDEME YAP' : `${totals.selectedCount} Ürünü Sipariş Et`}
                                 </button>
                             </div>
                         </div>

@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 120">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00a0dc" />
+      <stop offset="100%" stop-color="#002b5b" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#c6007e" />
+      <stop offset="100%" stop-color="#5a1846" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Left Star/Arrows Icon -->
+  <g transform="translate(10, 10) scale(0.9)">
+    <!-- Top Left -->
+    <path d="M40 40 L10 10 M10 10 L30 10 M10 10 L10 30" stroke="url(#grad2)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Top Right -->
+    <path d="M60 40 L90 10 M90 10 L70 10 M90 10 L90 30" stroke="url(#grad1)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Bottom Left -->
+    <path d="M40 60 L10 90 M10 90 L30 90 M10 90 L10 70" stroke="url(#grad1)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Bottom Right -->
+    <path d="M60 60 L90 90 M90 90 L70 90 M90 90 L90 70" stroke="url(#grad1)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+
+  <!-- Text -->
+  <text x="120" y="60" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="800" font-size="52" fill="#002b5b" letter-spacing="-1">QNB</text>
+  <text x="123" y="100" font-family="'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="500" font-size="34" fill="#002b5b" letter-spacing="1">FİNANSBANK</text>
+</svg>

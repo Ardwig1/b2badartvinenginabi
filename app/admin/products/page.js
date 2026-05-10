@@ -106,13 +106,13 @@ export default function AdminProducts() {
 
     const openNew = () => {
         setEditing(null);
-        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', box_quantity: '1', is_campaign: false, supplier_brand: '' });
+        setForm({ code: '', oem_no: '', name: '', brand: '', car_brand: '', car_model: '', category: '', cost_price: '', profit_margin: '0', list_price: '', currency: 'TRY', stock_merkez: '0', stock_depo: '0', unit: 'adet', description: '', image_url: '', discount_rate: '0', cart_discount_rate: '0', box_quantity: '1', is_campaign: false, is_fixed_price: false, fixed_price_value: '', fixed_price_currency: 'TRY', supplier_brand: '' });
         setShowModal(true);
     };
 
     const openEdit = (p) => {
         setEditing(p);
-        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', box_quantity: p.box_quantity || '1', is_campaign: !!p.is_campaign, supplier_brand: p.supplier_brand || '' });
+        setForm({ code: p.code, oem_no: p.oem_no || '', name: p.name, brand: p.brand || '', car_brand: p.car_brand || '', car_model: p.car_model || '', category: p.category || '', cost_price: p.cost_price || '', profit_margin: p.profit_margin || '0', list_price: p.list_price, currency: p.currency || 'TRY', stock_merkez: p.stock_merkez || '0', stock_depo: p.stock_depo || '0', unit: p.unit || 'adet', description: p.description || '', image_url: p.image_url || '', discount_rate: p.discount_rate || '0', cart_discount_rate: p.cart_discount_rate || '0', box_quantity: p.box_quantity || '1', is_campaign: !!p.is_campaign, is_fixed_price: !!p.is_fixed_price, fixed_price_value: p.fixed_price_value || '', fixed_price_currency: p.fixed_price_currency || 'TRY', supplier_brand: p.supplier_brand || '' });
         setShowModal(true);
     };
 
@@ -165,7 +165,11 @@ export default function AdminProducts() {
             stock_depo: depo, 
             stock_quantity: merkez + depo, 
             discount_rate: form.is_campaign ? Number(form.discount_rate) : 0, 
-            box_quantity: Number(form.box_quantity) 
+            cart_discount_rate: Number(form.cart_discount_rate || 0),
+            box_quantity: Number(form.box_quantity),
+            is_fixed_price: !!form.is_fixed_price,
+            fixed_price_value: form.is_fixed_price ? Number(form.fixed_price_value || 0) : null,
+            fixed_price_currency: form.is_fixed_price ? form.fixed_price_currency : 'TRY'
         };
         if (editing) {
             await supabase.from('products').update(payload).eq('id', editing.id);
@@ -307,6 +311,42 @@ export default function AdminProducts() {
     }, [chunkUrlHash]);
 
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
+
+    const [showBulkModal, setShowBulkModal] = useState(false);
+    const [bulkFilters, setBulkFilters] = useState({ search: '', brand: '', car_brand: '', supplier_brand: '', currency: '' });
+    const [bulkUpdates, setBulkUpdates] = useState({ profit_margin: '', fixed_usd_rate: '' });
+
+    const handleBulkUpdate = async (e) => {
+        e.preventDefault();
+        if (!confirm("Seçilen kriterlere uyan TÜM ürünler güncellenecektir. Bu işlem geri alınamaz. Emin misiniz?")) return;
+        
+        setSaving(true);
+        try {
+            const res = await fetch('/api/admin/bulk-update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    filters: bulkFilters,
+                    updates: {
+                        profit_margin: bulkUpdates.profit_margin !== '' ? Number(bulkUpdates.profit_margin) : undefined,
+                        fixed_usd_rate: bulkUpdates.fixed_usd_rate !== '' ? Number(bulkUpdates.fixed_usd_rate) : undefined
+                    }
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                alert(data.message);
+                setShowBulkModal(false);
+                fetchProducts();
+            } else {
+                alert("Hata: " + data.error);
+            }
+        } catch (e) {
+            alert("Sistem hatası: " + e.message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     return (
         <div className="page-wrapper">
@@ -562,8 +602,9 @@ export default function AdminProducts() {
                                     <label className="form-label">Geliş Fiyatı *</label>
                                     <input className="form-input" type="number" min="0" step="0.01" value={form.cost_price} onChange={up('cost_price')} required id="prod-cost-price" placeholder="Ürünün alış fiyatı" />
                                 </div>
-                                <div className="form-group"><label className="form-label">Kâr Oranı (%) *</label><input className="form-input" type="number" min="0" step="0.1" value={form.profit_margin} onChange={up('profit_margin')} required id="prod-profit-margin" placeholder="Örn: 30" /></div>
+                                <div className="form-group"><label className="form-label">Kâr Oranı (%) *</label><input className="form-input" type="number" min="0" step="0.01" value={form.profit_margin} onChange={up('profit_margin')} required id="prod-profit-margin" placeholder="Örn: 30.55" /></div>
                                 <div className="form-group"><label className="form-label">İskonto Oranı (%)</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_rate} onChange={up('discount_rate')} id="prod-discount" /></div>
+                                <div className="form-group"><label className="form-label" style={{ color: '#16a34a', fontWeight: 700 }}>🛒 Sepette İndirim (%)</label><input className="form-input" style={{ borderColor: '#16a34a' }} type="number" min="0" max="100" step="0.1" value={form.cart_discount_rate} onChange={up('cart_discount_rate')} id="prod-cart-discount" placeholder="Sepette uygulanacak ekstra indirim" /></div>
                                 {Number(form.cost_price) > 0 && (() => {
                                     const cost = Number(form.cost_price) || 0;
                                     const margin = Number(form.profit_margin) || 0;
@@ -645,9 +686,33 @@ export default function AdminProducts() {
                                         <input className="form-input" value={form.image_url} onChange={up('image_url')} placeholder="Veya internetten bir görsel URL'sini buraya yapıştırıp ekleyebilirsiniz (https://...)" id="prod-image-url" style={{ fontSize: 13 }} />
                                     </div>
                                 </div>
-                                <div className="form-group" style={{ gridColumn: '1/-1', display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(234, 179, 8, 0.1)', padding: '10px 16px', borderRadius: 8, border: '1px solid #eab308' }}>
-                                    <input type="checkbox" checked={form.is_campaign} onChange={e => setForm(prev => ({ ...prev, is_campaign: e.target.checked }))} style={{ width: 20, height: 20, cursor: 'pointer' }} id="prod-campaign" />
-                                    <label className="form-label" htmlFor="prod-campaign" style={{ marginBottom: 0, cursor: 'pointer', fontWeight: 700, color: '#854d0e' }}>🌟 BU ÜRÜN KAMPANYALI ÜRÜNDÜR</label>
+                                <div className="form-group" style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(37, 99, 235, 0.05)', padding: '12px 16px', borderRadius: 8, border: '1px solid rgba(37, 99, 235, 0.2)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input type="checkbox" checked={form.is_fixed_price} onChange={e => setForm(prev => ({ ...prev, is_fixed_price: e.target.checked }))} style={{ width: 20, height: 20, cursor: 'pointer' }} id="prod-fixed-price" />
+                                        <label className="form-label" htmlFor="prod-fixed-price" style={{ marginBottom: 0, cursor: 'pointer', fontWeight: 700, color: '#2563eb' }}>📌 SABİT FİYATLI ÜRÜN (Bayi İskontosu Uygulanmaz)</label>
+                                    </div>
+                                    
+                                    {form.is_fixed_price && (
+                                        <div style={{ display: 'flex', gap: 12, marginTop: 4, padding: '12px', background: 'var(--bg-primary)', borderRadius: 10, border: '1px solid var(--border)', alignItems: 'flex-end' }}>
+                                            <div style={{ flex: 1 }}>
+                                                <label className="form-label" style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>Sabit Fiyat (KDV DAHİL)</label>
+                                                <input className="form-input" type="number" step="0.01" value={form.fixed_price_value} onChange={up('fixed_price_value')} placeholder="Örn: 2225 veya 40" style={{ height: 38 }} />
+                                            </div>
+                                            <div style={{ width: 100 }}>
+                                                <label className="form-label" style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 700 }}>Döviz</label>
+                                                <select className="form-select" value={form.fixed_price_currency} onChange={up('fixed_price_currency')} style={{ height: 38 }}>
+                                                    <option value="TRY">TRY (₺)</option>
+                                                    <option value="USD">USD ($)</option>
+                                                    <option value="EUR">EUR (€)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input type="checkbox" checked={form.is_campaign} onChange={e => setForm(prev => ({ ...prev, is_campaign: e.target.checked }))} style={{ width: 20, height: 20, cursor: 'pointer' }} id="prod-campaign" />
+                                        <label className="form-label" htmlFor="prod-campaign" style={{ marginBottom: 0, cursor: 'pointer', fontWeight: 700, color: '#854d0e' }}>🌟 BU ÜRÜN KAMPANYALI ÜRÜNDÜR</label>
+                                    </div>
                                 </div>
                                 <div className="form-group" style={{ gridColumn: '1/-1' }}><label className="form-label">Açıklama</label><textarea className="form-textarea" style={{ minHeight: 70 }} value={form.description} onChange={up('description')} id="prod-desc" /></div>
                             </div>
@@ -735,6 +800,75 @@ export default function AdminProducts() {
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowCampaignModal(false)}>İptal</button>
                                 <button type="submit" className="btn btn-primary" style={{ background: '#eab308', borderColor: '#eab308' }} id="save-campaign-btn">Kampanyayı Başlat ⭐</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Bulk Update Modal */}
+            {showBulkModal && (
+                <div className="modal-overlay" onClick={() => setShowBulkModal(false)}>
+                    <div className="modal" style={{ maxWidth: 600 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">📦 Toplu Ürün Güncelleme</h3>
+                            <button className="modal-close" onClick={() => setShowBulkModal(false)}>✕</button>
+                        </div>
+                        <form onSubmit={handleBulkUpdate}>
+                            <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: 16, borderRadius: 12, border: '1px solid var(--border)', marginBottom: 20 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary)', marginBottom: 12, textTransform: 'uppercase' }}>1. Adım: Filtrele (Hangi Ürünler?)</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div className="form-group">
+                                        <label className="form-label">İsim/Kod/Marka Arama</label>
+                                        <input className="form-input" value={bulkFilters.search} onChange={e => setBulkFilters(prev => ({ ...prev, search: e.target.value }))} placeholder="Örn: abc" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Tedarikçi Firma (GİZLİ)</label>
+                                        <input className="form-input" value={bulkFilters.supplier_brand} onChange={e => setBulkFilters(prev => ({ ...prev, supplier_brand: e.target.value }))} placeholder="Örn: korea otomotiv" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Marka (Tam Eşleşme)</label>
+                                        <select className="form-select" value={bulkFilters.brand} onChange={e => setBulkFilters(prev => ({ ...prev, brand: e.target.value }))}>
+                                            <option value="">TÜMÜ</option>
+                                            {Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort().map(b => <option key={b} value={b}>{b}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Para Birimi</label>
+                                        <select className="form-select" value={bulkFilters.currency} onChange={e => setBulkFilters(prev => ({ ...prev, currency: e.target.value }))}>
+                                            <option value="">TÜMÜ</option>
+                                            <option value="TRY">TRY (₺)</option>
+                                            <option value="USD">USD ($)</option>
+                                            <option value="EUR">EUR (€)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                                    💡 İpucu: Birden fazla filtreyi aynı anda kullanabilirsiniz.
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: 16, borderRadius: 12, border: '1px solid #10b98133', marginBottom: 24 }}>
+                                <div style={{ fontSize: 13, fontWeight: 700, color: '#059669', marginBottom: 12, textTransform: 'uppercase' }}>2. Adım: Güncelle (Ne Değişecek?)</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: '#059669', fontWeight: 600 }}>Yeni Kâr Oranı (%)</label>
+                                        <input className="form-input" type="number" step="0.01" value={bulkUpdates.profit_margin} onChange={e => setBulkUpdates(prev => ({ ...prev, profit_margin: e.target.value }))} placeholder="Örn: 50" />
+                                    </div>
+                                    <div className="form-group">
+                                        <label className="form-label" style={{ color: '#059669', fontWeight: 600 }}>Sabit Kur (Sadece Bu Ürünler İçin)</label>
+                                        <input className="form-input" type="number" step="0.01" value={bulkUpdates.fixed_usd_rate} onChange={e => setBulkUpdates(prev => ({ ...prev, fixed_usd_rate: e.target.value }))} placeholder="Örn: 50" />
+                                    </div>
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
+                                    💡 Sadece değiştirmek istediğiniz alanı doldurun, diğerini boş bırakın.
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn btn-ghost" onClick={() => setShowBulkModal(false)}>İptal</button>
+                                <button type="submit" className="btn btn-primary" disabled={saving || (!bulkUpdates.profit_margin && !bulkUpdates.fixed_usd_rate)} style={{ background: '#10b981', borderColor: '#059669' }}>
+                                    {saving ? 'Güncelleniyor...' : 'Seçili Ürünleri Güncelle 🚀'}
+                                </button>
                             </div>
                         </form>
                     </div>

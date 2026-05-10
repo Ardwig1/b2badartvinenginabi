@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
 export async function POST(req) {
     try {
+        const cookieStore = await cookies();
+        const impCid = cookieStore.get('impersonate_company_id')?.value;
+        const isShowroom = !!(impCid && impCid !== 'undefined' && impCid !== '');
+
         // Environment variables ensure evaluated per request
         const API_USER = process.env.TOSLA_API_USER;
         const API_PASS = process.env.TOSLA_API_PASS;
         const CLIENT_ID = process.env.TOSLA_CLIENT_ID;
         const BASE_URL = process.env.TOSLA_API_BASE_URL;
         const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        // ... (rest of the logic)
         // Parse payment details from frontend
         const body = await req.json();
         const { amount, cardHolderName, cardNumber, expireMonth, expireYear, cvv, buyerEmail, buyerPhone, companyId, companyName, context } = body;
@@ -75,7 +81,7 @@ export async function POST(req) {
             await supabase.from('user_activities').insert({
                 company_id: companyId,
                 action_type: 'payment_init',
-                details: { orderId, amount: amountLong, context }
+                details: { orderId, amount: amountLong, context, isShowroom }
             });
         }
 

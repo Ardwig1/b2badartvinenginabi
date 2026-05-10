@@ -389,8 +389,8 @@ select {
 }
 
 .form-select option {
-  color: #000 !important;
-  background-color: #fff !important;
+  color: var(--text-primary);
+  background-color: var(--bg-card);
 }
 
 .form-textarea {

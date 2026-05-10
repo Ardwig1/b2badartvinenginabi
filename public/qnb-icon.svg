@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <!-- Dark Blue 3D Gradient -->
+    <linearGradient id="blueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00a0dc" />
+      <stop offset="50%" stop-color="#004a8b" />
+      <stop offset="100%" stop-color="#001838" />
+    </linearGradient>
+    
+    <!-- Magenta 3D Gradient (Top arrow usually) -->
+    <linearGradient id="magentaGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e6007e" />
+      <stop offset="50%" stop-color="#a0005a" />
+      <stop offset="100%" stop-color="#5a0032" />
+    </linearGradient>
+
+    <!-- Chrome Bevel Highlight -->
+    <linearGradient id="chromeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="40%" stop-color="#d1d5db" stop-opacity="0.8" />
+      <stop offset="60%" stop-color="#6b7280" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#374151" stop-opacity="0.9" />
+    </linearGradient>
+
+    <!-- Drop Shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(50,50)" filter="url(#shadow)">
+    <!-- Top Arrow (Magenta) -->
+    <g transform="rotate(0)">
+      <path d="M -15,-45 L 0,-25 L 15,-45 L 25,-40 L 0,-8 L -25,-40 Z" fill="url(#magentaGrad)" stroke="url(#chromeGrad)" stroke-width="2" stroke-linejoin="round" />
+      <!-- Shine -->
+      <path d="M -15,-45 L 0,-25 L 0,-8 L -25,-40 Z" fill="#ffffff" fill-opacity="0.2" />
+    </g>
+
+    <!-- Right Arrow (Blue) -->
+    <g transform="rotate(90)">
+      <path d="M -15,-45 L 0,-25 L 15,-45 L 25,-40 L 0,-8 L -25,-40 Z" fill="url(#blueGrad)" stroke="url(#chromeGrad)" stroke-width="2" stroke-linejoin="round" />
+      <path d="M -15,-45 L 0,-25 L 0,-8 L -25,-40 Z" fill="#ffffff" fill-opacity="0.1" />
+    </g>
+
+    <!-- Bottom Arrow (Blue) -->
+    <g transform="rotate(180)">
+      <path d="M -15,-45 L 0,-25 L 15,-45 L 25,-40 L 0,-8 L -25,-40 Z" fill="url(#blueGrad)" stroke="url(#chromeGrad)" stroke-width="2" stroke-linejoin="round" />
+      <path d="M -15,-45 L 0,-25 L 0,-8 L -25,-40 Z" fill="#ffffff" fill-opacity="0.1" />
+    </g>
+
+    <!-- Left Arrow (Blue) -->
+    <g transform="rotate(270)">
+      <path d="M -15,-45 L 0,-25 L 15,-45 L 25,-40 L 0,-8 L -25,-40 Z" fill="url(#blueGrad)" stroke="url(#chromeGrad)" stroke-width="2" stroke-linejoin="round" />
+      <path d="M -15,-45 L 0,-25 L 0,-8 L -25,-40 Z" fill="#ffffff" fill-opacity="0.2" />
+    </g>
+  </g>
+</svg>

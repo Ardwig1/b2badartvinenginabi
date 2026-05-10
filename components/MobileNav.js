@@ -22,6 +22,15 @@ export default function MobileNav() {
     const totalCartItems = Object.values(cartItems || {}).reduce((a, b) => a + (b.qty || 0), 0);
 
     const handleSignOut = async () => {
+        try {
+            await fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'logout' })
+            });
+        } catch (e) {
+            console.error('Logout logging failed', e);
+        }
         const supabase = createClient();
         await supabase.auth.signOut();
         window.location.href = '/login'; // Full reload to clear CartProvider state

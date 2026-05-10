@@ -1,15 +1,42 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { cookies } from 'next/headers';
 
-function htmlRedirect(url) {
+function htmlRedirect(url, showroomCid = null, isRep = false) {
+    let finalUrl = url;
+    if (showroomCid) {
+        // If in showroom mode, we want the TOP window to go to the showroom wrapper,
+        // but that wrapper should load our result URL in its iframe.
+        const wrapperBase = isRep ? `/rep/showroom/${showroomCid}` : `/admin/showroom/${showroomCid}`;
+        finalUrl = `${wrapperBase}?inner=${encodeURIComponent(url)}`;
+    }
+
     return new NextResponse(
-        `<html><body><script>window.top.location.href = "${url}";</script>Yönlendiriliyorsunuz...</body></html>`,
+        `<html><body><script>window.top.location.href = "${finalUrl}";</script>Yönlendiriliyorsunuz...</body></html>`,
         { headers: { 'Content-Type': 'text/html' } }
     );
 }
 
 async function handleCallback(req, isGet) {
     const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.omigroups.com';
+    const cookieStore = await cookies();
+    const impCid = cookieStore.get('impersonate_company_id')?.value;
+    
+    // Create supabase client to check user role
+    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    
+    let isRep = false;
+    try {
+        const { data: { user } } = await supabase.auth.getUser(cookieStore.get('sb-access-token')?.value || '');
+        if (user?.user_metadata?.role === 'representative') {
+            isRep = true;
+        } else if (user) {
+            const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', user.id).maybeSingle();
+            if (profile?.is_admin) isRep = false;
+        }
+    } catch (e) {
+        console.warn('[Tosla CB] User role check failed:', e.message);
+    }
 
     try {
         const fields = {};
@@ -32,104 +59,51 @@ async function handleCallback(req, isGet) {
         const orderId  = fields['orderid'] ?? fields['order_id'] ?? '';
         let amount   = parseFloat(fields['amount'] ?? '0') || 0;
 
-        // Log for debugging
-        console.log('[Tosla CB] isGet:', isGet, '| cid:', cidParam, '| orderId:', orderId);
-        console.log('[Tosla CB] All fields:', JSON.stringify(fields));
-
-        // ──────────────────────────────────────────────────────────────
-        // SUCCESS RULE:
-        //   BankResponseCode === "00"  →  KESINLIKLE BAŞARILI
-        //   AuthCode non-empty         →  BAŞARILI
-        //   Hiçbir şey yoksa (Tosla bazen sadece redirect eder) → BAŞARILI say
-        //   BankResponseCode VARSA ve "00" DEĞİLSE → BAŞARISIZ
-        // ──────────────────────────────────────────────────────────────
         const bankCode  = (fields['bankresponsecode'] ?? '').trim();
         const authCode  = (fields['authcode']         ?? '').trim();
         const procCode  = (fields['procreturncode']   ?? '').trim();
 
         let isSuccess;
         if (bankCode === '00' || procCode === '00' || authCode !== '') {
-            // Explicit bank approval
             isSuccess = true;
         } else if (bankCode !== '' || procCode !== '') {
-            // Explicit non-zero bank code = rejected
             isSuccess = false;
         } else {
-            // No bank code at all — assume success (Tosla redirected without body)
             isSuccess = true;
         }
 
-        console.log('[Tosla CB] bankCode:', bankCode, '| authCode:', authCode, '| procCode:', procCode, '| isSuccess:', isSuccess);
+        let finalCid = cidParam;
+        let context = '';
+        let isShowroomSession = false;
+
+        // Fetch session data from DB (This is the source of truth)
+        if (orderId) {
+            const { data: act } = await supabase.from('user_activities')
+                .select('company_id, details')
+                .eq('action_type', 'payment_init')
+                .contains('details', { orderId: orderId })
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+            if (act?.company_id) finalCid = act.company_id;
+            if (act?.details?.context) context = act.details.context;
+            if (act?.details?.isShowroom) isShowroomSession = true;
+            if (act?.details?.amount !== undefined && amount === 0) {
+                amount = parseFloat(act.details.amount) / 100;
+            }
+        }
+
+        // Final decision for showroom redirect: Use DB flag OR existing cookie
+        const redirectCid = isShowroomSession ? finalCid : (impCid && impCid !== 'undefined' ? impCid : null);
 
         if (isSuccess) {
-            // Retrieve company ID securely from user_activities (acting as payment_sessions)
-            let finalCid = cidParam;
-            const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
-
-            let context = '';
-            if (orderId) {
-                const { data: act } = await supabase.from('user_activities')
-                    .select('company_id, details')
-                    .eq('action_type', 'payment_init')
-                    .contains('details', { orderId: orderId })
-                    .order('created_at', { ascending: false })
-                    .limit(1)
-                    .single();
-                if (act?.company_id && !finalCid) finalCid = act.company_id;
-                if (act?.details?.context) context = act.details.context;
-                
-                // If amount is 0 (Tosla didn't return it), fetch it from our secure DB.
-                // Tosla amountLong was saved in kurus (120 = 1.20 TL)
-                if (act?.details?.amount !== undefined && amount === 0) {
-                    amount = parseFloat(act.details.amount) / 100;
-                }
-            }
-
-            // Credit the company account natively 
             if (finalCid) {
                 try {
-                    // CRITICAL FIX: The previous logic (amount > 500 ? amount / 100 : amount) was wrong.
-                    // Tosla returns the same format we sent them.
-                    // Let's use the amount directly from Tosla first, but verify it against our init log.
                     let tlAmount = amount;
-
-                    console.log('[Tosla CB] Raw amount from gateway:', amount);
-
-                    if (orderId) {
-                        const { data: initAct } = await supabase.from('user_activities')
-                            .select('details')
-                            .eq('action_type', 'payment_init')
-                            .contains('details', { orderId: orderId })
-                            .maybeSingle();
-                        
-                        if (initAct?.details?.amount) {
-                            // In init, we sent amountLong in kurus (e.g. 587100)
-                            const expectedTl = parseFloat(initAct.details.amount) / 100;
-                            
-                            // If the gateway sent back a huge number (like 587100), it's kurus.
-                            // If it sent back 5871, it's TL.
-                            if (tlAmount > expectedTl * 50) { // Safety margin
-                                tlAmount = tlAmount / 100;
-                            }
-                            
-                            console.log('[Tosla CB] Expected TL from init:', expectedTl, 'Verified TL:', tlAmount);
-                        }
-                    }
-
-                    console.log('[Tosla CB] Final Crediting', tlAmount, 'TL to company', finalCid);
-
-                    // Fetch balance
                     const { data: comp } = await supabase.from('companies').select('current_balance').eq('id', finalCid).single();
                     const oldBalance = comp?.current_balance || 0;
-                    
-                    // In our system, placing an order subtracts from balance.
-                    // Paying adds back to the balance.
                     const newBalance = oldBalance + tlAmount;
-
-                    // Update Balance
                     await supabase.from('companies').update({ current_balance: newBalance }).eq('id', finalCid);
-
-                    // Create transaction record
                     await supabase.from('account_transactions').insert({
                         company_id: finalCid,
                         transaction_type: 'TAHSİLAT (K.KARTI)',
@@ -139,38 +113,30 @@ async function handleCallback(req, isGet) {
                         credit: tlAmount,
                         balance_after: newBalance
                     });
-
                 } catch (e) {
-                    console.error('[Tosla CB] Payment record error (non-fatal):', e.message);
+                    console.error('[Tosla CB] Payment record error:', e.message);
                 }
-            } else {
-                console.error('[Tosla CB] Could not map finalCid for order:', orderId);
             }
             if (context === 'cart') {
-                return htmlRedirect(`${SITE_URL}/dashboard/cart?autoSubmit=true`);
+                return htmlRedirect(`${SITE_URL}/dashboard/cart?autoSubmit=true`, redirectCid, isRep);
             }
-            return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=success&orderId=${encodeURIComponent(orderId)}`);
+            return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=success&orderId=${encodeURIComponent(orderId)}`, redirectCid, isRep);
         } else {
             const errMsg = fields['bankresponsemessage'] ?? fields['errormessage'] ?? `İşlem reddedildi (${bankCode})`;
-            console.error('[Tosla CB] Payment rejected. bankCode:', bankCode, '| msg:', errMsg);
-            
             try {
-                const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
                 await supabase.from('user_activities').insert({
-                    company_id: cidParam || null,
+                    company_id: finalCid || null,
                     action_type: 'payment_failed',
                     details: { fields, bankCode, errMsg }
                 });
-            } catch (e) {
-                console.error('[Tosla CB] Failed to log error:', e.message);
-            }
-
-            return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=error&message=${encodeURIComponent(errMsg)}`);
+            } catch (e) {}
+            return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=error&message=${encodeURIComponent(errMsg)}`, redirectCid, isRep);
         }
-
     } catch (err) {
         console.error('[Tosla CB] Fatal error:', err.message);
-        return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=error&message=${encodeURIComponent('Sistem hatası')}`);
+        const cookieStore = await cookies();
+        const impCid = cookieStore.get('impersonate_company_id')?.value;
+        return htmlRedirect(`${SITE_URL}/dashboard/payment/result?status=error&message=${encodeURIComponent('Sistem hatası')}`, impCid);
     }
 }
 

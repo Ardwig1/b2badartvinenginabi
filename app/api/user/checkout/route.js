@@ -42,23 +42,40 @@ async function getEffectiveCompanyId() {
 
 export async function POST(req) {
     try {
-        const companyId = await getEffectiveCompanyId();
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        const { data: profile } = await adminSupabase.from('profiles').select('is_admin, company_id').eq('id', user.id).maybeSingle();
+        
+        const cookieStore = await cookies();
+        const impId = cookieStore.get('impersonate_company_id')?.value;
+        const isImpersonating = impId && impId !== 'undefined' && impId !== '';
+
+        const isRepMetadata = user.user_metadata?.role === 'representative';
+        const { data: repRecord } = await adminSupabase
+            .from('customer_representatives')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+        const isRep = isRepMetadata || !!repRecord;
+        const isPrivileged = profile?.is_admin || isRep;
+
+        const companyId = (isImpersonating && isPrivileged) ? impId : profile?.company_id;
         if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        const { shippingAddress, note, totalAmount, items } = body;
-
-        const adminSupabase = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
+        const { shippingAddress, note, totalAmount, items, bypassPrepayment, bypassRiskLimit } = body;
 
         const { data, error } = await adminSupabase.rpc('place_b2b_order', {
             p_company_id: companyId,
             p_shipping_address: shippingAddress,
             p_note: note,
             p_total_amount: totalAmount,
-            p_items: items
+            p_items: items,
+            p_bypass_prepayment: (isPrivileged && isImpersonating) ? !!bypassPrepayment : false,
+            p_bypass_risk_limit: (isPrivileged && isImpersonating) ? !!bypassRiskLimit : false
         });
 
         if (error) throw error;

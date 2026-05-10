@@ -55,6 +55,15 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
     const navItems = isImpersonated ? dealerNav : (isRep ? repNav : (isAdmin ? adminNav : dealerNav));
 
     const handleSignOut = async () => {
+        try {
+            await fetch('/api/log-activity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action_type: 'logout' })
+            });
+        } catch (e) {
+            console.error('Logout logging failed', e);
+        }
         const supabase = createClient();
         await supabase.auth.signOut();
         window.location.href = '/login'; // Full reload to clear CartProvider state

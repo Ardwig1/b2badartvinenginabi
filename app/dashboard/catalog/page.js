@@ -4,11 +4,15 @@ import { ShoppingCartIcon, PhotoIcon, CubeIcon, MagnifyingGlassIcon, XMarkIcon, 
 import { useCart } from '@/components/CartProvider';
 
 const getCircleStyle = (qty, size = 16) => {
-    let bg, border, boxShadow;
+    let bg, border, boxShadow, color = '#fff';
     if (qty > 15) { bg = 'linear-gradient(135deg, #22c55e, #15803d)'; border = '1px solid #14532d'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
-    else if (qty > 0) { bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; border = '1px solid #1e293b'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`; }
+    else if (qty > 5) { bg = 'linear-gradient(90deg, #22c55e 50%, #475569 50%)'; border = '1px solid #1e293b'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.5), inset 0 2px 4px rgba(255,255,255,0.2)`; }
+    else if (qty > 0) { bg = 'transparent'; border = 'none'; boxShadow = 'none'; color = '#2563eb'; }
     else { bg = 'linear-gradient(135deg, #ef4444, #991b1b)'; border = '1px solid #7f1d1d'; boxShadow = `0 0 ${size / 2}px rgba(239, 68, 68, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
-    return { width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0 };
+    return { 
+        width: size, height: size, borderRadius: '50%', background: bg, border, boxShadow, margin: '0 auto', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', color: color, fontSize: size > 12 ? '16px' : '14px', fontWeight: '900', lineHeight: 1
+    };
 };
 
 export default function DealerCatalog() {
@@ -22,6 +26,7 @@ export default function DealerCatalog() {
     const perPage = viewMode === 'list' ? 15 : 10;
     const [selectedImage, setSelectedImage] = useState(null);
     const [discountPercent, setDiscount] = useState(0);
+    const [priceGroup, setPriceGroup] = useState(null);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
@@ -55,6 +60,7 @@ export default function DealerCatalog() {
             if (infoRes.ok) {
                 const data = await infoRes.json();
                 setDiscount(Number(data.discountPercent) || 0);
+                setPriceGroup(data.priceGroup || null);
             }
             const metaRes = await fetch('/api/products/metadata');
             if (metaRes.ok) { const data = await metaRes.json(); setBrands(data.brands || []); setCarBrands(data.carBrands || []); }
@@ -100,8 +106,6 @@ export default function DealerCatalog() {
             }).catch(e => console.error('Log search error:', e));
         } catch (err) { console.error(err); } finally { 
             setLoading(false); 
-            // isSearchingRef will be set to false inside the image preloading useEffect 
-            // to ensure no flicker happens between data load and image load
         }
     };
 
@@ -126,11 +130,33 @@ export default function DealerCatalog() {
     };
 
     const getDiscountedPrice = (p) => {
+        if (p.is_fixed_price && p.fixed_price_value > 0) {
+            let price = Number(p.fixed_price_value);
+            const cur = p.fixed_price_currency || 'TRY';
+            if (cur === 'USD' && rates?.USD) price *= rates.USD;
+            else if (cur === 'EUR' && rates?.EUR) price *= rates.EUR;
+            return price / 1.20;
+        }
         const base = getBaseTryPrice(p);
-        return base * (1 - (Number(p.discount_rate) || 0) / 100) * (1 - discountPercent / 100);
+        let effectiveGroupDiscount = discountPercent;
+        if (priceGroup?.rules && p.supplier_brand) {
+            const rule = priceGroup.rules[p.supplier_brand];
+            if (rule !== undefined) effectiveGroupDiscount = Number(rule);
+        }
+        if (p.is_fixed_price) effectiveGroupDiscount = 0;
+        return base * (1 - (Number(p.discount_rate) || 0) / 100) * (1 - effectiveGroupDiscount / 100);
     };
 
     const getKdvPrice = (p) => getDiscountedPrice(p) * 1.20;
+
+    const getEffectiveDiscount = (p) => {
+        if (p.is_fixed_price) return '-';
+        if (priceGroup?.rules && p.supplier_brand) {
+            const rule = priceGroup.rules[p.supplier_brand];
+            if (rule !== undefined) return `%${rule}`;
+        }
+        return `%${discountPercent}`;
+    };
 
     const filtered = useMemo(() => {
         return products.filter(p => {
@@ -157,7 +183,7 @@ export default function DealerCatalog() {
         const timeout = setTimeout(() => { 
             setPageImagesLoading(false); 
             isSearchingRef.current = false;
-        }, 1500); // Optimized for mobile: 1.5s max wait instead of 2.5s
+        }, 1500);
 
         urls.forEach(url => {
             const img = new window.Image();
@@ -180,7 +206,6 @@ export default function DealerCatalog() {
         if (isNaN(n) || n < 1) return;
         ctxSetQty(p.id, p, (cartQtys[p.id]?.qty || 0) + n);
 
-        // LOG ACTIVITY: CART ADD
         fetch('/api/log-activity', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -222,7 +247,7 @@ export default function DealerCatalog() {
                         ))}
                         <div className="filter-row search-row">
                             <div className="filter-label">Genel Arama</div>
-                            <div className="filter-control search-input"><input placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın (Enter'a basmayı unutmayın)" value={filterText} onChange={e => setFilterText(e.target.value.toUpperCase())} onKeyDown={searchProducts} /></div>
+                            <div className="filter-control search-input"><input placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın" value={filterText} onChange={e => setFilterText(e.target.value.toUpperCase())} onKeyDown={searchProducts} /></div>
                         </div>
                     </div>
                     <div className="filter-checks">
@@ -251,13 +276,7 @@ export default function DealerCatalog() {
                         {loading ? 'Ürünler Aranıyor...' : 'Ürün Görselleri Hazırlanıyor...'}
                         {pageImagesLoading && (
                             <div style={{ marginTop: 12 }}>
-                                <button 
-                                    className="btn btn-ghost btn-sm" 
-                                    onClick={() => { setPageImagesLoading(false); isSearchingRef.current = false; }}
-                                    style={{ fontSize: 12, textDecoration: 'underline' }}
-                                >
-                                    Beklemeden sonuçları gör
-                                </button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => { setPageImagesLoading(false); isSearchingRef.current = false; }} style={{ fontSize: 12, textDecoration: 'underline' }}>Beklemeden sonuçları gör</button>
                             </div>
                         )}
                     </div>
@@ -266,62 +285,53 @@ export default function DealerCatalog() {
                 <div className="card empty-card">{hasSearched ? 'Ürün bulunamadı' : 'Arama yapmak için kriterleri girin'}</div>
             ) : viewMode === 'list' ? (
                 <div className="list-view-grid">
-                    {perPageItems.map(p => {
-                        const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
-                        return (
-                            <div key={p.id} className={`product-card ${p.is_campaign ? 'campaign' : ''}`}>
-                                <div className="p-img" onClick={() => p.image_url && setSelectedImage({ url: p.image_url, name: p.name })}>{p.image_url ? <img src={p.image_url} loading="lazy" /> : <CubeIcon className="w-12 h-12 text-gray-300" />}</div>
-                                <div className="p-details">
-                                    <div className="p-code" style={{ color: '#2563eb' }}>{p.code}</div>
-                                    <div className="p-name" style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</div>
-                                    <div className="p-brand-row"><span className="p-brand" style={{ color: p.is_campaign ? '#000' : 'inherit' }}><strong>Marka:</strong> {p.brand}</span><span style={{ color: p.is_campaign ? '#000' : 'inherit' }}><strong>Birim:</strong> {p.unit || 'AD'}</span></div>
-                                    <div className="p-price" style={{ color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                                    <div className="p-kdv">KDV Dahil</div>
-                                    <div className="p-stock"><div style={getCircleStyle(p.stock_merkez, 10)} /> İst. <div style={getCircleStyle(p.stock_depo, 10)} /> Depo</div>
-                                    <div className="p-action">
-                                        <div className="p-qty">
-                                            <button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>-</button>
-                                            <input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} />
-                                            <button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button>
-                                        </div>
-                                        <button className="btn btn-primary add-btn" onClick={() => handleAddToCart(p)}>🛒</button>
-                                    </div>
+                    {perPageItems.map(p => (
+                        <div key={p.id} className={`product-card ${p.is_campaign ? 'campaign' : ''}`}>
+                            <div className="p-img" onClick={() => p.image_url && setSelectedImage({ url: p.image_url, name: p.name })}>{p.image_url ? <img src={p.image_url} loading="lazy" /> : <CubeIcon className="w-12 h-12 text-gray-300" />}</div>
+                            <div className="p-details">
+                                <div className="p-code" style={{ color: '#2563eb' }}>{p.code}</div>
+                                <div className="p-name" style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</div>
+                                <div className="p-brand-row"><span className="p-brand"><strong>Marka:</strong> {p.brand}</span><span><strong>Birim:</strong> {p.unit || 'AD'}</span></div>
+                                <div className="p-price" onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                <div className="p-kdv">KDV Dahil</div>
+                                <div className="p-stock"><div style={getCircleStyle(p.stock_merkez, 10)} /> İst. <div style={getCircleStyle(p.stock_depo, 10)} /> Depo</div>
+                                <div className="p-action">
+                                    <div className="p-qty"><button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>-</button><input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} /><button onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button></div>
+                                    <button className="btn btn-primary add-btn" onClick={() => handleAddToCart(p)}>🛒</button>
                                 </div>
                             </div>
-                        );
-                    })}
+                        </div>
+                    ))}
                 </div>
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead><tr><th>MARKA</th><th>STOK KODU</th><th>OEM NO</th><th>ÜRÜN ADI</th><th style={{ textAlign: 'center' }}><PhotoIcon className="w-5" /></th><th>BİRİM</th><th>BAYİ İSK.</th><th>KAMPANYA</th><th style={{ textAlign: 'right' }}>FİYAT (KDV DAHİL)</th><th style={{ textAlign: 'center' }}>İSTANBUL</th><th style={{ textAlign: 'center' }}>DEPO</th><th>KOLİ AD.</th><th>SİP.MİK.</th><th>SEPETE AT</th></tr></thead>
+                        <thead><tr><th>MARKA</th><th>STOK KODU</th><th>OEM NO</th><th>ÜRÜN ADI</th><th style={{ textAlign: 'center' }}><PhotoIcon className="w-5" /></th><th>BİRİM</th><th>BAYİ İSK.</th><th>KAMPANYA</th><th>SEPETTE %</th><th style={{ textAlign: 'right' }}>FİYAT (KDV DAHİL)</th><th style={{ textAlign: 'center' }}>İSTANBUL</th><th style={{ textAlign: 'center' }}>DEPO</th><th>KOLİ AD.</th><th>SİP.MİK.</th><th>SEPETE AT</th></tr></thead>
                         <tbody>
-                            {perPageItems.map(p => {
-                                const isOutOfStock = !(p.stock_merkez > 0 || p.stock_depo > 0);
-                                return (
-                                    <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>
-                                        <td data-label="Marka">{p.brand}</td>
-                                        <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{p.code}</td>
-                                        <td data-label="OEM No" style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.oem_no || '-'}</td>
-                                        <td data-label="Ürün Adı" className="font-bold">{p.name}</td>
-                                        <td data-label="Resim" className="text-center">{p.image_url ? (<div style={{ cursor: 'zoom-in', display: 'flex', justifyContent: 'center' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredImage({ url: p.image_url, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredImage(null)} onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}><PhotoIcon style={{ width: 20, color: p.is_campaign ? '#1e40af' : '#2563eb' }} /></div>) : '-'}</td>
-                                        <td data-label="Birim">{p.unit || 'AD'}</td>
-                                        <td data-label="Bayi İsk." className="text-center" style={{ fontWeight: 800, color: '#2563eb' }}>%{discountPercent}</td>
-                                        <td data-label="Kampanya" className="text-center" style={{ fontWeight: 800, color: '#dc2626' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
-                                        <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                        <td data-label="İstanbul"><div style={getCircleStyle(p.stock_merkez, 14)} /></td>
-                                        <td data-label="Depo"><div style={getCircleStyle(p.stock_depo, 14)} /></td>
-                                        <td data-label="Koli Ad." className="text-center">{p.box_quantity || 1}</td>
-                                        <td data-label="Sip.Mik."><div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 32 }}><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>−</button><input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} style={{ width: 35, textAlign: 'center', border: 'none', fontWeight: 800, fontSize: 13, background: 'transparent', outline: 'none', color: '#000' }} /><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button></div></td>
-                                        <td data-label="Sepete At">
-                                            <div style={{ display: 'flex', gap: 4 }}>
-                                                <button className="btn btn-primary btn-sm" onClick={() => handleAddToCart(p)} disabled={isOutOfStock} style={{ whiteSpace: 'nowrap', minWidth: '80px', justifyContent: 'center' }}>{isOutOfStock ? 'Yok' : '🛒 Ekle'}</button>
-                                                <a href={`/dashboard/orders?tab=items&search=${p.code}`} className="btn btn-ghost btn-sm" style={{ background: '#475569', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>Geçmiş</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {perPageItems.map(p => (
+                                <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>
+                                    <td data-label="Marka">{p.brand}</td>
+                                    <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{p.code}</td>
+                                    <td data-label="OEM No" style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.oem_no || '-'}</td>
+                                    <td data-label="Ürün Adı" className="font-bold">{p.name}</td>
+                                    <td data-label="Resim" className="text-center">{p.image_url ? (<div style={{ cursor: 'zoom-in', display: 'flex', justifyContent: 'center' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredImage({ url: p.image_url, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredImage(null)} onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}><PhotoIcon style={{ width: 20, color: p.is_campaign ? '#1e40af' : '#2563eb' }} /></div>) : '-'}</td>
+                                    <td data-label="Birim">{p.unit || 'AD'}</td>
+                                    <td data-label="Bayi İsk." className="text-center" style={{ fontWeight: 800, color: '#2563eb' }}>{getEffectiveDiscount(p)}</td>
+                                    <td data-label="Kampanya" className="text-center" style={{ fontWeight: 800, color: '#dc2626' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
+                                    <td data-label="Sepette %" className="text-center" style={{ fontWeight: 800, color: '#16a34a' }}>{Number(p.cart_discount_rate) > 0 ? `%${p.cart_discount_rate}` : '-'}</td>
+                                    <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                    <td data-label="İstanbul"><div style={getCircleStyle(p.stock_merkez, 14)}>{p.stock_merkez > 0 && p.stock_merkez <= 5 ? p.stock_merkez : ''}</div></td>
+                                    <td data-label="Depo"><div style={getCircleStyle(p.stock_depo, 14)}>{p.stock_depo > 0 && p.stock_depo <= 5 ? p.stock_depo : ''}</div></td>
+                                    <td data-label="Koli Ad." className="text-center">{p.box_quantity || 1}</td>
+                                    <td data-label="Sip.Mik."><div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 32 }}><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>−</button><input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} style={{ width: 35, textAlign: 'center', border: 'none', fontWeight: 800, fontSize: 13, background: 'transparent', outline: 'none', color: '#000' }} /><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button></div></td>
+                                    <td data-label="Sepete At">
+                                        <div style={{ display: 'flex', gap: 4 }}>
+                                            <button className="btn btn-primary btn-sm" onClick={() => handleAddToCart(p)} disabled={!(p.stock_merkez > 0 || p.stock_depo > 0)} style={{ whiteSpace: 'nowrap', minWidth: '80px', justifyContent: 'center' }}>{!(p.stock_merkez > 0 || p.stock_depo > 0) ? 'Yok' : '🛒 Ekle'}</button>
+                                            <a href={`/dashboard/orders?tab=items&search=${p.code}`} className="btn btn-ghost btn-sm" style={{ background: '#475569', color: '#fff', border: 'none', whiteSpace: 'nowrap' }}>Geçmiş</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
                         </tbody>
                     </table>
                 </div>
@@ -337,7 +347,6 @@ export default function DealerCatalog() {
 
             {toast && <div className="toast toast-success">{toast}</div>}
 
-            {/* Hover Previews */}
             {hoveredImage && (
                 <div style={{ position: 'fixed', left: Math.max(20, hoveredImage.x - 320), top: Math.max(20, hoveredImage.y - 150), width: 300, background: '#fff', border: '1px solid #ddd', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', borderRadius: '12px', zIndex: 999999, overflow: 'hidden', pointerEvents: 'none' }}><div style={{ padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><img src={hoveredImage.url} style={{ width: '100%', height: 'auto', maxHeight: '300px', objectFit: 'contain' }} /></div></div>
             )}
@@ -345,17 +354,29 @@ export default function DealerCatalog() {
             {hoveredPriceTooltip && (
                 <div style={{ position: 'fixed', left: Math.max(20, hoveredPriceTooltip.x - 280), top: Math.max(20, hoveredPriceTooltip.y - 140), zIndex: 999999, pointerEvents: 'none' }}>
                     <div style={{ textAlign: 'left', minWidth: 280, padding: '16px', background: '#1e293b', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>Liste Fiyatı:</span><div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency}</div>{hoveredPriceTooltip.product.currency !== 'TRY' && (<div style={{ fontSize: 11, color: '#94a3b8' }}>(₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</div>)}</div></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
-                            <span style={{ fontSize: 13, color: '#94a3b8' }}>Ürün İskontosu (%{hoveredPriceTooltip.product.discount_rate}):</span>
-                            <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
-                            <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{discountPercent}):</span>
-                            <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                        {hoveredPriceTooltip.product.is_fixed_price ? (
+                            <>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa', marginBottom: 8, textTransform: 'uppercase' }}>📌 Sabit Fiyatlı Ürün</div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span>
+                                    <span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>Liste Fiyatı:</span><div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency}</div>{hoveredPriceTooltip.product.currency !== 'TRY' && (<div style={{ fontSize: 11, color: '#94a3b8' }}>(₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</div>)}</div></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
+                                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Ürün İskontosu (%{hoveredPriceTooltip.product.discount_rate}):</span>
+                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
+                                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{discountPercent}):</span>
+                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -381,10 +402,7 @@ export default function DealerCatalog() {
                 .filter-actions button { border-radius: 0; padding: 12px; font-weight: 700; }
                 .dark-btn { background: #1e293b !important; color: #fff !important; }
                 .status-dot { width: 16px; height: 16px; border-radius: 50%; background: #16a34a; }
-                
                 .campaign-row, .campaign-row td { background: #fef08a !important; color: #000; }
-                .campaign-row td:nth-child(2) { color: #1e40af !important; }
-
                 .list-view-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
                 .product-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
                 .product-card.campaign { background: #fef08a; border-color: #eab308; }
@@ -403,7 +421,6 @@ export default function DealerCatalog() {
                 .p-qty input { width: 35px; border: none; text-align: center; font-weight: 800; font-size: 12px; outline: none; }
                 .add-btn { flex: 1; height: 32px; padding: 0; }
                 .pagination { display: flex; justify-content: center; align-items: center; padding: 24px 0; gap: 16px; }
-
                 .img-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justifyContent: center; z-index: 1000000; backdrop-filter: blur(8px); cursor: zoom-out; }
                 .img-modal-content { position: relative; width: 90vw; height: 90vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
                 .img-modal-content img { max-width: 100%; max-height: 80vh; object-fit: contain; box-shadow: 0 0 50px rgba(0,0,0,0.5); borderRadius: 8px; }

@@ -9,6 +9,7 @@ export default function PaymentResultPage() {
     const status = searchParams.get('status');
     const message = searchParams.get('message');
     const orderId = searchParams.get('orderId');
+    const isShowroom = searchParams.get('showroom') === 'true';
 
     const [isClient, setIsClient] = useState(false);
     const [hasPendingCart, setHasPendingCart] = useState(false);
@@ -23,6 +24,8 @@ export default function PaymentResultPage() {
     if (!isClient) return null;
 
     const isSuccess = status === 'success';
+    const showroomQuery = isShowroom ? '&showroom=true' : '';
+    const showroomQueryStart = isShowroom ? '?showroom=true' : '';
 
     return (
         <div className="page-wrapper">
@@ -71,20 +74,20 @@ export default function PaymentResultPage() {
                 <div style={{ marginTop: 30, display: 'flex', gap: 15, justifyContent: 'center' }}>
                     {!isSuccess ? (
                         <>
-                            <Link href="/dashboard/payment" className="btn btn-outline">
+                            <Link href={`/dashboard/payment${showroomQueryStart}`} className="btn btn-outline">
                                 Tekrar Dene
                             </Link>
-                            <Link href="/dashboard" className="btn btn-primary">
+                            <Link href={`/dashboard${showroomQueryStart}`} className="btn btn-primary">
                                 Panele Dön
                             </Link>
                         </>
                     ) : (
                         hasPendingCart ? (
-                            <Link href="/dashboard/cart" className="btn btn-primary" style={{ padding: '12px 24px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Link href={`/dashboard/cart?autoSubmit=true${showroomQuery}`} className="btn btn-primary" style={{ padding: '12px 24px', fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
                                 Sepetime Git ve Siparişi Tamamla
                             </Link>
                         ) : (
-                            <Link href="/dashboard" className="btn btn-primary">
+                            <Link href={`/dashboard${showroomQueryStart}`} className="btn btn-primary">
                                 Panele Dön
                             </Link>
                         )

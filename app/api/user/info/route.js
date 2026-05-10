@@ -50,7 +50,7 @@ export async function GET() {
             // RLS bypass ile en yetkili şekilde çekiyoruz
             const { data: company } = await adminSupabase
                 .from('companies')
-                .select('*, price_group:price_groups(name, discount_percent)')
+                .select('*, price_group:price_groups(name, discount_percent, rules)')
                 .eq('id', targetCompanyId)
                 .maybeSingle();
             
@@ -86,6 +86,7 @@ export async function GET() {
             fullName: profile?.full_name || 'B2B Kullanıcısı',
             currentBalance: Number(companyData?.current_balance) || 0,
             discountPercent: discount,
+            priceGroup: companyData?.price_group || null,
             extraDiscounts: extraDiscounts, // Added this field
             isImpersonating,
             isPrepaymentLocked: companyData?.is_prepayment_locked || false,

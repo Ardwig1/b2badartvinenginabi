@@ -7,8 +7,18 @@ export default function AdminShowroom() {
     const { id } = useParams();
     const router = useRouter();
     const [companyName, setCompanyName] = useState('Yükleniyor...');
+    const [iframeSrc, setIframeSrc] = useState('/dashboard?showroom=true');
 
     useEffect(() => {
+        // Check if there's an 'inner' param to load a specific page in the iframe
+        const urlParams = new URLSearchParams(window.location.search);
+        const inner = urlParams.get('inner');
+        if (inner) {
+            // Ensure the inner URL also has the showroom parameter
+            const finalInner = inner.includes('?') ? `${inner}&showroom=true` : `${inner}?showroom=true`;
+            setIframeSrc(finalInner);
+        }
+
         const fetchCompany = async () => {
             if (!id) return;
             try {
@@ -103,7 +113,7 @@ export default function AdminShowroom() {
                     overflow: 'hidden'
                 }}>
                     <iframe 
-                        src="/dashboard?showroom=true" 
+                        src={iframeSrc} 
                         style={{ 
                             width: '100%', 
                             height: '100%',

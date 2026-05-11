@@ -178,7 +178,7 @@ CREATE TABLE IF NOT EXISTS public."invoices" (
     "order_id" uuid,
     "invoice_number" text NOT NULL,
     "status" text DEFAULT 'unpaid',
-    "issue_date" date DEFAULT 'CURRENT_DATE',
+    "issue_date" date DEFAULT CURRENT_DATE,
     "due_date" date,
     "subtotal" numeric DEFAULT 0,
     "tax_percent" numeric DEFAULT 18,

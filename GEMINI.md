@@ -20,11 +20,13 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - `lib/supabase/middleware.js` güncellenerek bu rotalara giriş yapmamış kullanıcıların da erişebilmesi sağlandı (Login sayfasına yönlendirme kaldırıldı).
 
 ## 🚀 Canlı Ortam Bilgileri
-- **Production URL:** [https://b2b.omigroups.com](https://b2b.omigroups.com)
-- **Deployment:** Manuel olarak Vercel CLI (`--prod`) ile deploy edildi.
-- **GitHub Repo:** [https://github.com/Ardwig1/b2byedekparca](https://github.com/Ardwig1/b2byedekparca)
+- **Production URL:** [https://b2bgenel.vercel.app](https://b2bgenel.vercel.app)
+- **Deployment:** Manuel olarak Vercel CLI (`--prod`) ile deploy edildi (Kişisel hesap: mustafaygzunal2004).
+- **GitHub Repo:** [https://github.com/Ardwig1/b2bgenel](https://github.com/Ardwig1/b2bgenel)
 
-## 💳 QNB Finansbank Sanal POS Entegrasyonu (5 Mayıs 2026)
+## 💳 QNB Finansbank Sanal POS Entegrasyonu (11 Mayıs 2026 Güncellemesi)
+- Proje tamamen yeni bir hesaba ve repoya taşınarak stabilize edildi.
+- Mevcut proxy yapısı (`34.63.166.56`) ve XML entegrasyonu korunarak yeni ortama aktarıldı.
 
 ### Mevcut Durum ve Teknik Mimari
 QNB Finansbank (Payfor) altyapısı ile Sanal POS entegrasyonu tamamlandı ve canlıya alındı.

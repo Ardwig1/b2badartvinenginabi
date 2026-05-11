@@ -7,12 +7,12 @@ const fs = require('fs');
  */
 
 try {
-  if (!fs.existsSync('.env.local')) {
-    console.error('HATA: .env.local dosyası bulunamadı!');
+  if (!fs.existsSync('../.env.local')) {
+    console.error('HATA: .env.local dosyası bulunamadı! (Script bir üst klasöre bakıyor)');
     process.exit(1);
   }
 
-  const envContent = fs.readFileSync('.env.local', 'utf8');
+  const envContent = fs.readFileSync('../.env.local', 'utf8');
   const lines = envContent.split(/\r?\n/);
 
   console.log('🚀 Vercel Env Senkronizasyonu Başladı...\n');

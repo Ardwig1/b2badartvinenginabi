@@ -20,9 +20,11 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - `lib/supabase/middleware.js` güncellenerek bu rotalara giriş yapmamış kullanıcıların da erişebilmesi sağlandı (Login sayfasına yönlendirme kaldırıldı).
 
 ## 🚀 Canlı Ortam Bilgileri
-- **Production URL:** [https://b2bgenel.vercel.app](https://b2bgenel.vercel.app)
-- **Deployment:** Manuel olarak Vercel CLI (`--prod`) ile deploy edildi (Kişisel hesap: mustafaygzunal2004).
-- **GitHub Repo:** [https://github.com/Ardwig1/b2bgenel](https://github.com/Ardwig1/b2bgenel)
+- **GitHub Reposu:** `b2bgenel`
+- **Vercel Projesi:** `adartvinenginabi`
+- **Vercel Hesap Adı:** `mustafaygzunal2004-7576`
+- **GitHub Hesap Adı:** `Ardwig1`
+- **Giriş E-postası:** `mustafaygzunal2004@gmail.com` (Her iki hesap için)
 
 ## 💳 QNB Finansbank Sanal POS Entegrasyonu (11 Mayıs 2026 Güncellemesi)
 - Proje tamamen yeni bir hesaba ve repoya taşınarak stabilize edildi.

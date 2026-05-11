@@ -1,30 +1,19 @@
 -- ========================================================
--- DATABASE NUKE & RESET SCRIPT
+-- DATABASE NUKE & RESET SCRIPT (V2 - Hatasız Versiyon)
 -- ========================================================
--- UYARI: BU İŞLEM 'PUBLIC' ŞEMASINDAKİ TÜM TABLOLARI VE VERİLERİ SİLER!
+-- UYARI: BU İŞLEM TÜM TABLOLARI, VERİLERİ VE FONKSİYONLARI SİLER!
 -- Hazırlayan: Gemini CLI
 
-DO $$ 
-DECLARE
-    r RECORD;
-BEGIN
-    -- 1. Tüm Tabloları Sil (Cascade ile bağımlılıkları temizler)
-    FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP
-        EXECUTE 'DROP TABLE IF EXISTS public.' || quote_ident(r.tablename) || ' CASCADE';
-    END LOOP;
+-- 1. Önce her şeyi (eklentiler dahil) cascade ile sil
+DROP SCHEMA public CASCADE;
 
-    -- 2. Tüm Fonksiyonları Sil
-    FOR r IN (SELECT proname, oidvectortypes(proargtypes) as args 
-              FROM pg_proc 
-              JOIN pg_namespace ON pg_proc.pronamespace = pg_namespace.oid 
-              WHERE pg_namespace.nspname = 'public') LOOP
-        EXECUTE 'DROP FUNCTION IF EXISTS public.' || quote_ident(r.proname) || '(' || r.args || ') CASCADE';
-    END LOOP;
+-- 2. Şemayı tertemiz yeniden oluştur
+CREATE SCHEMA public;
 
-    -- 3. Tüm Sequence'ları Sil
-    FOR r IN (SELECT relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname = 'public') LOOP
-        EXECUTE 'DROP SEQUENCE IF EXISTS public.' || quote_ident(r.relname) || ' CASCADE';
-    END LOOP;
-END $$;
+-- 3. Yetkileri Supabase standartlarına göre geri ver
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL ON SCHEMA public TO public;
 
 -- NOT: Bu işlemden sonra FINAL_MASTER_SCHEMA_V5.sql dosyasını çalıştırın.
+-- Master Schema içinde "CREATE EXTENSION IF NOT EXISTS pg_trgm;" 
+-- komutu olduğu için eklenti de otomatik olarak yeniden kurulacaktır.

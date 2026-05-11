@@ -20,11 +20,13 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - `lib/supabase/middleware.js` güncellenerek bu rotalara giriş yapmamış kullanıcıların da erişebilmesi sağlandı (Login sayfasına yönlendirme kaldırıldı).
 
 ## 🚀 Canlı Ortam Bilgileri
-- **GitHub Reposu:** `b2bgenel`
-- **Vercel Projesi:** `adartvinenginabi`
-- **Vercel Hesap Adı:** `mustafaygzunal2004-7576`
-- **GitHub Hesap Adı:** `Ardwig1`
-- **Giriş E-postası:** `mustafaygzunal2004@gmail.com` (Her iki hesap için)
+- **GitHub Reposu:** `b2badartvinenginabi`
+- **Vercel Projesi:** `b2badartvinenginabi`
+
+## ⚡ Performans ve Ölçekleme Standartları
+- Proje 100.000+ ürün ölçeğinde tasarlandığı için `PERFORMANS_STANDARTLARI.md` dosyasındaki kurallara uymak **zorunludur**. 
+- Veritabanı aramalarında mutlaka `Indexing` ve `Server-side Pagination` kullanılmalıdır.
+
 
 ## 💳 QNB Finansbank Sanal POS Entegrasyonu (11 Mayıs 2026 Güncellemesi)
 - Proje tamamen yeni bir hesaba ve repoya taşınarak stabilize edildi.

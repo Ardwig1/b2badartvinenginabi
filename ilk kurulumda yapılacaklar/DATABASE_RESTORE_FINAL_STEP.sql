@@ -1,10 +1,30 @@
 -- ========================================================
--- DATABASE RESTORE FINAL STEP (RLS & SECURITY)
+-- DATABASE RESTORE FINAL STEP (API & RLS & SECURITY)
 -- ========================================================
--- Bu script tabloların yanındaki 'Dünya' simgesini aktif eder
--- ve temel güvenlik kurallarını (RLS) tanımlar.
+-- Bu script tabloların yanındaki 'Dünya' simgesini (API) aktif eder,
+-- yetkileri Supabase rollerine geri verir ve RLS'yi açar.
 
--- 1. Tüm Tablolarda RLS'yi Aktif Et (Dünya Simgesini Getirir)
+-- 1. ŞEMA YETKİLERİNİ GERİ VER (Dünya Simgesi İçin Kritik)
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
+
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO postgres;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO authenticated;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO service_role;
+
+-- 2. TÜM TABLOLARDA RLS'Yİ AKTİF ET
 DO $$ 
 DECLARE
     r RECORD;
@@ -14,9 +34,10 @@ BEGIN
     END LOOP;
 END $$;
 
--- 2. Temel Erişim Politikaları (Kaan Abi Standartları)
--- Not: Bu kurallar başlangıç seviyesindedir, sistemin çalışmasını sağlar.
+-- 3. POSTGREST CACHE YENİLEME (Sisteme 'ben buradayım' de)
+NOTIFY pgrst, 'reload schema';
 
+-- 4. TEMEL POLİTİKALAR (Hata almamak için)
 -- Products: Herkes görebilsin
 DROP POLICY IF EXISTS "Public Read" ON public.products;
 CREATE POLICY "Public Read" ON public.products FOR SELECT USING (true);
@@ -25,8 +46,9 @@ CREATE POLICY "Public Read" ON public.products FOR SELECT USING (true);
 DROP POLICY IF EXISTS "Public Read Banners" ON public.banners;
 CREATE POLICY "Public Read Banners" ON public.banners FOR SELECT USING (true);
 
--- Companies & Profiles: Admin her şeyi yapsın
+-- Companies: Admin her şeyi yapsın
 DROP POLICY IF EXISTS "Admin All" ON public.companies;
 CREATE POLICY "Admin All" ON public.companies FOR ALL USING (true);
 
--- Done!
+-- Done! 🚀
+-- NOT: Bu scripti çalıştırdıktan sonra Supabase sayfasını (F5) yenilemeyi unutma!

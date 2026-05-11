@@ -1,0 +1,36 @@
+cat <<'EOT' > server.js
+const fastify = require('fastify')({ logger: true });
+const QNB_GATEWAY = 'https://vpos.qnbfinansbank.com';
+
+fastify.register(require('fastify-reply-from'), {
+  base: QNB_GATEWAY
+});
+
+fastify.post('/vpos', (request, reply) => {
+  // Bazı kütüphaneler direkt buraya atabilir
+  reply.from('/Gateway/XmlGate.aspx'); 
+});
+
+fastify.post('/vpos/XmlGate.aspx', (request, reply) => {
+  // QNB'nin asıl XML endpoint'i
+  reply.from('/Gateway/XmlGate.aspx'); 
+});
+
+fastify.get('/health', async () => {
+  return { 
+    status: 'ok', 
+    server: 'Google Cloud Proxy', 
+    ip: '34.63.166.56'
+  };
+});
+
+const start = async () => {
+  try {
+    await fastify.listen({ port: 80, host: '0.0.0.0' });
+  } catch (err) {
+    process.exit(1);
+  }
+};
+
+start();
+EOT

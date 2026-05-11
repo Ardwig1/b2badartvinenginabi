@@ -1,0 +1,26 @@
+TOSLA SANAL POS ENTEGRASYON HATASI - TEKNİK RAPOR
+
+Sayın Tosla Teknik Destek Ekibi,
+
+"apiUser3037726" (Client ID: 1000006176) numaralı üye işyeri hesabımız için Sanal POS entegrasyonu yapmaktayız. Ancak 3D Secure akışının 2. adımı olan `ProcessCardForm` servisinde bembeyaz bir sayfa (HTTP 200 OK - 0 Byte Content) hatası almaktayız.
+
+Hata Özeti:
+1. `/api/Payment/threeDPayment` servisine başarılı bir POST işlemi yapıyoruz ve geçerli bir `ThreeDSessionId` alıyoruz. (Code: 0, Message: Başarılı)
+2. Dökümantasyonda belirtildiği gibi, elde edilen `ThreeDSessionId` ve kart bilgilerini (CardHolderName, CardNo, ExpireDate, Cvv) bir HTML form üzerinden `multipart/form-data` yöntemiyle `https://entegrasyon.tosla.com/api/Payment/ProcessCardForm` adresine POST ediyoruz.
+3. Ancak bu işlem sonucunda Tosla sunucusu bankanın 3D (SMS) doğrulama HTML ekranını döndürmek yerine, `Content-Length: 0` olan tamamen boş bir sayfa (0 Byte) döndürüyor. Bu sebeple kullanıcılarımız beyaz ekranda kalıyor ve işlem tamamlanamıyor.
+
+Denediğimiz Çözüm Yolları (Hepsi 0 Byte boş sayfa döndürdü):
+- Form Request tipini `multipart/form-data` ve `application/x-www-form-urlencoded` olarak değiştirmek.
+- Payload'a Hash, ApiUser ve ClientId eklemek.
+- Resmi test kartlarınızı (4546711234567894) kullanmak.
+- `prepentegrasyon.tosla.com` test ortamını denemek.
+- İş Bankası ve Ziraat Bankası gerçek kredi kartları ile canlı ortamda denemek.
+
+Sisteme JSON (`application/json`) formatında istek attığımızda sunucu ayakta olduğunu kanıtlar nitelikte `{"Code":999,"Message":"Genel Hata"}` döndürmektedir, ancak doğru format olan Form Data atıldığında sessizce 0 byte dönmektedir.
+
+Muhtemel Nedenler:
+1. Üye işyeri hesabımızda (apiUser3037726) 3D Secure yönlendirmeleri için "Return URL Whitelist" veya "Domain IP" kısıtlaması aktif olabilir mi?
+2. `ProcessCardForm` endpoint'i form işlemlerini sessizce drop ediyor olabilir mi?
+3. `threeDPayment` adımında dökümantasyonda yazmayan zorunlu bir IP adresi veya OK/FAIL url parametresi mi eksik?
+
+Lütfen hesabımızın 3D işlemlerine açık olup olmadığını ve bu beyaz sayfa hatasının arka plan logunu kontrol edebilir misiniz? İlgili isteğin `ThreeDSessionId` bazlı sunucu loglarını incelemenizi rica ederiz.

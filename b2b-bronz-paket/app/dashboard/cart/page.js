@@ -41,6 +41,7 @@ export default function DealerCart() {
     const isSelected = (id) => !(contextCartItems[id]?.unselected);
 
     const [discountPercent, setDiscountPercent] = useState(0);
+    const [priceGroup, setPriceGroup] = useState(null);
     const [extraDiscounts, setExtraDiscounts] = useState([]);
     const [globalMargin, setGlobalMargin] = useState(36);
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
@@ -71,6 +72,7 @@ export default function DealerCart() {
                 setCompanyId(infoData.companyId || '');
                 setCompanyBalance(Number(infoData.currentBalance) || 0);
                 setDiscountPercent(Number(infoData.discountPercent) || 0);
+                setPriceGroup(infoData.priceGroup || null);
                 setExtraDiscounts(infoData.extraDiscounts || []);
                 setIsPrepaymentLocked(infoData.isPrepaymentLocked || false);
                 setCompanyRiskLimit(Number(infoData.riskLimit) || 0);

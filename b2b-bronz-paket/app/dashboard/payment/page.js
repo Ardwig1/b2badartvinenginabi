@@ -27,7 +27,7 @@ export default function PaymentPage() {
     const [loading, setLoading] = useState(false);
     const [isInfoLoading, setIsInfoLoading] = useState(true);
     const [qnbData, setQnbData] = useState(null);
-    const [buyerInfo, setBuyerInfo] = useState({ email: '', phone: '', companyId: '', companyName: '', currentBalance: 0, discountPercent: 0, extraDiscounts: [] });
+    const [buyerInfo, setBuyerInfo] = useState({ email: '', phone: '', companyId: '', companyName: '', currentBalance: 0, discountPercent: 0, extraDiscounts: [], priceGroup: null });
     const [context, setContext] = useState('');
     const [globalSettings, setGlobalSettings] = useState({ margin: 36, usdRate: 0, usdActive: false, rates: { USD: 1, EUR: 1 } });
 
@@ -44,7 +44,8 @@ export default function PaymentPage() {
                     companyName: data.companyName || '',
                     currentBalance: Number(data.currentBalance) || 0,
                     discountPercent: Number(data.discountPercent) || 0,
-                    extraDiscounts: data.extraDiscounts || []
+                    extraDiscounts: data.extraDiscounts || [],
+                    priceGroup: data.priceGroup || null
                 });
             }
 
@@ -104,9 +105,15 @@ export default function PaymentPage() {
         if (!p) return 0;
         const base = getBaseTryPrice(p);
         const prodDiscount = Number(p.discount_rate || 0);
-        const groupDiscount = buyerInfo.discountPercent || 0;
-        return base * (1 - prodDiscount / 100) * (1 - groupDiscount / 100);
-    }, [getBaseTryPrice, buyerInfo.discountPercent]);
+        
+        let effectiveGroupDiscount = buyerInfo.discountPercent || 0;
+        if (buyerInfo.priceGroup?.rules && p.supplier_brand) {
+            const rule = buyerInfo.priceGroup.rules[p.supplier_brand];
+            if (rule !== undefined) effectiveGroupDiscount = Number(rule);
+        }
+        
+        return base * (1 - prodDiscount / 100) * (1 - effectiveGroupDiscount / 100);
+    }, [getBaseTryPrice, buyerInfo.discountPercent, buyerInfo.priceGroup]);
 
     const cartTotal = useMemo(() => {
         const selected = cartItemsArr.filter(i => isSelected(i.product.id));

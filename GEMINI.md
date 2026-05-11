@@ -20,8 +20,8 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - `lib/supabase/middleware.js` güncellenerek bu rotalara giriş yapmamış kullanıcıların da erişebilmesi sağlandı (Login sayfasına yönlendirme kaldırıldı).
 
 ## 🚀 Canlı Ortam Bilgileri
-- **GitHub Reposu:** `b2bkaanabi`
-- **Vercel Projesi:** `b2bkaanabi`
+- **GitHub Reposu:** `b2badartvinenginabi`
+- **Vercel Projesi:** `b2badartvinenginabi`
 - **Vercel Hesap Adı:** `mustafaygzunal2004-7576`
 - **GitHub Hesap Adı:** `Ardwig1`
 - **Giriş E-postası:** `mustafaygzunal2004@gmail.com` (Her iki hesap için)

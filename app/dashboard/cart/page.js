@@ -17,28 +17,32 @@ export default function DealerCart() {
     const supabase = createClient();
 
     const cartItems = useMemo(() => {
-        return Object.values(contextCartItems || {}).filter(item => item && item.qty > 0);
+        return Object.values(contextCartItems || {})
+            .filter(item => item && item.product && item.product.id && item.qty > 0);
     }, [contextCartItems]);
 
     // Refresh products when cart is opened to ensure latest prices/margins
     useEffect(() => {
         const refreshCartProducts = async () => {
-            if (cartItems.length === 0) return;
-            const ids = cartItems.map(i => i.product.id);
-            const { data, error } = await supabase.from('products').select('*').in('id', ids);
-            if (!error && data) {
-                data.forEach(p => {
-                    const current = contextCartItems[p.id];
-                    if (current && (current.product.cost_price !== p.cost_price || current.product.profit_margin !== p.profit_margin || current.product.list_price !== p.list_price)) {
-                        ctxSetQty(p.id, p, current.qty, !!current.unselected);
-                    }
-                });
-            }
+            if (!cartItems || cartItems.length === 0) return;
+            try {
+                const ids = cartItems.map(i => i.product.id).filter(Boolean);
+                if (ids.length === 0) return;
+                const { data, error } = await supabase.from('products').select('*').in('id', ids);
+                if (!error && data) {
+                    data.forEach(p => {
+                        const current = contextCartItems[p.id];
+                        if (current && (current.product.cost_price !== p.cost_price || current.product.profit_margin !== p.profit_margin || current.product.list_price !== p.list_price)) {
+                            ctxSetQty(p.id, p, current.qty, !!current.unselected);
+                        }
+                    });
+                }
+            } catch (e) { console.error("Refresh cart error:", e); }
         };
         refreshCartProducts();
-    }, []); // Only on mount to avoid loops, context will handle the rest if updated via other means
+    }, []);
 
-    const isSelected = (id) => !(contextCartItems[id]?.unselected);
+    const isSelected = (id) => id && !(contextCartItems[id]?.unselected);
 
     const [discountPercent, setDiscountPercent] = useState(0);
     const [priceGroup, setPriceGroup] = useState(null);
@@ -134,10 +138,11 @@ export default function DealerCart() {
     }, [getBaseTryPrice, discountPercent, priceGroup, rates]);
 
     const totals = useMemo(() => {
-        const selected = cartItems.filter(i => isSelected(i.product.id));
+        const selected = cartItems.filter(i => i.product && i.product.id && isSelected(i.product.id));
         let sub = 0, afterDisc = 0;
         selected.forEach(item => {
             const p = item.product, qty = item.qty;
+            if (!p) return;
             sub += getBaseTryPrice(p) * qty;
 
             // Showroom Price Override Logic

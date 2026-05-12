@@ -64,6 +64,8 @@ export default function DealerCart() {
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
 
+    const [manualPrices, setManualPrices] = useState({});
+
     const fetchUser = useCallback(async () => {
         try {
             const infoRes = await fetch(`/api/user/info?t=${Date.now()}`, { cache: 'no-store', credentials: 'include' });
@@ -137,19 +139,35 @@ export default function DealerCart() {
         selected.forEach(item => {
             const p = item.product, qty = item.qty;
             sub += getBaseTryPrice(p) * qty;
-            const normalDiscPrice = getDiscountedPrice(p);
-            const extra = extraDiscounts.find(d => d.product_id === p.id);
-            if (extra) afterDisc += (normalDiscPrice * (1 - Number(extra.discount_rate) / 100)) * qty;
-            else afterDisc += normalDiscPrice * qty;
+
+            // Showroom Price Override Logic
+            const manualVatIncl = isShowroom ? Number(manualPrices[p.id]) : 0;
+            if (manualVatIncl > 0) {
+                afterDisc += (manualVatIncl / 1.20) * qty;
+            } else {
+                const normalDiscPrice = getDiscountedPrice(p);
+                const extra = extraDiscounts.find(d => d.product_id === p.id);
+                if (extra) afterDisc += (normalDiscPrice * (1 - Number(extra.discount_rate) / 100)) * qty;
+                else afterDisc += normalDiscPrice * qty;
+            }
         });
         const disc = sub - afterDisc, v = afterDisc * 0.20, grand = afterDisc + v;
         const liability = grand - companyBalance;
         const riskExc = companyRiskLimit > 0 && liability > companyRiskLimit;
         return { subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand, isRiskExceeded: riskExc, exceededAmount: riskExc ? (liability - companyRiskLimit) : 0, needsPrepayment: (isPrepaymentLocked && companyBalance < grand) || riskExc, selectedCount: selected.length };
-    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked]);
+    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked, isShowroom, manualPrices]);
 
     const handleSetQty = (pid, p, q, unselected) => {
         ctxSetQty(pid, p, q, unselected);
+        
+        // Reset manual price if quantity changes (as requested: "bir adet daha eklerse gerçek fiyattan eklensin")
+        if (manualPrices[pid]) {
+            setManualPrices(prev => {
+                const newState = { ...prev };
+                delete newState[pid];
+                return newState;
+            });
+        }
         
         // LOG ACTIVITY: CART REMOVE OR UPDATE
         if (q === 0) {
@@ -195,7 +213,16 @@ export default function DealerCart() {
             }
 
             // 3. SİPARİŞİ OLUŞTUR
-            const p_items = selectedItems.map(i => ({ product_id: i.product.id, quantity: i.qty, unit_price: getDiscountedPrice(i.product), total_price: getDiscountedPrice(i.product) * i.qty }));
+            const p_items = selectedItems.map(i => {
+                const manual = isShowroom ? Number(manualPrices[i.product.id]) : 0;
+                const unitPrice = manual > 0 ? (manual / 1.20) : getDiscountedPrice(i.product);
+                return { 
+                    product_id: i.product.id, 
+                    quantity: i.qty, 
+                    unit_price: unitPrice, 
+                    total_price: unitPrice * i.qty 
+                };
+            });
             const response = await fetch('/api/user/checkout', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
@@ -303,23 +330,44 @@ export default function DealerCart() {
                             {/* FULL DESKTOP TABLE */}
                             <div className="table-wrapper desktop-only">
                                 <table>
-                                    <thead><tr><th>Ürün</th><th>Marka</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th style={{ textAlign: 'right' }}>Birim Fiyat</th><th style={{ textAlign: 'center' }}>Miktar</th><th style={{ textAlign: 'right' }}>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
+                                    <thead><tr><th>Ürün</th><th>Marka</th><th style={{ textAlign: 'center' }}>İstanbul</th><th style={{ textAlign: 'center' }}>Depo</th><th style={{ textAlign: 'right' }}>Birim (KDVsiz)</th><th style={{ textAlign: 'right' }}>Birim (KDVli)</th><th style={{ textAlign: 'center' }}>Miktar</th><th style={{ textAlign: 'right' }}>Toplam</th><th style={{ textAlign: 'center' }}>Seç</th><th></th></tr></thead>
                                     <tbody>
                                         {cartItems.map(({ product: p, qty }) => {
                                             const itemSelected = isSelected(p.id);
                                             const extra = extraDiscounts.find(d => d.product_id === p.id);
+                                            const manualVal = isShowroom ? manualPrices[p.id] : null;
+                                            const unitPriceIncVat = manualVal ? Number(manualVal) : (getDiscountedPrice(p) * 1.20);
+                                            const unitPriceExVat = getDiscountedPrice(p);
+                                            
                                             return (
                                                 <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5 }}>
                                                     <td>
                                                         <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code} {extra && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code} {extra && !manualVal && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}</div>
                                                     </td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.brand || '-'}</td>
                                                     <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_merkez, 12)} /></td>
                                                     <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_depo, 12)} /></td>
-                                                    <td style={{ textAlign: 'right' }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'right', fontSize: 13 }}>₺{unitPriceExVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'right' }}>
+                                                        {isShowroom ? (
+                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
+                                                                <input 
+                                                                    type="number" 
+                                                                    step="0.01" 
+                                                                    placeholder={(getDiscountedPrice(p) * 1.20).toFixed(2)}
+                                                                    value={manualPrices[p.id] || ''} 
+                                                                    onChange={(e) => setManualPrices(prev => ({...prev, [p.id]: e.target.value}))}
+                                                                    style={{ width: 90, textAlign: 'right', padding: '4px 8px', borderRadius: 8, border: '2px solid var(--primary)', fontSize: 13, fontWeight: 700, outline: 'none' }}
+                                                                />
+                                                                <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>KDV DAHİL EDİT</span>
+                                                            </div>
+                                                        ) : (
+                                                            `₺${unitPriceIncVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+                                                        )}
+                                                    </td>
                                                     <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty + 1)}>+</button></div></td>
-                                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(getDiscountedPrice(p) * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
                                                     <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => handleSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18 }} /></td>
                                                     <td style={{ textAlign: 'center' }}><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleSetQty(p.id, p, 0)}>✕</button></td>
                                                 </tr>
@@ -334,7 +382,9 @@ export default function DealerCart() {
                                 {cartItems.map(({ product: p, qty }) => {
                                     const selected = isSelected(p.id);
                                     const extra = extraDiscounts.find(d => d.product_id === p.id);
-                                    const price = getDiscountedPrice(p);
+                                    const manualVal = isShowroom ? manualPrices[p.id] : null;
+                                    const unitPrice = manualVal ? (Number(manualVal) / 1.20) : getDiscountedPrice(p);
+
                                     return (
                                         <div key={p.id} className={`cart-card ${selected ? '' : 'unselected'}`}>
                                             <div className="cart-card-top">
@@ -346,7 +396,7 @@ export default function DealerCart() {
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_merkez, 10)} /> İstanbul</span>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_depo, 10)} /> Depo</span>
                                                     </div>
-                                                    {extra && <div style={{ marginTop: 6 }}><span className="extra-badge-sm" style={{ marginLeft: 0 }}>EK İSKONTO %{extra.discount_rate}</span></div>}
+                                                    {extra && !manualVal && <div style={{ marginTop: 6 }}><span className="extra-badge-sm" style={{ marginLeft: 0 }}>EK İSKONTO %{extra.discount_rate}</span></div>}
                                                 </div>
                                                 <button className="cart-card-delete" onClick={() => handleSetQty(p.id, p, 0)}><XMarkIcon style={{ width: 20 }} /></button>
                                             </div>
@@ -357,8 +407,23 @@ export default function DealerCart() {
                                                     <button onClick={() => handleSetQty(p.id, p, qty + 1)}><PlusIcon style={{ width: 16 }} /></button>
                                                 </div>
                                                 <div className="cart-card-price">
-                                                    <div className="unit">Birim: ₺{price.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
-                                                    <div className="total">₺{(price * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                    <div className="unit" style={{ fontSize: 10, color: 'var(--text-muted)' }}>KDVsiz: ₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                    {isShowroom ? (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 4, marginBottom: 4 }}>
+                                                            <input 
+                                                                type="number" 
+                                                                step="0.01" 
+                                                                placeholder={(getDiscountedPrice(p) * 1.20).toFixed(2)}
+                                                                value={manualPrices[p.id] || ''} 
+                                                                onChange={(e) => setManualPrices(prev => ({...prev, [p.id]: e.target.value}))}
+                                                                style={{ width: 85, textAlign: 'right', padding: '4px 6px', borderRadius: 8, border: '2px solid var(--primary)', fontSize: 12, fontWeight: 700, outline: 'none' }}
+                                                            />
+                                                            <div className="unit" style={{ fontSize: 8, fontWeight: 600 }}>KDV DAHİL EDİT</div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="unit">KDVli: ₺{(getDiscountedPrice(p) * 1.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                    )}
+                                                    <div className="total">₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
                                                 </div>
                                             </div>
                                         </div>

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
+import { headers, cookies } from 'next/headers';
 import Sidebar from '@/components/Sidebar';
 import AdminCurrencyHeader from '@/components/AdminCurrencyHeader';
 

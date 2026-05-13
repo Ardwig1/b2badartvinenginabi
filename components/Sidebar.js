@@ -23,6 +23,7 @@ const adminNav = [
     { label: 'Cari Hareketler', href: '/admin/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Faturalar', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Kullanıcı Önerileri', href: '/admin/suggestions', icon: <EnvelopeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Ayarlar', href: '/admin/settings', icon: <Cog6ToothIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 const dealerNav = [
@@ -74,12 +75,24 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
             {/* Logo */}
             <div className={styles.logo}>
                 <div className={styles.logoImageContainer}>
-                    <img src="/omi-logo-sidebar.png" alt="B2B Logo" style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                    <img 
+                        src="/logo.png" 
+                        alt="B2B Logo" 
+                        style={{ width: '40px', height: '40px', objectFit: 'contain', borderRadius: '8px' }} 
+                        onError={(e) => { 
+                            if (!e.target.src.includes('omi-logo-sidebar.png')) {
+                                e.target.src = '/omi-logo-sidebar.png';
+                            } else {
+                                e.target.style.display = 'none'; 
+                                e.target.nextSibling.style.display = 'block';
+                            }
+                        }} 
+                    />
                     <span className={styles.logoIcon} style={{ display: 'none' }}><Cog6ToothIcon style={{ width: 24, height: 24 }} /></span>
                 </div>
                 {isOpen && (
                     <div>
-                        <div className={styles.logoText}>OMİ GROUP'S</div>
+                        <div className={styles.logoText}>ARTPAR</div>
                         <div className={styles.logoSub}>{isAdmin ? 'Yönetim Paneli' : 'B2B Bayi Paneli'}</div>
                     </div>
                 )}

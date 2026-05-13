@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { BuildingOfficeIcon, ClockIcon, CubeIcon, ShoppingCartIcon } from '@heroicons/react/24/outline';
 import AdminBannerManager from '@/components/AdminBannerManager';
 

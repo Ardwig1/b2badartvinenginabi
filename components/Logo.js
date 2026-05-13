@@ -5,12 +5,15 @@ export default function Logo({ type = 'auto', color = '#fff' }) {
 
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            {/* Project Logo Image (Sidebar version as requested) */}
+            {/* Project Logo Image */}
             <div style={{ flexShrink: 0 }}>
                 <img 
-                    src="/omi-logo-sidebar.png" 
-                    alt="OMI Logo" 
+                    src="/logo.png" 
+                    alt="Artpar Logo" 
                     style={{ width: '45px', height: '45px', objectFit: 'contain' }} 
+                    onError={(e) => {
+                        e.target.src = "/omi-logo-sidebar.png"; // Fallback if logo.png doesn't exist yet
+                    }}
                 />
             </div>
 
@@ -36,9 +39,9 @@ export default function Logo({ type = 'auto', color = '#fff' }) {
 
             {/* Brand Text */}
             <div style={{ display: 'flex', flexDirection: 'column', color: color }}>
-                <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '1px', lineHeight: 1 }}>OMİ GROUP'S</span>
+                <span style={{ fontSize: '20px', fontWeight: 800, letterSpacing: '1px', lineHeight: 1 }}>ARTPAR</span>
                 <span style={{ fontSize: '9px', fontWeight: 600, marginTop: '4px', maxWidth: '200px', opacity: 0.9 }}>
-                    {isTech ? 'BİLİŞİM HİZMETLERİ' : 'OMİ OTOMOTİV YEDEK PARÇA VE KESİCİ TAKIMLAR İTH. İHR.'}
+                    {isTech ? 'BİLİŞİM HİZMETLERİ' : 'ARTPAR OTOMOTİV'}
                 </span>
             </div>
         </div>

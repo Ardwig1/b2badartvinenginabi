@@ -5,11 +5,11 @@ export default function IptalIadeKosullari() {
                 İptal ve İade Koşulları
             </h1>
 
-            <p>OMIGROUPS B2B yedek parça satış platformu üzerinden verilen siparişlerde kurumsal iade ve iptal şartları geçerlidir.</p>
+            <p>ARTPAR B2B yedek parça satış platformu üzerinden verilen siparişlerde kurumsal iade ve iptal şartları geçerlidir.</p>
 
             <h3 style={{ marginTop: '20px' }}>1. Sipariş İptali</h3>
             <p>
-                Verilen siparişler, ürün kargoya teslim edilmeden önce firmamız destek hatları (muratkaan@omigroups.com) üzerinden
+                Verilen siparişler, ürün kargoya teslim edilmeden önce firmamız destek hatları (muratkaan@artpar.com) üzerinden
                 iptal edilebilir. Kargoya verilmiş olan siparişlerin iptali mümkün olmayıp, ancak teslim alındıktan sonra iade
                 sürecine tabi tutulabilir.
             </p>

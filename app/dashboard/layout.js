@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import Sidebar from '@/components/Sidebar';
 import TopHeader from '@/components/TopHeader';
+import MaintenanceGate from '@/components/MaintenanceGate';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +13,11 @@ export default async function DashboardLayout({ children }) {
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) redirect('/login');
+
+    const adminSupabase = createAdminClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+    );
 
     // 1. Identify User Type
     const isRep = user.user_metadata?.role === 'representative';
@@ -23,26 +29,31 @@ export default async function DashboardLayout({ children }) {
 
     const isAdmin = profile?.is_admin || false;
 
-    // 2. Identify Showroom Context
+    // 2. Fetch Maintenance Settings
+    const { data: settingsData } = await adminSupabase
+        .from('site_settings')
+        .select('setting_value')
+        .eq('setting_key', 'maintenance_mode')
+        .maybeSingle();
+    
+    const maintenanceSettings = settingsData?.setting_value || {};
+
+    // 3. Identify Showroom Context
     const cookieStore = await cookies();
     const impersonatedId = cookieStore.get('impersonate_company_id')?.value;
     const isImpersonating = (isAdmin || isRep) && impersonatedId && impersonatedId !== 'undefined' && impersonatedId !== '';
 
-    // 3. Security Checks
+    // 4. Security Checks
     if (!isImpersonating) {
         if (profile?.company?.status !== 'approved' && !isAdmin && !isRep) redirect('/pending');
         if (isRep) redirect('/rep');
     }
 
-    // 4. Fetch Company Info (Use Admin Client for Showroom to bypass RLS)
+    // 5. Fetch Company Info
     let effectiveCompanyName = profile?.company?.name || '';
-    let effectiveCompanyEmail = user.email; // Default to user's email
+    let effectiveCompanyEmail = user.email;
 
     if (isImpersonating) {
-        const adminSupabase = createAdminClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL,
-            process.env.SUPABASE_SERVICE_ROLE_KEY
-        );
         const { data: impCompany } = await adminSupabase
             .from('companies')
             .select('name, email')
@@ -68,7 +79,9 @@ export default async function DashboardLayout({ children }) {
             <main className="main-content">
                 <TopHeader />
                 <div style={{ padding: '0 24px' }}>
-                    {children}
+                    <MaintenanceGate maintenanceSettings={maintenanceSettings}>
+                        {children}
+                    </MaintenanceGate>
                 </div>
             </main>
         </div>

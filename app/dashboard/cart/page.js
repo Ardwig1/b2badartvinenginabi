@@ -388,7 +388,8 @@ export default function DealerCart() {
                                     const selected = isSelected(p.id);
                                     const extra = extraDiscounts.find(d => d.product_id === p.id);
                                     const manualVal = isShowroom ? manualPrices[p.id] : null;
-                                    const unitPrice = manualVal ? (Number(manualVal) / 1.20) : getDiscountedPrice(p);
+                                    const unitPriceIncVat = manualVal ? Number(manualVal) : (getDiscountedPrice(p) * 1.20);
+                                    const unitPriceExVat = manualVal ? (Number(manualVal) / 1.20) : getDiscountedPrice(p);
 
                                     return (
                                         <div key={p.id} className={`cart-card ${selected ? '' : 'unselected'}`}>

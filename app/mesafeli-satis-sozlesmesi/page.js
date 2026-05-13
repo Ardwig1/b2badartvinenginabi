@@ -7,11 +7,11 @@ export default function MesafeliSatisSozlesmesi() {
 
             <h3 style={{ marginTop: '20px' }}>MADDE 1 - TARAFLAR</h3>
             <p><strong>SATICI (FİRMA):</strong></p>
-            <p>Ünvanı: OMİ GROUP'S</p>
+            <p>Ünvanı: ARTPAR</p>
             <p>Ofis Adresi: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL</p>
             <p>Depo Adresi: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL</p>
             <p>Telefon: 0532 597 0664</p>
-            <p>E-Posta: muratkaan@omigroups.com</p>
+            <p>E-Posta: muratkaan@artpar.com</p>
             <p>Vergi Dairesi ve No: Sarıgazi VD. / 800081338</p>
 
             <p style={{ marginTop: '10px' }}><strong>ALICI:</strong></p>
@@ -20,7 +20,7 @@ export default function MesafeliSatisSozlesmesi() {
 
             <h3 style={{ marginTop: '20px' }}>MADDE 2 - SÖZLEŞMENİN KONUSU</h3>
             <p>
-                İşbu sözleşmenin konusu, ALICI'nın SATICI'ya ait b2b.omigroups.com internet sitesinden elektronik ortamda siparişini yaptığı
+                İşbu sözleşmenin konusu, ALICI'nın SATICI'ya ait b2b.artpar.com internet sitesinden elektronik ortamda siparişini yaptığı
                 aşağıda nitelikleri ve satış fiyatı belirtilen ürünün satışı ve teslimi ile ilgili olarak 6502 sayılı Tüketicinin Korunması
                 Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği hükümleri gereğince tarafların hak ve yükümlülüklerinin saptanmasıdır.
             </p>
@@ -33,7 +33,7 @@ export default function MesafeliSatisSozlesmesi() {
 
             <h3 style={{ marginTop: '20px' }}>MADDE 4 - GENEL HÜKÜMLER</h3>
             <p>
-                4.1. ALICI, b2b.omigroups.com internet sitesinde sözleşme konusu ürünün temel nitelikleri, satış fiyatı ve ödeme şekli
+                4.1. ALICI, b2b.artpar.com internet sitesinde sözleşme konusu ürünün temel nitelikleri, satış fiyatı ve ödeme şekli
                 ile teslimata ilişkin ön bilgileri okuyup bilgi sahibi olduğunu ve elektronik ortamda gerekli teyidi verdiğini beyan eder.
             </p>
             <p>

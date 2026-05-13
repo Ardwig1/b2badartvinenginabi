@@ -6,7 +6,7 @@ export default function GizlilikVeGuvenlik() {
             </h1>
 
             <p>
-                OMIGROUPS olarak, kullanıcılarımızın hizmetlerimizden güvenli ve eksiksiz şekilde faydalanmasını
+                ARTPAR olarak, kullanıcılarımızın hizmetlerimizden güvenli ve eksiksiz şekilde faydalanmasını
                 sağlamak amacıyla sitemizi kullanan bayi/üyelerimizin gizliliğini korumak için azami özen göstermekteyiz.
             </p>
 
@@ -36,7 +36,7 @@ export default function GizlilikVeGuvenlik() {
             <h3 style={{ marginTop: '20px' }}>4. Güvenlik İhlallerine Karşı Koruma</h3>
             <p>
                 Kullanıcı adı, bayi kodu ve şifre gibi bilgilerinizi güvende tutmak sizin sorumluluğunuzdadır. Şüpheli bir
-                işlem hissettiğinizde lütfen derhal <strong>muratkaan@omigroups.com</strong> üzerinden iletişime geçin.
+                işlem hissettiğinizde lütfen derhal <strong>muratkaan@artpar.com</strong> üzerinden iletişime geçin.
             </p>
 
             <div style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #333', fontSize: '14px', textAlign: 'center' }}>

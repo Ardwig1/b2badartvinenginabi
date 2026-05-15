@@ -43,38 +43,7 @@ export async function POST(req) {
             }
         }
 
-        // 2. Targeted or Mass Update on Products
-        if (applyToAll) {
-            let query = supabase.from('products').select('id, code, name').eq('currency', 'USD');
 
-            if (isTargeted && targetField && targetValue !== undefined) {
-                if (['is_fixed_price', 'is_campaign'].includes(targetField)) {
-                    query = query.eq(targetField, targetValue === 'true' || targetValue === '1');
-                } else if (['cost_price', 'profit_margin', 'discount_rate', 'cart_discount_rate', 'box_quantity', 'stock_merkez', 'stock_depo'].includes(targetField)) {
-                    query = query.eq(targetField, Number(targetValue));
-                } else {
-                    query = query.ilike(targetField, `%${targetValue}%`);
-                }
-            }
-
-            const { data: products, error: fetchError } = await query;
-            if (fetchError) throw new Error(fetchError.message);
-
-            if (products && products.length > 0) {
-                const updates = products.map(p => ({
-                    id: p.id,
-                    fixed_usd_rate: Number(usd_rate)
-                }));
-
-                const { error: updateError } = await supabase
-                    .from('products')
-                    .upsert(updates);
-
-                if (updateError) throw new Error(updateError.message);
-                return NextResponse.json({ success: true, updatedCount: products.length });
-            }
-            return NextResponse.json({ success: true, updatedCount: 0 });
-        }
 
         return NextResponse.json({ success: true });
     } catch (e) {

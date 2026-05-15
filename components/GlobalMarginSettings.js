@@ -118,34 +118,16 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
         }
     };
 
-    const [isUsdTargeted, setIsUsdTargeted] = useState(false);
-    const [usdTargetField, setUsdTargetField] = useState('supplier_brand');
-    const [usdTargetValue, setUsdTargetValue] = useState('');
-    const [applyingUsdToAll, setApplyingUsdToAll] = useState(false);
-    const [successUsdApply, setSuccessUsdApply] = useState(false);
-
-    const handleSaveUsd = async (applyToAll = false) => {
+    const handleSaveUsd = async () => {
         try {
-            if (applyToAll) {
-                const msg = isUsdTargeted 
-                    ? `Seçilen özelliğe (${usdTargetField}) ve değere (${usdTargetValue}) uyan TÜM USD ürünlerin sabit kuru ${usdRate} TL olarak güncellenecektir. Emin misiniz?`
-                    : "Tüm USD ürünlerin sabit kuru bu rakamla güncellenecektir. Emin misiniz?";
-                if (!confirm(msg)) return;
-                setApplyingUsdToAll(true);
-            } else {
-                setSavingUsd(true);
-            }
+            setSavingUsd(true);
 
             const res = await fetch('/api/admin/usd-settings', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     usd_rate: usdRate === '' ? 0 : usdRate, 
-                    is_active: isUsdActive,
-                    applyToAll: applyToAll,
-                    isTargeted: isUsdTargeted,
-                    targetField: usdTargetField,
-                    targetValue: usdTargetValue
+                    is_active: isUsdActive
                 })
             });
 
@@ -154,22 +136,13 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                 throw new Error(errorData.error || 'Kaydetme hatası');
             }
 
-            const data = await res.json();
-
-            if (applyToAll) {
-                setSuccessUsdApply(true);
-                alert(`${data.updatedCount || 0} USD ürün güncellendi.`);
-                setTimeout(() => setSuccessUsdApply(false), 2500);
-            } else {
-                setSuccessUsd(true);
-                setTimeout(() => setSuccessUsd(false), 2500);
-            }
+            setSuccessUsd(true);
+            setTimeout(() => setSuccessUsd(false), 2500);
         } catch (error) {
             console.error("USD settings save error:", error);
             alert("Dolar kuru ayarları kaydedilemedi: " + error.message);
         } finally {
             setSavingUsd(false);
-            setApplyingUsdToAll(false);
         }
     };
 
@@ -280,56 +253,11 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                             style={{ width: 100, fontSize: 16, fontWeight: 700, paddingRight: 36, paddingLeft: 10, textAlign: 'center' }}
                         />
                     </div>
-                    <button className={`btn ${successUsd ? 'btn-success' : 'btn-primary'} btn-sm`} onClick={() => handleSaveUsd(false)} disabled={savingUsd || applyingUsdToAll}>
-                        {savingUsd ? '...' : successUsd ? '✓' : 'Varsayılan Yap'}
+                    <button className={`btn ${successUsd ? 'btn-success' : 'btn-primary'} btn-sm`} onClick={() => handleSaveUsd()} disabled={savingUsd}>
+                        {savingUsd ? '...' : successUsd ? '✓' : 'Kaydet'}
                     </button>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input 
-                            type="checkbox" 
-                            id="targeted-usd" 
-                            checked={isUsdTargeted} 
-                            onChange={e => setIsUsdTargeted(e.target.checked)} 
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        <label htmlFor="targeted-usd" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Belirli Ürünlere Uygula:</label>
-                    </div>
-
-                    {isUsdTargeted && (
-                        <>
-                            <select 
-                                className="form-select" 
-                                value={usdTargetField} 
-                                onChange={e => setUsdTargetField(e.target.value)}
-                                style={{ height: 32, fontSize: 12, padding: '0 8px', width: 'auto' }}
-                            >
-                                {targetFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                            </select>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>değeri</span>
-                            <input 
-                                className="form-input" 
-                                value={usdTargetValue} 
-                                onChange={e => setUsdTargetValue(e.target.value)}
-                                placeholder="aranacak değer..."
-                                style={{ height: 32, fontSize: 12, width: 150 }}
-                            />
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>olanlar</span>
-                        </>
-                    )}
-
-                    <div style={{ flex: 1 }} />
-                    
-                    <button 
-                        className={`btn ${successUsdApply ? 'btn-success' : 'btn-warning'} btn-sm`} 
-                        onClick={() => handleSaveUsd(true)} 
-                        disabled={savingUsd || applyingUsdToAll || (isUsdTargeted && !usdTargetValue)}
-                        style={{ fontWeight: 700 }}
-                    >
-                        {applyingUsdToAll ? 'Güncelleniyor...' : successUsdApply ? '✓ Başarılı' : isUsdTargeted ? 'Seçili Ürünlere Uygula 🚀' : 'TÜM USD Ürünlere Uygula ⚠️'}
-                    </button>
-                </div>
             </div>
         </div>
     );

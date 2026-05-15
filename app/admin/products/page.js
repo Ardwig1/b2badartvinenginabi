@@ -314,7 +314,7 @@ export default function AdminProducts() {
 
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkFilters, setBulkFilters] = useState({ search: '', brand: '', car_brand: '', supplier_brand: '', currency: '' });
-    const [bulkUpdates, setBulkUpdates] = useState({ profit_margin: '', fixed_usd_rate: '' });
+    const [bulkUpdates, setBulkUpdates] = useState({ profit_margin: '' });
 
     const handleBulkUpdate = async (e) => {
         e.preventDefault();
@@ -328,8 +328,7 @@ export default function AdminProducts() {
                 body: JSON.stringify({
                     filters: bulkFilters,
                     updates: {
-                        profit_margin: bulkUpdates.profit_margin !== '' ? Number(bulkUpdates.profit_margin) : undefined,
-                        fixed_usd_rate: bulkUpdates.fixed_usd_rate !== '' ? Number(bulkUpdates.fixed_usd_rate) : undefined
+                        profit_margin: bulkUpdates.profit_margin !== '' ? Number(bulkUpdates.profit_margin) : undefined
                     }
                 })
             });
@@ -854,10 +853,7 @@ export default function AdminProducts() {
                                         <label className="form-label" style={{ color: '#059669', fontWeight: 600 }}>Yeni Kâr Oranı (%)</label>
                                         <input className="form-input" type="number" step="0.01" value={bulkUpdates.profit_margin} onChange={e => setBulkUpdates(prev => ({ ...prev, profit_margin: e.target.value }))} placeholder="Örn: 50" />
                                     </div>
-                                    <div className="form-group">
-                                        <label className="form-label" style={{ color: '#059669', fontWeight: 600 }}>Sabit Kur (Sadece Bu Ürünler İçin)</label>
-                                        <input className="form-input" type="number" step="0.01" value={bulkUpdates.fixed_usd_rate} onChange={e => setBulkUpdates(prev => ({ ...prev, fixed_usd_rate: e.target.value }))} placeholder="Örn: 50" />
-                                    </div>
+
                                 </div>
                                 <div style={{ marginTop: 8, fontSize: 11, color: 'var(--text-muted)' }}>
                                     💡 Sadece değiştirmek istediğiniz alanı doldurun, diğerini boş bırakın.
@@ -866,7 +862,7 @@ export default function AdminProducts() {
 
                             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                                 <button type="button" className="btn btn-ghost" onClick={() => setShowBulkModal(false)}>İptal</button>
-                                <button type="submit" className="btn btn-primary" disabled={saving || (!bulkUpdates.profit_margin && !bulkUpdates.fixed_usd_rate)} style={{ background: '#10b981', borderColor: '#059669' }}>
+                                <button type="submit" className="btn btn-primary" disabled={saving || !bulkUpdates.profit_margin} style={{ background: '#10b981', borderColor: '#059669' }}>
                                     {saving ? 'Güncelleniyor...' : 'Seçili Ürünleri Güncelle 🚀'}
                                 </button>
                             </div>

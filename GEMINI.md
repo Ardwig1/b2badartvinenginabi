@@ -11,8 +11,8 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - **Loading Mesajları:** "Yükleniyor..." yerine yapılan işleme göre "Ürünler Aranıyor..." veya "Görseller Hazırlanıyor..." mesajları eklendi.
 
 ### 2. Cloudflare R2 & Banner Sorunu
-- **ISP Engeli Aşımı:** Türkiye'deki servis sağlayıcıların `r2.dev` domainini engellemesi nedeniyle, `.env.local` dosyasındaki `R2_PUBLIC_URL` bilgisi `https://cdn.omigroups.com` (özel domain) olarak güncellendi.
-- **Veritabanı Güncellemesi:** `banners` tablosunda `r2.dev` uzantısıyla kalmış olan eski kayıtlar manuel olarak `cdn.omigroups.com` adresine çekildi.
+- **ISP Engeli Aşımı:** Türkiye'deki servis sağlayıcıların `r2.dev` domainini engellemesi nedeniyle, `.env.local` dosyasındaki `R2_PUBLIC_URL` bilgisi `https://cdn.artpar.com` (özel domain) olarak güncellendi.
+- **Veritabanı Güncellemesi:** `banners` tablosunda `r2.dev` uzantısıyla kalmış olan eski kayıtlar manuel olarak `cdn.artpar.com` adresine çekildi.
 - **Vercel Konfigürasyonu:** Vercel üzerindeki `R2_PUBLIC_URL` çevre değişkeni production ortamında güncellendi.
 
 ### 3. Kimlik Doğrulama & Middleware (Auth)

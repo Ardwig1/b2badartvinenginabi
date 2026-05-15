@@ -23,8 +23,8 @@ const xml = `<?xml version="1.0" encoding="utf-8"?>
   <Cvv2>123</Cvv2>
   <MOTO>0</MOTO>
   <Lang>TR</Lang>
-  <OkUrl>https://b2b.omigroups.com/api/payment/qnb/callback</OkUrl>
-  <FailUrl>https://b2b.omigroups.com/api/payment/qnb/callback</FailUrl>
+  <OkUrl>https://b2b.artpar.com/api/payment/qnb/callback</OkUrl>
+  <FailUrl>https://b2b.artpar.com/api/payment/qnb/callback</FailUrl>
 </VposRequest>`.replace(/>\s+</g, '><').trim();
 
 async function test() {

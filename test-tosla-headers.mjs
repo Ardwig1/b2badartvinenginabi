@@ -21,7 +21,7 @@ async function testToslaHeaders() {
             amount: 1000,
             currency: '949',
             installmentCount: '1',
-            callbackUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
+            callbackUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
             description: 'B2B Yedek Parca'
         })
     });
@@ -40,8 +40,8 @@ async function testToslaHeaders() {
         method: 'POST',
         headers: { 
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Origin': 'https://b2b.omigroups.com',
-            'Referer': 'https://b2b.omigroups.com/dashboard/payment',
+            'Origin': 'https://b2b.artpar.com',
+            'Referer': 'https://b2b.artpar.com/dashboard/payment',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
             'Accept-Encoding': 'gzip, deflate, br',
             'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',

@@ -4,7 +4,7 @@ import { Outfit } from 'next/font/google';
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata = {
-  title: "Omi Group's B2B",
+  title: "Artpar B2B",
   description: "Bayi yönetim sistemi ve B2B satış platformu",
 };
 
@@ -23,9 +23,9 @@ export default function RootLayout({ children }) {
         <meta name="theme-color" content="#2563eb" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="Omi Group's B2B" />
+        <meta name="apple-mobile-web-app-title" content="Artpar B2B" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/omi-logo.png" />
+        <link rel="apple-touch-icon" href="/artpar-logo.png" />
       </head>
       <body className={outfit.variable}>
         <ThemeProvider>

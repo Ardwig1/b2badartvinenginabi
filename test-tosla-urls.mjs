@@ -21,10 +21,10 @@ async function testToslaUrls() {
             amount: 1000,
             currency: '949',
             installmentCount: '1',
-            callbackUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
-            okUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
-            failUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
-            returnUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
+            callbackUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
+            okUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
+            failUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
+            returnUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
             description: 'B2B Yedek Parca'
         })
     });

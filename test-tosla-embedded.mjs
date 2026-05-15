@@ -21,7 +21,7 @@ async function testToslaEmbedded() {
             amount: 1000,
             currency: '949',
             installmentCount: '1',
-            callbackUrl: 'https://b2b.omigroups.com/api/payment/tosla/callback',
+            callbackUrl: 'https://b2b.artpar.com/api/payment/tosla/callback',
             description: 'B2B Yedek Parca',
             // Testing if we can just pass the card here
             cardHolderName: 'TEST USER',

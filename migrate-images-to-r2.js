@@ -10,7 +10,7 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/"/g, '').trim
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqa2FzZ2VsYXV3bnNmb3FlY292Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI5MjcwNywiZXhwIjoyMDg3ODY4NzA3fQ.Tsv47P-HFZoVaIwcW2QSJ5hOOafryBVWl5zfiVvytUI';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-const VERCEL_URL = 'https://b2b.omigroups.com/api/admin/migrate-url';
+const VERCEL_URL = 'https://b2b.artpar.com/api/admin/migrate-url';
 
 async function migrateImages() {
     console.log('--- Resim Göçü Başlıyor (Vercel Serverless Proxy) ---');
@@ -35,7 +35,7 @@ async function migrateImages() {
             const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID?.replace(/"/g, '') || '21de8c75d53421e25b014e5a275d1f1d';
             const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY?.replace(/"/g, '') || '61c5aae3080bd6f10f7399f4737bb45673c75b62762bd79985be773faaf4570c';
             const r2BucketName = process.env.R2_BUCKET_NAME?.replace(/"/g, '') || 'b2b';
-            const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/"/g, '') || 'https://cdn.omigroups.com';
+            const r2PublicUrl = process.env.R2_PUBLIC_URL?.replace(/"/g, '') || 'https://cdn.artpar.com';
 
             // Request Vercel to do the heavily lifting (download, resize, upload to R2, DB update)
             const response = await fetch(VERCEL_URL, {

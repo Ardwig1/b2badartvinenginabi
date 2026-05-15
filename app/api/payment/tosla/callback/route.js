@@ -18,7 +18,7 @@ function htmlRedirect(url, showroomCid = null, isRep = false) {
 }
 
 async function handleCallback(req, isGet) {
-    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.omigroups.com';
+    const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.artpar.com';
     const cookieStore = await cookies();
     const impCid = cookieStore.get('impersonate_company_id')?.value;
     

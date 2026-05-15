@@ -24,7 +24,7 @@ async function createAdminCompany() {
     const { data: { users }, error: userErr } = await adminSupabase.auth.admin.listUsers();
     if (userErr) return console.error("Error fetching auth users:", userErr.message);
 
-    const adminUser = users.find(u => u.email === 'muratkaan@omigroups.com');
+    const adminUser = users.find(u => u.email === 'muratkaan@artpar.com');
     if (!adminUser) return console.log("Admin user not found in auth.users");
 
     console.log(`Found admin user: ${adminUser.id} (${adminUser.email})`);
@@ -43,11 +43,11 @@ async function createAdminCompany() {
     const defaultUserCode = 'ADMIN';
 
     const { data: newCompany, error: compErr } = await adminSupabase.from('companies').insert({
-        name: 'OMİ YEDEK PARÇA (MERKEZ)',
+        name: 'ARTPAR YEDEK PARÇA (MERKEZ)',
         tax_number: '800081338',
         address: 'SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL',
         phone: '0532 597 0664',
-        email: 'muratkaan@omigroups.com',
+        email: 'muratkaan@artpar.com',
         contact_person: 'Murat Kaan',
         status: 'approved',
         tax_office: 'Sarıgazi VD.',
@@ -77,7 +77,7 @@ async function createAdminCompany() {
     console.log(`Login Credentials:`);
     console.log(`Bayi Kodu: ${defaultDealerCode}`);
     console.log(`Kullanıcı Kodu: ${defaultUserCode}`);
-    console.log(`Şifre: (The original password used to create the muratkaan@omigroups.com account)`);
+    console.log(`Şifre: (The original password used to create the muratkaan@artpar.com account)`);
 }
 
 createAdminCompany();

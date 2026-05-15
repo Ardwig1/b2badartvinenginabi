@@ -9,8 +9,8 @@ const PROXY_URL = 'http://34.63.166.56/vpos/XMLGate.aspx';
 
 const orderId = `TEST${Date.now().toString().slice(-10)}`;
 const amount = '1.00';
-const okUrl = 'https://b2b.omigroups.com/api/payment/qnb/callback';
-const failUrl = 'https://b2b.omigroups.com/api/payment/qnb/callback';
+const okUrl = 'https://b2b.artpar.com/api/payment/qnb/callback';
+const failUrl = 'https://b2b.artpar.com/api/payment/qnb/callback';
 const rnd = crypto.randomBytes(8).toString('hex').toUpperCase();
 
 // Hash calculation for 3DPay/3DModel: MbrId + OrderId + PurchAmount + OkUrl + FailUrl + TxnType + InstallmentCount + Rnd + MerchantPass

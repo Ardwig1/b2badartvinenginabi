@@ -27,7 +27,7 @@ export default function ContactPage() {
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Telefon Numaralarımız</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
                                 0532 597 0 664<br />
-                                0532 597 0 OMİ
+                                0532 597 0 ARTPAR
                             </div>
                         </div>
                     </div>
@@ -37,8 +37,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>E-Posta Adreslerimiz</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                omigroups@hotmail.com<br />
-                                b2b@omigroups.com
+                                artpar@hotmail.com<br />
+                                b2b@artpar.com
                             </div>
                         </div>
                     </div>

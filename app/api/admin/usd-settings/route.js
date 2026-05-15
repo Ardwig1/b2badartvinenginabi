@@ -18,14 +18,6 @@ export async function GET() {
         let usd_rate = (rateData && rateData.length > 0) ? rateData[0].discount_percent : 0;
         let is_active = (activeData && activeData.length > 0) ? activeData[0].discount_percent === 1 : false;
 
-        // Auto-heal if missing without using upsert (since name isn't UNIQUE)
-        if (!rateData || rateData.length === 0) {
-            await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE', discount_percent: 0 });
-        }
-        if (!activeData || activeData.length === 0) {
-            await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE_ACTIVE', discount_percent: 0 });
-        }
-
         return NextResponse.json({ usd_rate, is_active });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
@@ -41,21 +33,26 @@ export async function POST(req) {
 
         // 1. Update Global Settings
         if (!isTargeted) {
-            if (usd_rate !== undefined) {
-                const { data } = await supabase.from('price_groups').select('id').eq('name', 'USD_FIXED_RATE').limit(1);
-                if (data && data.length > 0) {
-                    await supabase.from('price_groups').update({ discount_percent: Number(usd_rate) }).eq('name', 'USD_FIXED_RATE');
-                } else {
-                    await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE', discount_percent: Number(usd_rate) });
+            if (is_active !== undefined && is_active === false) {
+                // User turned off USD fixing, delete records from DB to prevent clutter
+                await supabase.from('price_groups').delete().in('name', ['USD_FIXED_RATE', 'USD_FIXED_RATE_ACTIVE']);
+            } else {
+                // Active or just updating rate
+                if (usd_rate !== undefined) {
+                    const { data } = await supabase.from('price_groups').select('id').eq('name', 'USD_FIXED_RATE').limit(1);
+                    if (data && data.length > 0) {
+                        await supabase.from('price_groups').update({ discount_percent: Number(usd_rate) }).eq('name', 'USD_FIXED_RATE');
+                    } else {
+                        await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE', discount_percent: Number(usd_rate) });
+                    }
                 }
-            }
-            if (is_active !== undefined) {
-                const val = is_active ? 1 : 0;
-                const { data } = await supabase.from('price_groups').select('id').eq('name', 'USD_FIXED_RATE_ACTIVE').limit(1);
-                if (data && data.length > 0) {
-                    await supabase.from('price_groups').update({ discount_percent: val }).eq('name', 'USD_FIXED_RATE_ACTIVE');
-                } else {
-                    await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE_ACTIVE', discount_percent: val });
+                if (is_active !== undefined) {
+                    const { data } = await supabase.from('price_groups').select('id').eq('name', 'USD_FIXED_RATE_ACTIVE').limit(1);
+                    if (data && data.length > 0) {
+                        await supabase.from('price_groups').update({ discount_percent: 1 }).eq('name', 'USD_FIXED_RATE_ACTIVE');
+                    } else {
+                        await supabase.from('price_groups').insert({ name: 'USD_FIXED_RATE_ACTIVE', discount_percent: 1 });
+                    }
                 }
             }
         }

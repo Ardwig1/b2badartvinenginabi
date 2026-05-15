@@ -17,7 +17,12 @@ export default function AdminPriceGroups() {
     const fetch = useCallback(async () => {
         setLoading(true);
         const res = await fetchPriceGroups();
-        setGroups(res.success && res.data ? res.data : []);
+        if (res.success && res.data) {
+            const systemNames = ['USD_FIXED_RATE', 'USD_FIXED_RATE_ACTIVE', 'GLOBAL_PROFIT_MARGIN'];
+            setGroups(res.data.filter(g => !systemNames.includes(g.name)));
+        } else {
+            setGroups([]);
+        }
 
         // Also fetch unique suppliers
         const { data: prodData } = await supabase.from('products').select('supplier_brand');

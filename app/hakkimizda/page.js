@@ -18,7 +18,7 @@ export default function Hakkimizda() {
 
                 <div className="card" style={{ padding: 40, lineHeight: 1.8, fontSize: 15, color: 'var(--text-secondary)' }}>
                     <p style={{ marginBottom: 20 }}>
-                        Firmamız, 19 Temmuz 2023 tarihinde otomotiv yedek parça ve kesici takımlar sektöründe faaliyet göstermek amacıyla ARTPAR GROUPS Tescilli Markası adı altında kurulmuştur. Kuruluşumuzdan itibaren sektörde edindiğimiz bilgi birikimi, deneyim ve tecrübelerimizi güçlü bir ticari anlayış ile birleştirerek müşterilerimize kaliteli, güvenilir ve sürdürülebilir hizmet sunmayı hedeflemekteyiz.
+                        Firmamız, 19 Temmuz 2023 tarihinde otomotiv yedek parça ve kesici takımlar sektöründe faaliyet göstermek amacıyla ARTPAR Tescilli Markası adı altında kurulmuştur. Kuruluşumuzdan itibaren sektörde edindiğimiz bilgi birikimi, deneyim ve tecrübelerimizi güçlü bir ticari anlayış ile birleştirerek müşterilerimize kaliteli, güvenilir ve sürdürülebilir hizmet sunmayı hedeflemekteyiz.
                     </p>
 
                     <p style={{ marginBottom: 20 }}>

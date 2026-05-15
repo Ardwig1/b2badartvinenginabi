@@ -80,7 +80,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                 </div>
                 {isOpen && (
                     <div>
-                        <div className={styles.logoText}>ARTPAR GROUP'S</div>
+                        <div className={styles.logoText}>ARTPAR</div>
                         <div className={styles.logoSub}>{isAdmin ? 'Yönetim Paneli' : 'B2B Bayi Paneli'}</div>
                     </div>
                 )}

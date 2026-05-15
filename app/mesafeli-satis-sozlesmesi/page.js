@@ -7,7 +7,7 @@ export default function MesafeliSatisSozlesmesi() {
 
             <h3 style={{ marginTop: '20px' }}>MADDE 1 - TARAFLAR</h3>
             <p><strong>SATICI (FİRMA):</strong></p>
-            <p>Ünvanı: ARTPAR GROUP'S</p>
+            <p>Ünvanı: ARTPAR</p>
             <p>Ofis Adresi: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL</p>
             <p>Depo Adresi: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL</p>
             <p>Telefon: 0532 597 0664</p>

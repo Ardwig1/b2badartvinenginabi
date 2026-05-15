@@ -269,7 +269,7 @@ function LoginContent() {
                         marginBottom: '2.5rem',
                         padding: '0 20px'
                     }}>
-                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Murat Kaan Şaşmaz - ARTPAR GROUP'S</p>
+                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Murat Kaan Şaşmaz - ARTPAR</p>
                         <p style={{ margin: '4px 0' }}>Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL | Mimar Sinan Mah Yedpa Tic. Mrk. Ataşehir/İSTANBUL</p>
                         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '4px' }}>
                             <span>📞 0532 597 0664</span>
@@ -292,7 +292,7 @@ function LoginContent() {
                         <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Mesafeli Satış Sözleşmesi</a>
                         <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>İptal ve İade Koşulları</a>
                         <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Gizlilik ve Güvenlik</a>
-                        <span style={{ color: '#475569', marginLeft: 'auto' }}>© 2026 ARTPAR GROUP'S</span>
+                        <span style={{ color: '#475569', marginLeft: 'auto' }}>© 2026 ARTPAR</span>
                     </div>
                 </div>
             </div>

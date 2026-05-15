@@ -16,9 +16,6 @@ export async function POST(request) {
             process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
-        console.log(`[LOOKUP DEBUG] Using Supabase URL: ${process.env.NEXT_PUBLIC_SUPABASE_URL}`);
-        console.log(`[LOOKUP DEBUG] Searching for Dealer: ${dealerCode}, User: ${userCode}`);
-
         // 1. Try finding in companies (Dealers)
         const { data: dealerData, error: dealerError } = await adminSupabase
             .from('companies')

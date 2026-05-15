@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-const supabase = createClient('https://xpziispstwarngpsmstd.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhwemlpc3BzdHdhcm5ncHNtc3RkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1Mjg3ODcsImV4cCI6MjA5NDEwNDc4N30.hZ-YINcJNCfgumnLj0z_u_Kt_7gA6vcnpX8FgxsswwQ');
+const supabase = createClient('https://fjkasgelauwnsfoqecov.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqa2FzZ2VsYXV3bnNmb2Vjb3YiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzcyMjkyNzA3LCJleHAiOjIwODc4Njg3MDd9.Tsv47P-HFZoVaIwcW2QSJ5hOOafryBVWl5zfiVvytUI');
 
 async function inspect() {
     try {

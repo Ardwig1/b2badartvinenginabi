@@ -12,13 +12,13 @@ export default function Hakkimizda() {
                 </div>
 
                 <div style={{ textAlign: 'center', marginBottom: 40 }}>
-                    <img src="/artpar-logo.png" alt="ARTPAR Logo" style={{ width: 180, height: 'auto', marginBottom: 20 }} />
+                    <img src="/omi-logo.png" alt="OMI GROUP'S Logo" style={{ width: 180, height: 'auto', marginBottom: 20 }} />
                     <h1 style={{ fontSize: 32, fontWeight: 800, color: 'var(--text-primary)', fontFamily: 'Outfit, sans-serif' }}>Hakkımızda</h1>
                 </div>
 
                 <div className="card" style={{ padding: 40, lineHeight: 1.8, fontSize: 15, color: 'var(--text-secondary)' }}>
                     <p style={{ marginBottom: 20 }}>
-                        Firmamız, 19 Temmuz 2023 tarihinde otomotiv yedek parça ve kesici takımlar sektöründe faaliyet göstermek amacıyla ARTPAR Tescilli Markası adı altında kurulmuştur. Kuruluşumuzdan itibaren sektörde edindiğimiz bilgi birikimi, deneyim ve tecrübelerimizi güçlü bir ticari anlayış ile birleştirerek müşterilerimize kaliteli, güvenilir ve sürdürülebilir hizmet sunmayı hedeflemekteyiz.
+                        Firmamız, 19 Temmuz 2023 tarihinde otomotiv yedek parça ve kesici takımlar sektöründe faaliyet göstermek amacıyla OMİ GROUPS Tescilli Markası adı altında kurulmuştur. Kuruluşumuzdan itibaren sektörde edindiğimiz bilgi birikimi, deneyim ve tecrübelerimizi güçlü bir ticari anlayış ile birleştirerek müşterilerimize kaliteli, güvenilir ve sürdürülebilir hizmet sunmayı hedeflemekteyiz.
                     </p>
 
                     <p style={{ marginBottom: 20 }}>

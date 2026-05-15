@@ -47,7 +47,7 @@ export default function DealerCart() {
     const [discountPercent, setDiscountPercent] = useState(0);
     const [priceGroup, setPriceGroup] = useState(null);
     const [extraDiscounts, setExtraDiscounts] = useState([]);
-    const [globalMargin, setGlobalMargin] = useState(36);
+    const [globalMargin, setGlobalMargin] = useState(0); // Default to 0 for dealers
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [companyId, setCompanyId] = useState('');
@@ -67,7 +67,6 @@ export default function DealerCart() {
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
-
     const [manualPrices, setManualPrices] = useState({});
 
     const fetchUser = useCallback(async () => {
@@ -84,11 +83,10 @@ export default function DealerCart() {
                 setCompanyRiskLimit(Number(infoData.riskLimit) || 0);
                 setIsShowroom(!!infoData.isImpersonating);
             }
-            const [ratesRes, marginRes, usdRes] = await Promise.all([
-                fetch('/api/rates'), fetch('/api/admin/margin'), fetch('/api/admin/usd-settings')
+            const [ratesRes, usdRes] = await Promise.all([
+                fetch('/api/rates'), fetch('/api/admin/usd-settings')
             ]);
             if (ratesRes.ok) { const data = await ratesRes.json(); setRates({ USD: data.USD || 1, EUR: data.EUR || 1 }); }
-            if (marginRes.ok) { const marginData = await marginRes.json(); setGlobalMargin(marginData.margin ?? 36); }
             if (usdRes.ok) { const usdData = await usdRes.json(); setGlobalUsdRate(usdData.usd_rate || 0); setGlobalUsdActive(usdData.is_active || false); }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }, []);
@@ -97,10 +95,12 @@ export default function DealerCart() {
 
     const getBaseTryPrice = useCallback((p) => {
         if (!p) return 0;
-        let initialPrice = Number(p.list_price) || 0;
-        let marginBase = (Number(p.profit_margin) || 36) / 100;
-        let rawCost = initialPrice / (1 + marginBase);
-        let price = rawCost * (1 + (globalMargin / 100));
+        let price = Number(p.list_price) || 0;
+        // Apply globalMargin if showroom mode is on
+        if (globalMargin > 0) {
+            price = price * (1 + (globalMargin / 100));
+        }
+
         if (globalUsdActive && globalUsdRate > 0 && p.currency === 'USD') price = price * globalUsdRate;
         else {
             if (p.currency === 'USD') price = price * (rates.USD || 1);

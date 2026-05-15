@@ -20,8 +20,8 @@ Bu dosya, yapılan son geliştirmeleri ve projenin kritik yapılandırmalarını
 - `lib/supabase/middleware.js` güncellenerek bu rotalara giriş yapmamış kullanıcıların da erişebilmesi sağlandı (Login sayfasına yönlendirme kaldırıldı).
 
 ## 🚀 Canlı Ortam Bilgileri
-- **GitHub Reposu:** `b2badartvinenginabi`
-- **Vercel Projesi:** `b2badartvinenginabi`
+- **GitHub Reposu:** `b2bkaanabi`
+- **Vercel Projesi:** `b2bkaanabi`
 
 ## ⚡ Performans ve Ölçekleme Standartları
 - Proje 100.000+ ürün ölçeğinde tasarlandığı için `PERFORMANS_STANDARTLARI.md` dosyasındaki kurallara uymak **zorunludur**. 

@@ -70,7 +70,7 @@ export default async function DealerDashboard() {
             .maybeSingle()
     ]);
 
-    const assignedRep = repData?.representative ? `${repData.representative.first_name} ${repData.representative.last_name}` : "Artpar Destek Ekibi";
+    const assignedRep = repData?.representative ? `${repData.representative.first_name} ${repData.representative.last_name}` : "Omi Group's Destek Ekibi";
 
     const pg = company?.price_group;
     const orderStatusMap = { pending: 'Bekliyor', confirmed: 'Onaylandı', preparing: 'Hazırlanıyor', shipped: 'Kargoda', delivered: 'Teslim Edildi', cancelled: 'İptal' };

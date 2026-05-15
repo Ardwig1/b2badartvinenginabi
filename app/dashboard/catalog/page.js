@@ -27,7 +27,7 @@ export default function DealerCatalog() {
     const [selectedImage, setSelectedImage] = useState(null);
     const [discountPercent, setDiscount] = useState(0);
     const [priceGroup, setPriceGroup] = useState(null);
-    const [globalMargin, setGlobalMargin] = useState(36);
+    const [globalMargin, setGlobalMargin] = useState(0); // Default to 0 for dealers
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
@@ -64,9 +64,8 @@ export default function DealerCatalog() {
             }
             const metaRes = await fetch('/api/products/metadata');
             if (metaRes.ok) { const data = await metaRes.json(); setBrands(data.brands || []); setCarBrands(data.carBrands || []); }
-            const [ratesRes, marginRes, usdRes] = await Promise.all([fetch('/api/rates'), fetch('/api/admin/margin'), fetch('/api/admin/usd-settings')]);
+            const [ratesRes, usdRes] = await Promise.all([fetch('/api/rates'), fetch('/api/admin/usd-settings')]);
             if (ratesRes.ok) { const d = await ratesRes.json(); setRates({ USD: d.USD || 1, EUR: d.EUR || 1 }); }
-            if (marginRes.ok) { const d = await marginRes.json(); setGlobalMargin(d.margin ?? 36); }
             if (usdRes.ok) { const d = await usdRes.json(); setGlobalUsdRate(d.usd_rate || 0); setGlobalUsdActive(d.is_active || false); }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }, []);
@@ -121,11 +120,17 @@ export default function DealerCatalog() {
     }, [filterCarBrand]);
 
     const getBaseTryPrice = (p) => {
-        let initialPrice = Number(p.list_price) || 0;
-        let marginBase = (Number(p.profit_margin) || 36) / 100;
-        let price = (initialPrice / (1 + marginBase)) * (1 + (globalMargin / 100));
+        let price = Number(p.list_price) || 0;
+        // Apply globalMargin as an additional markup if it's set (showroom mode)
+        if (globalMargin > 0) {
+            price = price * (1 + (globalMargin / 100));
+        }
+
         if (globalUsdActive && globalUsdRate > 0 && p.currency === 'USD') price = price * globalUsdRate;
-        else { if (p.currency === 'USD') price = price * rates.USD; else if (p.currency === 'EUR') price = price * rates.EUR; }
+        else { 
+            if (p.currency === 'USD') price = price * (rates.USD || 1); 
+            else if (p.currency === 'EUR') price = price * (rates.EUR || 1); 
+        }
         return price;
     };
 
@@ -135,7 +140,7 @@ export default function DealerCatalog() {
             const cur = p.fixed_price_currency || 'TRY';
             if (cur === 'USD' && rates?.USD) price *= rates.USD;
             else if (cur === 'EUR' && rates?.EUR) price *= rates.EUR;
-            return price / 1.20;
+            return price;
         }
         const base = getBaseTryPrice(p);
         let effectiveGroupDiscount = discountPercent;
@@ -143,7 +148,6 @@ export default function DealerCatalog() {
             const rule = priceGroup.rules[p.supplier_brand];
             if (rule !== undefined) effectiveGroupDiscount = Number(rule);
         }
-        if (p.is_fixed_price) effectiveGroupDiscount = 0;
         return base * (1 - (Number(p.discount_rate) || 0) / 100) * (1 - effectiveGroupDiscount / 100);
     };
 

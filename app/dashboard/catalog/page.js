@@ -304,7 +304,7 @@ export default function DealerCatalog() {
                                 <div className="p-code" style={{ color: '#2563eb' }}>{p.code}</div>
                                 <div className="p-name" style={{ color: p.is_campaign ? '#000' : 'inherit' }}>{p.name}</div>
                                 <div className="p-brand-row"><span className="p-brand"><strong>Marka:</strong> {p.brand}</span><span><strong>Birim:</strong> {p.unit || 'AD'}</span></div>
-                                <div className="p-price" onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                <div className="p-price" onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                 <div className="p-kdv">KDV Dahil</div>
                                 <div className="p-stock"><div style={getCircleStyle(p.stock_merkez, 10)} /> İst. <div style={getCircleStyle(p.stock_depo, 10)} /> Depo</div>
                                 <div className="p-action">
@@ -318,7 +318,7 @@ export default function DealerCatalog() {
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead><tr><th>MARKA</th><th>STOK KODU</th><th>OEM NO</th><th>ÜRÜN ADI</th><th style={{ textAlign: 'center' }}><PhotoIcon className="w-5" /></th><th>BİRİM</th><th>BAYİ İSK.</th><th>KAMPANYA</th><th>SEPETTE %</th><th style={{ textAlign: 'right' }}>FİYAT (KDV DAHİL)</th><th style={{ textAlign: 'center' }}>İSTANBUL</th><th style={{ textAlign: 'center' }}>DEPO</th><th>KOLİ AD.</th><th>SİP.MİK.</th><th>SEPETE AT</th></tr></thead>
+                        <thead><tr><th className="text-left">MARKA</th><th className="text-left">STOK KODU</th><th className="text-left">OEM NO</th><th className="text-left">ÜRÜN ADI</th><th className="text-center" style={{ width: 40 }}><PhotoIcon className="w-5 mx-auto" /></th><th className="text-left">BİRİM</th><th className="text-center">BAYİ İSK.</th><th className="text-center">KAMPANYA</th><th className="text-center">SEPETTE %</th><th className="text-right">FİYAT (KDV DAHİL)</th><th className="text-center">İSTANBUL</th><th className="text-center">DEPO</th><th className="text-center">KOLİ AD.</th><th className="text-left">SİP.MİK.</th><th className="text-left">SEPETE AT</th></tr></thead>
                         <tbody>
                             {perPageItems.map(p => (
                                 <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>
@@ -331,7 +331,7 @@ export default function DealerCatalog() {
                                     <td data-label="Bayi İsk." className="text-center" style={{ fontWeight: 800, color: '#2563eb' }}>{getEffectiveDiscount(p)}</td>
                                     <td data-label="Kampanya" className="text-center" style={{ fontWeight: 800, color: '#dc2626' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
                                     <td data-label="Sepette %" className="text-center" style={{ fontWeight: 800, color: '#16a34a' }}>{Number(p.cart_discount_rate) > 0 ? `%${p.cart_discount_rate}` : '-'}</td>
-                                    <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                    <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td data-label="İstanbul"><div style={getCircleStyle(p.stock_merkez, 14)}>{p.stock_merkez > 0 && p.stock_merkez <= 5 ? p.stock_merkez : ''}</div></td>
                                     <td data-label="Depo"><div style={getCircleStyle(p.stock_depo, 14)}>{p.stock_depo > 0 && p.stock_depo <= 5 ? p.stock_depo : ''}</div></td>
                                     <td data-label="Koli Ad." className="text-center">{p.box_quantity || 1}</td>
@@ -371,22 +371,22 @@ export default function DealerCatalog() {
                                 <div style={{ fontSize: 12, fontWeight: 600, color: '#60a5fa', marginBottom: 8, textTransform: 'uppercase' }}>📌 Sabit Fiyatlı Ürün</div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10 }}>
                                     <span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span>
-                                    <span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                    <span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                             </>
                         ) : (
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>Liste Fiyatı:</span><div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency}</div>{hoveredPriceTooltip.product.currency !== 'TRY' && (<div style={{ fontSize: 11, color: '#94a3b8' }}>(₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</div>)}</div></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>Liste Fiyatı:</span><div style={{ textAlign: 'right' }}><div style={{ fontSize: 13, fontWeight: 700 }}>{Number(hoveredPriceTooltip.product.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {hoveredPriceTooltip.product.currency}</div>{hoveredPriceTooltip.product.currency !== 'TRY' && (<div style={{ fontSize: 11, color: '#94a3b8' }}>(₺{getBaseTryPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})</div>)}</div></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
                                     <span style={{ fontSize: 13, color: '#94a3b8' }}>Ürün İskontosu (%{hoveredPriceTooltip.product.discount_rate}):</span>
-                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
                                     <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{getEffectiveGroupDiscountValue(hoveredPriceTooltip.product)}):</span>
-                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * getEffectiveGroupDiscountValue(hoveredPriceTooltip.product) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * getEffectiveGroupDiscountValue(hoveredPriceTooltip.product) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                             </>
                         )}
                     </div>
@@ -455,3 +455,4 @@ export default function DealerCatalog() {
         </div>
     );
 }
+

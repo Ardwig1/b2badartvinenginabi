@@ -30,7 +30,7 @@ function fmtTime(date) {
 
 function fmtMoney(n, showSign = false) {
     const val = Number(n || 0);
-    const absVal = Math.abs(val).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+    const absVal = Math.abs(val).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     if (!showSign) return '₺' + absVal;
     if (val > 0) return '+₺' + absVal;
     if (val < 0) return '-₺' + absVal;
@@ -236,3 +236,4 @@ export default function DealerAccountLedger() {
         </div>
     );
 }
+

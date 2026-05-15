@@ -226,13 +226,13 @@ export default function AdminOrders() {
                                 <td>${item.product?.oem_no || ''}</td>
                                 <td>${item.product?.supplier_brand || '-'}</td>
                                 <td>${item.quantity}</td>
-                                <td>₺${Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
-                                <td>₺${Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                <td>₺${Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                <td>₺${Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             </tr>
                         `).join('')}
                         <tr>
                             <td colspan="8" style="text-align: right; font-weight: bold;">GENEL TOPLAM</td>
-                            <td style="font-weight: bold;">₺${Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                            <td style="font-weight: bold;">₺${Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -294,7 +294,7 @@ export default function AdminOrders() {
                                 {orders.map(o => (
                                     <tr key={o.id} style={{ cursor: 'pointer', background: selected?.id === o.id ? 'rgba(37,99,235,0.08)' : undefined }}>
                                         <td style={{ fontWeight: 600 }}>{o.company?.name}</td>
-                                        <td>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                        <td>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         <td><span className={`badge badge-${o.status}`}>{statusLabels[o.status]}</span></td>
                                         <td>{new Date(o.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                                         <td><button className="btn btn-ghost btn-sm" onClick={() => setSelected(o)} id={`detail-${o.id}`}>Detay</button></td>
@@ -335,9 +335,9 @@ export default function AdminOrders() {
                                                     <div style={{ color: '#eab308', fontSize: 11, fontWeight: 600 }}>Firma: {item.product.supplier_brand}</div>
                                                 )}
                                             </div>
-                                            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                            <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 2 }}>{item.quantity} × ₺{Number(item.unit_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                         </div>
-                                        <div style={{ fontWeight: 700 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                        <div style={{ fontWeight: 700 }}>₺{Number(item.total_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
                                     
                                     {/* Per-item Shipping Inputs */}
@@ -394,7 +394,7 @@ export default function AdminOrders() {
                             ))}
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>
                                 <span>Toplam</span>
-                                <span>₺{Number(selected.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                <span>₺{Number(selected.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
                         </div>
                         {selected.note && (
@@ -554,3 +554,4 @@ export default function AdminOrders() {
         </div>
     );
 }
+

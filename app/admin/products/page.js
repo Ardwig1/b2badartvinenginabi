@@ -492,7 +492,7 @@ export default function AdminProducts() {
                                     <td>{p.category || '-'}</td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>
-                                            {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {p.currency || 'TRY'}
+                                            {Number(p.list_price).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {p.currency || 'TRY'}
                                         </div>
                                     </td>
                                     <td style={{ textAlign: 'center', color: Number(p.discount_rate) > 0 ? 'var(--danger)' : 'var(--text-muted)' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
@@ -612,7 +612,7 @@ export default function AdminProducts() {
                                     const discountedPrice = listPrice * (1 - discount / 100);
                                     const kdvPrice = discountedPrice * 1.20;
                                     const cur = form.currency;
-                                    const fmt = (v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+                                    const fmt = (v) => v.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                                     return (
                                         <div className="form-group" style={{ gridColumn: '1/-1' }}>
                                             <div style={{ background: 'var(--bg-surface)', padding: 16, borderRadius: 'var(--radius)', border: '1px solid var(--border-light)' }}>
@@ -873,3 +873,4 @@ export default function AdminProducts() {
         </div>
     );
 }
+

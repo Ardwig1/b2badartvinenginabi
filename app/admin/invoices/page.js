@@ -154,7 +154,7 @@ export default function AdminInvoices() {
         fetchAll();
     };
 
-    const fmtMoney = (n) => n > 0 ? '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-';
+    const fmtMoney = (n) => n > 0 ? '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
     return (
@@ -294,3 +294,4 @@ export default function AdminInvoices() {
         </div>
     );
 }
+

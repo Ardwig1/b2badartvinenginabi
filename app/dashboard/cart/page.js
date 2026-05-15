@@ -315,7 +315,7 @@ export default function DealerCart() {
                                         setSearchProducts([]); 
                                     }}>
                                         <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>
-                                        <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                        <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
                                 ))}
                             </div>
@@ -353,7 +353,7 @@ export default function DealerCart() {
                                                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.brand || '-'}</td>
                                                     <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_merkez, 12)} /></td>
                                                     <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_depo, 12)} /></td>
-                                                    <td style={{ textAlign: 'right', fontSize: 13 }}>₺{unitPriceExVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'right', fontSize: 13 }}>₺{unitPriceExVat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td style={{ textAlign: 'right' }}>
                                                         {isShowroom ? (
                                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
@@ -368,11 +368,11 @@ export default function DealerCart() {
                                                                 <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>KDV DAHİL EDİT</span>
                                                             </div>
                                                         ) : (
-                                                            `₺${unitPriceIncVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`
+                                                            `₺${unitPriceIncVat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                         )}
                                                     </td>
                                                     <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty + 1)}>+</button></div></td>
-                                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                                    <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => handleSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18 }} /></td>
                                                     <td style={{ textAlign: 'center' }}><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleSetQty(p.id, p, 0)}>✕</button></td>
                                                 </tr>
@@ -413,7 +413,7 @@ export default function DealerCart() {
                                                     <button onClick={() => handleSetQty(p.id, p, qty + 1)}><PlusIcon style={{ width: 16 }} /></button>
                                                 </div>
                                                 <div className="cart-card-price">
-                                                    <div className="unit" style={{ fontSize: 10, color: 'var(--text-muted)' }}>KDVsiz: ₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                    <div className="unit" style={{ fontSize: 10, color: 'var(--text-muted)' }}>KDVsiz: ₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                     {isShowroom ? (
                                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2, marginTop: 4, marginBottom: 4 }}>
                                                             <input 
@@ -427,9 +427,9 @@ export default function DealerCart() {
                                                             <div className="unit" style={{ fontSize: 8, fontWeight: 600 }}>KDV DAHİL EDİT</div>
                                                         </div>
                                                     ) : (
-                                                        <div className="unit">KDVli: ₺{(getDiscountedPrice(p) * 1.20).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                        <div className="unit">KDVli: ₺{(getDiscountedPrice(p) * 1.20).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                     )}
-                                                    <div className="total">₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                                    <div className="total">₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                                 </div>
                                             </div>
                                         </div>
@@ -445,11 +445,11 @@ export default function DealerCart() {
                         <div className="summary-grid">
                             <div className="summary-details">
                                 <div className="card-title" style={{ marginBottom: 16 }}>Sipariş Özeti</div>
-                                <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                                <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
-                                <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <hr className="divider" />
-                                <div className="summary-row grand"><span>Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row grand"><span>Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                             </div>
                             
                             <div className="summary-actions-form">
@@ -517,3 +517,4 @@ export default function DealerCart() {
         </div>
     );
 }
+

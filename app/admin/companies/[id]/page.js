@@ -51,7 +51,7 @@ function ActivityText({ act }) {
     if (act.action_type === 'cart_remove') return <span>Sepetten Silindi: <strong>{act.details?.name || 'Ürün'}</strong>{act.details?.oem_no ? <span style={{ color: 'var(--text-muted)', fontFamily: 'monospace', fontSize: 12 }}> (OEM: {act.details.oem_no})</span> : ''}</span>;
     if (act.action_type === 'cart_clear') return <span>Sepet Temizlendi (Veya Sıfırlandı)</span>;
     if (act.action_type === 'order_placed') return <span style={{ color: 'var(--success)', fontWeight: 600 }}>Sipariş Verildi! (Sepet Boşaltıldı) - Toplam: {act.details?.total ? `${act.details.total.toLocaleString('tr-TR')} TL` : 'Belirsiz'}</span>;
-    if (act.action_type === 'payment_init') return <span>Ödeme İşlemi Başlatıldı (Tosla) - Tutar: <strong>{act.details?.amount ? `${(parseFloat(act.details.amount)/100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL` : 'Belirsiz'}</strong></span>;
+    if (act.action_type === 'payment_init') return <span>Ödeme İşlemi Başlatıldı (Tosla) - Tutar: <strong>{act.details?.amount ? `${(parseFloat(act.details.amount)/100).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} TL` : 'Belirsiz'}</strong></span>;
     if (act.action_type === 'payment_failed') return <span>Ödeme Başarısız (Banka Reddetti) - Nedeni: <strong style={{color: 'var(--danger)'}}>{act.details?.errMsg || 'Bilinmiyor'}</strong></span>;
     return <span>{act.action_type}</span>;
 }

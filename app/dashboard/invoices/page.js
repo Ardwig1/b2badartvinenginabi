@@ -23,7 +23,7 @@ export default function DealerInvoices() {
 
     useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
 
-    const fmtMoney = (n) => n > 0 ? '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-';
+    const fmtMoney = (n) => n > 0 ? '₺' + Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
 
     return (
         <div className="page-wrapper">
@@ -82,3 +82,4 @@ export default function DealerInvoices() {
         </div>
     );
 }
+

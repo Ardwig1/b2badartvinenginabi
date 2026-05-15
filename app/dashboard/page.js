@@ -142,7 +142,7 @@ export default async function DealerDashboard() {
                     <div className="stat-icon" style={{ background: '#dcfce7', color: '#16a34a' }}><CurrencyDollarIcon style={{ width: 24, height: 24 }} /></div>
                     <div className="stat-label">Güncel Bakiye</div>
                     <div className="stat-value" style={{ color: company?.current_balance < 0 ? 'var(--danger)' : 'var(--success)' }}>
-                        {company?.current_balance < 0 ? '-' : ''}₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                        {company?.current_balance < 0 ? '-' : ''}₺{Math.abs(company?.current_balance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         <span style={{ fontSize: 13, marginLeft: 4 }}>{company?.current_balance < 0 ? '(B)' : '(A)'}</span>
                     </div>
                 </div>
@@ -156,7 +156,7 @@ export default async function DealerDashboard() {
                             if (riskLimit === 0) return 'Sınırsız';
                             const debt = (Number(company?.current_balance) || 0) < 0 ? Math.abs(Number(company?.current_balance)) : 0;
                             const remaining = Math.max(0, riskLimit - debt);
-                            return `₺${remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}`;
+                            return `₺${remaining.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                         })()}
                     </div>
                     {Number(company?.risk_limit || 0) > 0 && (
@@ -184,7 +184,7 @@ export default async function DealerDashboard() {
                         recentOrders.map(o => (
                             <div key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-light)' }}>
                                 <div>
-                                    <div style={{ fontWeight: 500, fontSize: 14 }}>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                                    <div style={{ fontWeight: 500, fontSize: 14 }}>₺{Number(o.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{new Date(o.created_at).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                                 </div>
                                 <span className={`badge badge-${o.status}`}>{orderStatusMap[o.status]}</span>
@@ -201,3 +201,4 @@ export default async function DealerDashboard() {
         </div>
     );
 }
+

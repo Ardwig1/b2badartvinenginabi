@@ -290,7 +290,7 @@ export default function PaymentPage() {
                     {buyerInfo.currentBalance < 0 && (
                         <div className="card" style={{ padding: 24, border: isDebtChecked ? '2px solid var(--danger)' : '1px solid var(--border)', cursor: 'pointer' }} onClick={() => { setIsDebtChecked(true); setIsCartChecked(false); setAmount(Math.abs(buyerInfo.currentBalance).toFixed(2)); }}>
                             <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>Cari Borç</h3>
-                            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginBottom: 12 }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</div>
+                            <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--danger)', marginBottom: 12 }}>₺{Math.abs(buyerInfo.currentBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <label style={{ display: 'flex', gap: 8, cursor: 'pointer' }}><input type="checkbox" checked={isDebtChecked} readOnly /> Borcumu öde</label>
                         </div>
                     )}
@@ -309,3 +309,4 @@ export default function PaymentPage() {
         </div>
     );
 }
+

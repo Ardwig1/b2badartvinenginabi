@@ -108,7 +108,7 @@ function OrdersContent() {
                                         <tr key={order.id}>
                                             <td data-label="Tarih" style={{ fontWeight: 500 }}>{new Date(order.created_at).toLocaleString('tr-TR')}</td>
                                             <td data-label="Evrak No" style={{ fontWeight: 700, color: 'var(--primary)' }}>{order.document_no || order.id.slice(0, 8)}</td>
-                                            <td data-label="Tutar" style={{ textAlign: 'right', fontWeight: 800 }}>₺{Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                            <td data-label="Tutar" style={{ textAlign: 'right', fontWeight: 800 }}>₺{Number(order.total_amount).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                             <td data-label="Durum" style={{ textAlign: 'center' }}>
                                                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: status.bg, color: status.color, fontSize: 11, fontWeight: 700 }}>
                                                     {status.text}
@@ -147,7 +147,7 @@ function OrdersContent() {
                                             <td data-label="Ürün Kodu">{item.product?.code}</td>
                                             <td data-label="Sipariş Tarihi">{new Date(item.orders?.created_at).toLocaleDateString('tr-TR')}</td>
                                             <td data-label="Miktar" style={{ textAlign: 'center', fontWeight: 600 }}>{item.quantity} {item.product?.unit || 'AD'}</td>
-                                            <td data-label="Birim Fiyat" style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)' }}>₺{netUnitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</td>
+                                            <td data-label="Birim Fiyat" style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)' }}>₺{netUnitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                         </tr>
                                     );
                                 })}
@@ -169,3 +169,4 @@ export default function DealerOrders() {
         </Suspense>
     );
 }
+

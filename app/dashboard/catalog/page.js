@@ -162,6 +162,14 @@ export default function DealerCatalog() {
         return `%${discountPercent}`;
     };
 
+    const getEffectiveGroupDiscountValue = (p) => {
+        if (priceGroup?.rules && p.supplier_brand) {
+            const rule = priceGroup.rules[p.supplier_brand];
+            if (rule !== undefined) return Number(rule);
+        }
+        return discountPercent;
+    };
+
     const filtered = useMemo(() => {
         return products.filter(p => {
             if (checkIn && !(p.stock_merkez > 0 || p.stock_depo > 0)) return false;
@@ -374,8 +382,8 @@ export default function DealerCatalog() {
                                     <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * Number(hoveredPriceTooltip.product.discount_rate) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: 8, marginBottom: 10 }}>
-                                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{discountPercent}):</span>
-                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * discountPercent / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
+                                    <span style={{ fontSize: 13, color: '#94a3b8' }}>Grup İskontosu (%{getEffectiveGroupDiscountValue(hoveredPriceTooltip.product)}):</span>
+                                    <span style={{ fontSize: 13, color: '#f87171' }}>-₺{(getBaseTryPrice(hoveredPriceTooltip.product) * (1 - Number(hoveredPriceTooltip.product.discount_rate || 0) / 100) * getEffectiveGroupDiscountValue(hoveredPriceTooltip.product) / 100).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}><span style={{ fontSize: 13, color: '#94a3b8' }}>İskontolu Fiyat:</span><span style={{ fontSize: 14, fontWeight: 700 }}>₺{getDiscountedPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #3b82f6', paddingTop: 10, marginTop: 6 }}><span style={{ fontSize: 13, fontWeight: 700, color: '#3b82f6' }}>KDV Dahil (%20):</span><span style={{ fontSize: 16, fontWeight: 800, color: '#60a5fa' }}>₺{getKdvPrice(hoveredPriceTooltip.product).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</span></div>

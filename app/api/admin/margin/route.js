@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { verifyAdmin } from '@/lib/auth/admin';
 
+export const dynamic = 'force-dynamic';
+
 // Use Service Role to bypass Row Level Security constraints for settings
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -19,8 +21,7 @@ export async function GET() {
 
         if (error || !data || data.length === 0) {
             // If missing, create it with a default value of 36
-            // We use upsert to prevent issues if it was concurrently created
-            await supabase.from('price_groups').upsert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36 }, { onConflict: 'name' });
+            await supabase.from('price_groups').insert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36 });
             return NextResponse.json({ margin: 36 });
         }
 
@@ -40,11 +41,12 @@ export async function POST(req) {
 
         // 1. Update Global Margin Setting (Only if it's a general save, not a filtered mass update)
         if (!isTargeted) {
-            const { error: marginError } = await supabase
-                .from('price_groups')
-                .update({ discount_percent: marginValue })
-                .eq('name', 'GLOBAL_PROFIT_MARGIN');
-            if (marginError) throw new Error(marginError.message);
+            const { data } = await supabase.from('price_groups').select('id').eq('name', 'GLOBAL_PROFIT_MARGIN').limit(1);
+            if (data && data.length > 0) {
+                await supabase.from('price_groups').update({ discount_percent: marginValue }).eq('name', 'GLOBAL_PROFIT_MARGIN');
+            } else {
+                await supabase.from('price_groups').insert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: marginValue });
+            }
         }
 
         // 2. ONLY if applyToAll is true, update products

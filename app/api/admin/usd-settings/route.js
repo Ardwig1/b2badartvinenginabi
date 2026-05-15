@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { verifyAdmin } from '@/lib/auth/admin';
 
+export const dynamic = 'force-dynamic';
+
 // Use Service Role to bypass Row Level Security constraints for settings
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

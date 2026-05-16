@@ -4,19 +4,31 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req) {
-    // Vercel Cron Job bazen Authorization yerine kendi dahili kontrollerini kullanır.
-    // Test süresince burayı herkesin tetikleyebileceği (veya Vercel'in kolayca geçebileceği) hale getiriyoruz.
     const authHeader = req.headers.get('authorization');
-    const isVercelCron = req.headers.get('x-vercel-cron') === '1'; // Vercel bunu otomatik ekler
+    const isVercelCron = req.headers.get('x-vercel-cron') === '1';
     
+    // Güvenlik kontrolü
     if (process.env.NODE_ENV === 'production' && !isVercelCron && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-        // Eğer ne Vercel cronuysa ne de şifre doğruysa engelle
-        console.log("Unauthorized Cron Attempt blocked.");
-        // Şimdilik test için BURAYI PAS GEÇİYORUZ (Hemen alttaki satırı aktif ettik)
-        // return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     try {
+        // 🚀 FAIL-SAFE: Bugün zaten çalıştı mı kontrolü
+        const { createClient } = require('@supabase/supabase-js');
+        const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+        const today = new Date().toISOString().split('T')[0];
+
+        const { data: syncStatus } = await supabase
+            .from('site_settings')
+            .select('setting_value')
+            .eq('setting_key', 'last_xml_sync')
+            .single();
+
+        if (syncStatus?.setting_value?.date === today && syncStatus?.setting_value?.status === 'success') {
+            return NextResponse.json({ message: 'Already synced today', date: today });
+        }
+
+        // Değilse başlat
         const result = await syncGumuskaleXml();
         
         if (result.success) {

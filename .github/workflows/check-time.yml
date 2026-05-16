@@ -1,0 +1,16 @@
+name: Check GitHub System Time
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  check-time:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print Current Time
+        run: |
+          echo "GitHub System Time (UTC): $(date)"
+          echo "GitHub System Time (Formatted): $(date +'%H:%M')"

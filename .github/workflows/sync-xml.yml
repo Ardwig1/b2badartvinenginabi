@@ -2,8 +2,10 @@ name: Daily XML Sync
 
 on:
   schedule:
-    # 19:55 TSI (16:55 UTC)
-    - cron: '55 16 * * *'
+    # Test 1: 20:15 TSI (17:15 UTC)
+    - cron: '15 17 * * *'
+    # Test 2: 20:20 TSI (17:20 UTC)
+    - cron: '20 17 * * *'
   workflow_dispatch:
     # Manual trigger enabled
 

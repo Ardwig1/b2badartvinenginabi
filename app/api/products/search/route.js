@@ -34,7 +34,7 @@ export async function POST(req) {
                 .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
                 .eq('is_active', true)
                 .order('created_at', { ascending: false })
-                .limit(100000); // Üst limit 100 bine çıkarıldı
+                .limit(10000); // 100 bin yerine daha güvenli olan 10 bin limiti
             const { data, error } = await query;
             if (error) throw error;
             return NextResponse.json(data || []);
@@ -54,7 +54,7 @@ export async function POST(req) {
             query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
         }
 
-        const { data: filtered, error } = await query.limit(100000); // Arama sonuçları için de limit 100 bin
+        const { data: filtered, error } = await query.limit(10000); // Arama sonuçları için de limit 10 bin
         if (error) throw error;
 
         return NextResponse.json(filtered);

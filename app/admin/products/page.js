@@ -267,7 +267,6 @@ export default function AdminProducts() {
         fetchProducts();
     };
 
-    const currentChunk = useMemo(() => filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE), [filtered, currentPage]);
     const chunkUrlHash = useMemo(() => currentChunk.map(p => p.image_url).filter(Boolean).join('|'), [currentChunk]);
 
     useEffect(() => {
@@ -347,7 +346,7 @@ export default function AdminProducts() {
             <div className="page-header">
                 <div>
                     <h1 className="page-title">Ürünler & Stok</h1>
-                    <p className="page-subtitle">{filtered.length} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
+                    <p className="page-subtitle">{totalCount} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
                 <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
             </div>

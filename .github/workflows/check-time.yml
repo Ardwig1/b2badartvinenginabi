@@ -1,9 +1,9 @@
 name: Check GitHub System Time
 
 on:
-  push:
-    branches:
-      - main
+  schedule:
+    # 19:55 TSI (16:55 UTC)
+    - cron: '55 16 * * *'
   workflow_dispatch:
 
 jobs:

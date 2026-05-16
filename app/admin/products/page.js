@@ -6,6 +6,7 @@ import GlobalMarginSettings from '@/components/GlobalMarginSettings';
 
 export default function AdminProducts() {
     const [products, setProducts] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [isCampaignOnly, setIsCampaignOnly] = useState(false);
@@ -40,10 +41,18 @@ export default function AdminProducts() {
                 setGlobalMargin(marginData.margin);
             }
 
+            // 1. Toplam ürün sayısını çek (9377 gibi)
+            const { count, error: countErr } = await supabase
+                .from('products')
+                .select('*', { count: 'exact', head: true });
+            if (!countErr) setTotalCount(count || 0);
+
+            // 2. Ürünleri çek
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .limit(10000);
             if (error) throw error;
             setProducts(data || []);
 
@@ -528,7 +537,10 @@ export default function AdminProducts() {
             )}
 
             {/* Pagination Controls */}
-            {!loading && filtered.length > ITEMS_PER_PAGE && (
+            {!loading && (search.trim() ? filtered.length : totalCount) > ITEMS_PER_PAGE && (() => {
+                const displayTotal = search.trim() ? filtered.length : totalCount;
+                const totalPages = Math.ceil(displayTotal / ITEMS_PER_PAGE);
+                return (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button
                         className="btn btn-ghost"
@@ -540,19 +552,20 @@ export default function AdminProducts() {
                     </button>
 
                     <span style={{ fontSize: 14, fontWeight: 500, padding: '0 12px' }}>
-                        Sayfa {currentPage} / {Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        Sayfa {currentPage} / {totalPages}
                     </span>
 
                     <button
                         className="btn btn-ghost"
-                        disabled={currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE)}
+                        disabled={currentPage === totalPages}
                         onClick={() => { setCurrentPage(prev => prev + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                        style={{ border: '1px solid var(--border)', background: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 0.5 : 1, cursor: currentPage === Math.ceil(filtered.length / ITEMS_PER_PAGE) ? 'not-allowed' : 'pointer' }}
+                        style={{ border: '1px solid var(--border)', background: currentPage === totalPages ? 'var(--bg-secondary)' : '#fff', opacity: currentPage === totalPages ? 0.5 : 1, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
                     >
                         Sonraki
                     </button>
                 </div>
-            )}
+                );
+            })()}
 
             {/* Product Modal */}
             {showModal && (
@@ -590,12 +603,12 @@ export default function AdminProducts() {
                                     }}>
                                         <div style={{ fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
                                             <span style={{ color: '#16a34a' }}>USD:</span>
-                                            <span>{rates.USD ? `₺${rates.USD.toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
+                                            <span>{rates.USD ? `₺${Number(rates.USD).toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
                                         </div>
                                         <div style={{ width: 1, height: 12, background: 'var(--border)', alignSelf: 'center' }} />
                                         <div style={{ fontSize: 11, fontWeight: 700, display: 'flex', gap: 4 }}>
                                             <span style={{ color: '#2563eb' }}>EUR:</span>
-                                            <span>{rates.EUR ? `₺${rates.EUR.toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
+                                            <span>{rates.EUR ? `₺${Number(rates.EUR).toLocaleString('tr-TR', { minimumFractionDigits: 4 })}` : '...'}</span>
                                         </div>
                                     </div>
                                     <label className="form-label">Geliş Fiyatı *</label>

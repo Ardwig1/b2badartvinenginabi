@@ -186,31 +186,26 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                             type="checkbox" 
                             id="targeted-margin" 
                             checked={isTargeted} 
-                            onChange={e => setIsTargeted(e.target.checked)} 
+                            onChange={e => {
+                                setIsTargeted(e.target.checked);
+                                if (e.target.checked) setTargetField('supplier_brand');
+                            }} 
                             style={{ width: 18, height: 18, cursor: 'pointer' }}
                         />
-                        <label htmlFor="targeted-margin" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Belirli Ürünlere Uygula:</label>
+                        <label htmlFor="targeted-margin" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Markaya/Firmaya Özel Uygula:</label>
                     </div>
 
                     {isTargeted && (
                         <>
-                            <select 
-                                className="form-select" 
-                                value={targetField} 
-                                onChange={e => setTargetField(e.target.value)}
-                                style={{ height: 32, fontSize: 12, padding: '0 8px', width: 'auto' }}
-                            >
-                                {targetFields.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
-                            </select>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>değeri</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Alındığı Firma:</span>
                             <input 
                                 className="form-input" 
                                 value={targetValue} 
                                 onChange={e => setTargetValue(e.target.value)}
-                                placeholder="aranacak değer..."
-                                style={{ height: 32, fontSize: 12, width: 150 }}
+                                placeholder="Örn: GKL veya OEM"
+                                style={{ height: 32, fontSize: 12, width: 180, fontWeight: 700 }}
                             />
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>olanlar</span>
+                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>olanlar için kâr %{margin} olsun</span>
                         </>
                     )}
 
@@ -222,7 +217,7 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                         disabled={savingMargin || applyingToAll || (isTargeted && !targetValue)}
                         style={{ fontWeight: 700 }}
                     >
-                        {applyingToAll ? 'Güncelleniyor...' : successApply ? '✓ Başarılı' : isTargeted ? 'Seçili Ürünlere Uygula 🚀' : 'TÜM Ürünlere Uygula ⚠️'}
+                        {applyingToAll ? 'Güncelleniyor...' : successApply ? '✓ Başarılı' : isTargeted ? 'Kuralı Kaydet ve Uygula 🚀' : 'TÜM Ürünlere Uygula ⚠️'}
                     </button>
                 </div>
             </div>

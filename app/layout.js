@@ -25,7 +25,7 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Artpar B2B" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="apple-touch-icon" href="/artpar-logo.png" />
+        <link rel="apple-touch-icon" href="/artpar-logo.png" title="Artpar B2B" />
       </head>
       <body className={outfit.variable}>
         <ThemeProvider>

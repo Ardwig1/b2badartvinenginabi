@@ -28,50 +28,35 @@ export async function POST(req) {
 
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-        // Fetch all active products first (Node.js filtering is more reliable for TR characters)
+        if (!filterText || !filterText.trim()) {
+            let query = adminSupabase
+                .from('products')
+                .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
+                .eq('is_active', true)
+                .limit(50); // Default view limit
+            const { data, error } = await query;
+            if (error) throw error;
+            return NextResponse.json(data || []);
+        }
+
+        const searchTerm = filterText.trim();
+        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
+        
+        // Veritabanı seviyesinde akıllı filtreleme
         let query = adminSupabase
             .from('products')
             .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
             .eq('is_active', true);
 
-        const { data: allProducts, error } = await query;
-        if (error) throw error;
-
-        if (!filterText || !filterText.trim()) {
-            return NextResponse.json(allProducts || []);
+        // Her kelime için name, code veya oem_no alanlarında arama yap
+        // Not: Supabase 'or' filtresi ile her kelimenin en az bir alanda geçmesini sağlıyoruz.
+        // Birden fazla kelime varsa, hepsini içeren ürünleri bulmak için zincirleme filtre ekliyoruz.
+        for (const word of searchWords) {
+            query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
         }
 
-        const searchTerm = filterText.trim().toUpperCase();
-        
-        // Cümleyi kelimelere bölelim (örn: "DUSTER FAR" -> ["DUSTER", "FAR"])
-        const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
-        
-        // Her kelime için Türkçe karakter duyarlı Regex oluşturalım
-        const createTrRegex = (text) => {
-            const pattern = text
-                .replace(/[Iİ]/g, '[Iİ]')
-                .replace(/[OÖ]/g, '[OÖ]')
-                .replace(/[UÜ]/g, '[UÜ]')
-                .replace(/[CÇ]/g, '[CÇ]')
-                .replace(/[GĞ]/g, '[GĞ]')
-                .replace(/[SŞ]/g, '[SŞ]');
-            return new RegExp(pattern, 'i');
-        };
-
-        const wordRegexes = searchWords.map(word => createTrRegex(word));
-
-        // Filtreleme mantığı: Üründe TÜM kelimeler geçmeli (Sıra önemsiz)
-        const filtered = allProducts.filter(p => {
-            // Her bir kelime (regex) için ürünün alanlarından en az birinde eşleşme var mı?
-            return wordRegexes.every(regex => {
-                return (
-                    (p.name && regex.test(p.name)) ||
-                    (p.code && regex.test(p.code)) ||
-                    (p.oem_no && regex.test(p.oem_no)) ||
-                    (p.brand && regex.test(p.brand))
-                );
-            });
-        });
+        const { data: filtered, error } = await query.limit(200); // Arama sonuçları için makul bir limit
+        if (error) throw error;
 
         return NextResponse.json(filtered);
     } catch (err) {

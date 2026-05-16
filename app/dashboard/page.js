@@ -116,11 +116,9 @@ export default async function DealerDashboard() {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
                     {[
-                        '/logo1.webp', '/logo2.png', '/logo3.jpg', '/logo4.png', '/logo5.png',
-                        '/logo6.png', '/logo7.jpg', '/logo8.png', '/logo9.png', '/logo10.png',
-                        '/logo11.png', '/logo12.png', '/logo13.png', '/logo14.png', '/logo15.png',
-                        '/logo16.png', '/logo17.png', '/logo18.png', '/logo19.png', '/logo20.png',
-                        '/logo21.png', '/logo22.png', '/logo23.jpeg'
+                        '/logo1.png', '/logo2.png', '/logo3.png', '/logo4.png', '/logo5.png',
+                        '/logo6.png', '/logo7.png', '/logo8.png', '/logo9.png', '/logo10.png',
+                        '/logo11.png'
                     ].map((logo, idx) => (
                         <div key={idx} style={{
                             background: 'white', border: '1px solid var(--border)', borderRadius: 'var(--radius)',

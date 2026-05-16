@@ -19,7 +19,7 @@ export async function POST(req) {
         const MERCHANT_PASS = 'btgL!EA0eT40@ajJdmdck2kQUDbLYV';
         
         const PROXY_URL = 'http://34.63.166.56/vpos/XMLGate.aspx';
-        const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.artpar.com';
+        const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.adartvin.com';
 
         // Sipariş No (QNB + 10 hane)
         const orderId = `QNB${Date.now().toString().slice(-10)}`; 

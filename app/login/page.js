@@ -123,7 +123,7 @@ function LoginContent() {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
                 <div className={styles.authCard}>
                     <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <img src="/artpar-logo_2.png" alt="Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
+                        <img src="/artpar-logo_2.png" alt="Artpar Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
                     </div>
                     <h2 className={styles.authTitle}>Hoş Geldiniz</h2>
                     <p className={styles.authDesc}>Bayi panelinize erişmek için giriş yapın</p>
@@ -269,12 +269,12 @@ function LoginContent() {
                         marginBottom: '2.5rem',
                         padding: '0 20px'
                     }}>
-                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Murat Kaan Şaşmaz - ARTPAR</p>
-                        <p style={{ margin: '4px 0' }}>Soğukpınar Mah. Ihlamur Cad. No:37 Çekmeköy/İSTANBUL | Mimar Sinan Mah Yedpa Tic. Mrk. Ataşehir/İSTANBUL</p>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '15px', marginTop: '4px' }}>
-                            <span>📞 0532 597 0664</span>
-                            <span>✉️ muratkaan@artpar.com</span>
-                            <span>🏢 Sarıgazi VD. / 800081338</span>
+                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Engin Alkan - Artpar</p>
+                        <p style={{ margin: '4px 0' }}>Cumhuriyet Caddesi Şenocak sokak no:10/B YAKACIK/KARTAL İSTANBUL | Yakacık Yeni, Yanyol Cd. No:47, 34903 Kartal/İstanbul</p>
+                        <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 10 }}>
+                            <span>📞 +90 543 636 0436</span>
+                            <span>✉️ engin.alkan@adartvinotomotiv.com.tr</span>
+                            <span>🏢 Yakacık Vergi Dairesi</span>
                         </div>
                     </div>
 

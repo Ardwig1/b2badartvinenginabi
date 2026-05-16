@@ -24,7 +24,7 @@ async function createAdminCompany() {
     const { data: { users }, error: userErr } = await adminSupabase.auth.admin.listUsers();
     if (userErr) return console.error("Error fetching auth users:", userErr.message);
 
-    const adminUser = users.find(u => u.email === 'muratkaan@artpar.com');
+    const adminUser = users.find(u => u.email === 'engin.alkan@adartvinotomotiv.com.tr');
     if (!adminUser) return console.log("Admin user not found in auth.users");
 
     console.log(`Found admin user: ${adminUser.id} (${adminUser.email})`);
@@ -44,15 +44,15 @@ async function createAdminCompany() {
 
     const { data: newCompany, error: compErr } = await adminSupabase.from('companies').insert({
         name: 'ARTPAR YEDEK PARÇA (MERKEZ)',
-        tax_number: '800081338',
-        address: 'SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL',
-        phone: '0532 597 0664',
-        email: 'muratkaan@artpar.com',
-        contact_person: 'Murat Kaan',
+        tax_number: '0071512145',
+        address: 'Cumhuriyet Caddesi Şenocak sokak no:10/B YAKACIK/KARTAL İSTANBUL',
+        phone: '+90 543 636 0436',
+        email: 'engin.alkan@adartvinotomotiv.com.tr',
+        contact_person: 'Engin Alkan',
         status: 'approved',
-        tax_office: 'Sarıgazi VD.',
+        tax_office: 'Yakacık Vergi Dairesi',
         city: 'İSTANBUL',
-        district: 'ÇEKMEKÖY',
+        district: 'KARTAL',
         branch: 'Merkez',
         dealer_code: defaultDealerCode,
         user_code: defaultUserCode
@@ -77,7 +77,7 @@ async function createAdminCompany() {
     console.log(`Login Credentials:`);
     console.log(`Bayi Kodu: ${defaultDealerCode}`);
     console.log(`Kullanıcı Kodu: ${defaultUserCode}`);
-    console.log(`Şifre: (The original password used to create the muratkaan@artpar.com account)`);
+    console.log(`Şifre: (The original password used to create the engin.alkan@adartvinotomotiv.com.tr account)`);
 }
 
 createAdminCompany();

@@ -9,7 +9,7 @@ export default function Logo({ type = 'auto', color = '#fff' }) {
             <div style={{ flexShrink: 0 }}>
                 <img 
                     src="/artpar-logo-sidebar.png" 
-                    alt="ARTPAR Logo" 
+                    alt="ADA ARTVİN Logo" 
                     style={{ width: '45px', height: '45px', objectFit: 'contain' }} 
                 />
             </div>

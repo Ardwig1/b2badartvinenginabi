@@ -15,8 +15,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Genel Merkez & Depo</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                Ofis: SOĞUKPINAR MAH. IHLAMUR CAD. NO:37 ÇEKMEKÖY / İSTANBUL<br />
-                                Depo: MİMAR SİNAN MAH YEDPA TİCARET MERKEZİ İÇİ ATAŞEHİR / İSTANBUL
+                                Merkez: Cumhuriyet Caddesi Şenocak sokak no:10/B YAKACIK/KARTAL İSTANBUL<br />
+                                Depo: Yakacık Yeni, Yanyol Cd. No:47, 34903 Kartal/İstanbul
                             </div>
                         </div>
                     </div>
@@ -26,8 +26,8 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>Telefon Numaralarımız</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                0532 597 0 664<br />
-                                0532 597 0 ARTPAR
+                                +90 543 636 0436<br />
+                                Engin Alkan
                             </div>
                         </div>
                     </div>
@@ -37,8 +37,7 @@ export default function ContactPage() {
                         <div>
                             <div style={{ fontWeight: 700, marginBottom: 4 }}>E-Posta Adreslerimiz</div>
                             <div style={{ color: 'var(--text-secondary)', fontSize: 14, lineHeight: 1.5 }}>
-                                artpar@hotmail.com<br />
-                                b2b@artpar.com
+                                engin.alkan@adartvinotomotiv.com.tr
                             </div>
                         </div>
                     </div>

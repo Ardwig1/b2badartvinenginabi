@@ -41,45 +41,15 @@ export default function AdminProducts() {
                 setGlobalMargin(marginData.margin);
             }
 
-            // 1. Toplam ürün sayısını çek (Filtrelere göre)
-            let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
-            
-            if (search.trim()) {
-                const words = search.trim().split(/\s+/).filter(w => w.length > 0);
-                for (const word of words) {
-                    countQuery = countQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
-                }
-            }
-            if (isCampaignOnly) {
-                countQuery = countQuery.eq('is_campaign', true);
-            }
+            // 🚀 Bypassing 1000 limit via dedicated Admin API
+            const url = `/api/admin/products/list?page=${currentPage}&search=${encodeURIComponent(search)}&isCampaignOnly=${isCampaignOnly}&limit=${ITEMS_PER_PAGE}`;
+            const res = await fetch(url);
+            const data = await res.json();
 
-            const { count, error: countErr } = await countQuery;
-            if (!countErr) setTotalCount(count || 0);
+            if (data.error) throw new Error(data.error);
 
-            // 2. Ürünleri çek (Sunucu Taraflı Sayfalama ile)
-            const from = (currentPage - 1) * ITEMS_PER_PAGE;
-            const to = from + ITEMS_PER_PAGE - 1;
-
-            let dataQuery = supabase
-                .from('products')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .range(from, to);
-
-            if (search.trim()) {
-                const words = search.trim().split(/\s+/).filter(w => w.length > 0);
-                for (const word of words) {
-                    dataQuery = dataQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
-                }
-            }
-            if (isCampaignOnly) {
-                dataQuery = dataQuery.eq('is_campaign', true);
-            }
-
-            const { data, error } = await dataQuery;
-            if (error) throw error;
-            setProducts(data || []);
+            setProducts(data.products || []);
+            setTotalCount(data.totalCount || 0);
 
             // Also fetch rates for the modal
             const ratesRes = await fetch('/api/rates');

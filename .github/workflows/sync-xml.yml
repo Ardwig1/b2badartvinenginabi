@@ -1,14 +1,11 @@
 name: Daily XML Sync
 
 on:
-  push:
-    branches:
-      - main
   schedule:
-    # 03:00 TSI (01:00 UTC)
-    - cron: '0 1 * * *'
+    # Her gece 23:00 TR (20:00 UTC)
+    - cron: '0 20 * * *'
   workflow_dispatch:
-    # Manual trigger enabled
+    # Manuel tetikleme
 
 jobs:
   sync:

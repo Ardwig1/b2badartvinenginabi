@@ -2,7 +2,12 @@
   "crons": [
     {
       "path": "/api/cron/sync-xml",
-      "schedule": "5 15 * * *"
+      "schedule": "20 19 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "app/api/cron/sync-xml/route.js": {
+      "maxDuration": 300
+    }
+  }
 }

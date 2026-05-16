@@ -2,6 +2,7 @@ import { syncGumuskaleXml } from '@/lib/xml_sync_engin';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 300;
 
 export async function GET(req) {
     const authHeader = req.headers.get('authorization');

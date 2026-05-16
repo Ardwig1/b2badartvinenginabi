@@ -20,56 +20,49 @@ export async function GET(req) {
         const isCampaignOnly = searchParams.get('isCampaignOnly') === 'true';
         const limit = parseInt(searchParams.get('limit')) || 10;
 
-        // 🚀 BYPASSING THE 1000 ROW LIMIT FOR GOOD
-        // We fetch ALL valid IDs and data in chunks on the server side, 
-        // then slice it for the user. This is the only way to bypass Supabase's PostgREST limits.
+        // Calculate database range
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+
+        // 🚀 TRUE SERVER-SIDE PAGINATION
+        // We use range(from, to) which works perfectly for high offsets in Supabase.
+        // We avoid fetching all rows into memory.
+
+        // 1. Fetch TOTAL Count with filters applied
+        let countQuery = supabaseAdmin.from('products').select('*', { count: 'exact', head: true });
         
-        let allProducts = [];
-        let lastId = null;
-        let hasMore = true;
-
-        while (hasMore && allProducts.length < 100000) { // Support up to 100k
-            let query = supabaseAdmin
-                .from('products')
-                .select('*')
-                .order('id', { ascending: true }) // Use ID for stable pagination in loop
-                .limit(1000);
-            
-            if (lastId) query = query.gt('id', lastId);
-
-            // Apply Filters in the scan
-            if (search.trim()) {
-                const words = search.trim().split(/\s+/).filter(w => w.length > 0);
-                for (const word of words) {
-                    query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
-                }
-            }
-            if (isCampaignOnly) query = query.eq('is_campaign', true);
-
-            const { data, error } = await query;
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                allProducts = [...allProducts, ...data];
-                lastId = data[data.length - 1].id;
-                if (data.length < 1000) hasMore = false;
-            } else {
-                hasMore = false;
+        if (search.trim()) {
+            const words = search.trim().split(/\s+/).filter(w => w.length > 0);
+            for (const word of words) {
+                countQuery = countQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
             }
         }
+        if (isCampaignOnly) countQuery = countQuery.eq('is_campaign', true);
+        
+        const { count, error: countErr } = await countQuery;
+        if (countErr) throw countErr;
 
-        // Apply global ordering after fetching all (Optional, since we used ID for loop)
-        // But for user experience, let's sort by created_at descending
-        allProducts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        // 2. Fetch the specific PAGE of data
+        let dataQuery = supabaseAdmin
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .range(from, to);
 
-        const totalCount = allProducts.length;
-        const from = (page - 1) * limit;
-        const to = from + limit;
-        const paginatedProducts = allProducts.slice(from, to);
+        if (search.trim()) {
+            const words = search.trim().split(/\s+/).filter(w => w.length > 0);
+            for (const word of words) {
+                dataQuery = dataQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
+            }
+        }
+        if (isCampaignOnly) dataQuery = dataQuery.eq('is_campaign', true);
+
+        const { data: products, error: dataErr } = await dataQuery;
+        if (dataErr) throw dataErr;
 
         return NextResponse.json({ 
-            products: paginatedProducts, 
-            totalCount: totalCount 
+            products: products || [], 
+            totalCount: count || 0 
         });
 
     } catch (e) {

@@ -33,7 +33,8 @@ export async function POST(req) {
                 .from('products')
                 .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
                 .eq('is_active', true)
-                .limit(50); // Default view limit
+                .order('created_at', { ascending: false })
+                .limit(100000); // Üst limit 100 bine çıkarıldı
             const { data, error } = await query;
             if (error) throw error;
             return NextResponse.json(data || []);
@@ -49,13 +50,11 @@ export async function POST(req) {
             .eq('is_active', true);
 
         // Her kelime için name, code veya oem_no alanlarında arama yap
-        // Not: Supabase 'or' filtresi ile her kelimenin en az bir alanda geçmesini sağlıyoruz.
-        // Birden fazla kelime varsa, hepsini içeren ürünleri bulmak için zincirleme filtre ekliyoruz.
         for (const word of searchWords) {
             query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
         }
 
-        const { data: filtered, error } = await query.limit(200); // Arama sonuçları için makul bir limit
+        const { data: filtered, error } = await query.limit(100000); // Arama sonuçları için de limit 100 bin
         if (error) throw error;
 
         return NextResponse.json(filtered);

@@ -41,18 +41,43 @@ export default function AdminProducts() {
                 setGlobalMargin(marginData.margin);
             }
 
-            // 1. Toplam ürün sayısını çek (9377 gibi)
-            const { count, error: countErr } = await supabase
-                .from('products')
-                .select('*', { count: 'exact', head: true });
+            // 1. Toplam ürün sayısını çek (Filtrelere göre)
+            let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
+            
+            if (search.trim()) {
+                const words = search.trim().split(/\s+/).filter(w => w.length > 0);
+                for (const word of words) {
+                    countQuery = countQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
+                }
+            }
+            if (isCampaignOnly) {
+                countQuery = countQuery.eq('is_campaign', true);
+            }
+
+            const { count, error: countErr } = await countQuery;
             if (!countErr) setTotalCount(count || 0);
 
-            // 2. Ürünleri çek
-            const { data, error } = await supabase
+            // 2. Ürünleri çek (Sunucu Taraflı Sayfalama ile)
+            const from = (currentPage - 1) * ITEMS_PER_PAGE;
+            const to = from + ITEMS_PER_PAGE - 1;
+
+            let dataQuery = supabase
                 .from('products')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(10000);
+                .range(from, to);
+
+            if (search.trim()) {
+                const words = search.trim().split(/\s+/).filter(w => w.length > 0);
+                for (const word of words) {
+                    dataQuery = dataQuery.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
+                }
+            }
+            if (isCampaignOnly) {
+                dataQuery = dataQuery.eq('is_campaign', true);
+            }
+
+            const { data, error } = await dataQuery;
             if (error) throw error;
             setProducts(data || []);
 
@@ -66,52 +91,13 @@ export default function AdminProducts() {
             console.error('Fetch error:', e);
         }
         setLoading(false);
-    }, []);
+    }, [currentPage, search, isCampaignOnly]);
 
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
-    // Client-side filtering and sorting (Smart Order-Independent Regex Search)
-    const filtered = useMemo(() => {
-        let list = products;
-
-        if (search.trim()) {
-            const searchTerm = search.trim().toUpperCase();
-            const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
-            
-            const createTrRegex = (text) => {
-                const pattern = text
-                    .replace(/[Iİ]/g, '[Iİ]')
-                    .replace(/[OÖ]/g, '[OÖ]')
-                    .replace(/[UÜ]/g, '[UÜ]')
-                    .replace(/[CÇ]/g, '[CÇ]')
-                    .replace(/[GĞ]/g, '[GĞ]')
-                    .replace(/[SŞ]/g, '[SŞ]');
-                return new RegExp(pattern, 'i');
-            };
-
-            const wordRegexes = searchWords.map(word => createTrRegex(word));
-
-            list = products.filter(p => {
-                return wordRegexes.every(regex => {
-                    return (
-                        (p.name && regex.test(p.name)) ||
-                        (p.code && regex.test(p.code)) ||
-                        (p.oem_no && regex.test(p.oem_no)) ||
-                        (p.brand && regex.test(p.brand))
-                    );
-                });
-            });
-        }
-
-        if (isCampaignOnly) {
-            // Sort campaign items to the top
-            return [...list].sort((a, b) => {
-                if (a.is_campaign === b.is_campaign) return 0;
-                return a.is_campaign ? -1 : 1;
-            });
-        }
-        return list;
-    }, [products, search, isCampaignOnly]);
+    // Sunucu tarafında filtrelenmiş veriyi direkt kullanıyoruz
+    const filtered = products;
+    const currentChunk = products;
 
     const openNew = () => {
         setEditing(null);
@@ -537,9 +523,8 @@ export default function AdminProducts() {
             )}
 
             {/* Pagination Controls */}
-            {!loading && (search.trim() ? filtered.length : totalCount) > ITEMS_PER_PAGE && (() => {
-                const displayTotal = search.trim() ? filtered.length : totalCount;
-                const totalPages = Math.ceil(displayTotal / ITEMS_PER_PAGE);
+            {!loading && totalCount > ITEMS_PER_PAGE && (() => {
+                const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
                 return (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '24px 0', gap: 12 }}>
                     <button

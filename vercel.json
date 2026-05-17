@@ -1,7 +1,12 @@
 {
-  "functions": {
-    "app/api/cron/sync-xml/route.js": {
-      "maxDuration": 300
+  "crons": [
+    {
+      "path": "/api/cron/sync-basbug",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/sync-xml",
+      "schedule": "0 5 * * *"
     }
-  }
+  ]
 }

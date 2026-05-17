@@ -8,7 +8,7 @@ export async function GET(req) {
     const authHeader = req.headers.get('authorization');
     const isVercelCron = req.headers.get('x-vercel-cron') === '1';
     const urlSecret = new URL(req.url).searchParams.get('secret');
-    const validSecret = process.env.CRON_SECRET;
+    const validSecret = process.env.CRON_SECRET || 'b2badartvinenginabi_123';
 
     // Güvenlik kontrolü
     if (process.env.NODE_ENV === 'production' && !isVercelCron && authHeader !== `Bearer ${validSecret}` && urlSecret !== validSecret) {

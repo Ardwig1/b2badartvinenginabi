@@ -51,56 +51,36 @@ async function testBasbug() {
             }
         } catch (e) { console.log("❌ RENAULT failed."); }
 
-        console.log("\n🔍 Searching for an item with STOCK > 2 in Basbug...");
-        try {
-            // Farklı markaları deneyerek yüksek stoklu ürün bulmaya çalışalım
-            const brandsToTry = ["FIAT", "RENAULT", "FORD", "VOLKSWAGEN"];
-            let foundHighStock = false;
+        const PROXY_URL = "https://eosetsm38z4wt4h.m.pipedream.net";
+        const TARGET_BRANDS = [
+            "PEUGEOT", "CITROEN", "OPEL", "VOLKSWAGEN", "SKODA", 
+            "AUDI", "SEAT", "FORD", "TOYOTA", "RENAULT", "FIAT"
+        ];
 
-            for (const brand of brandsToTry) {
-                if (foundHighStock) break;
-                console.log(`📡 Checking brand: ${brand}...`);
-                
-                const stockRes = await axios.get(`https://api.basbug.com.tr/material/StokGetir?ListeGrubu=${brand}&FirmaAdi=BASBUG&Depo=MRK`, {
+        console.log("\n🔍 Investigating 'ListeGrubu' variations for FIAT...");
+        const variations = ["FIAT", "FİAT", "Fiat", "fiat", "FIAT GRUBU", "FİAT GRUBU"];
+        for (const v of variations) {
+            try {
+                const res = await axios.get(`${PROXY_URL}/material/StokGetir?ListeGrubu=${encodeURIComponent(v)}&FirmaAdi=BASBUG&Depo=MRK`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
-                const stockItems = stockRes.data.stokListesi || [];
-                
-                // Toplam stoğu 2'den fazla olanı bul
-                const highStockItem = stockItems.find(s => (s.stok + s.sYol + s.sFarkliDepo) > 2);
+                const count = res.data.stokListesi?.length || 0;
+                console.log(`- Variation '${v}': ${count} items.`);
+                if (count > 0) break;
+            } catch (e) {}
+        }
 
-                if (highStockItem) {
-                    console.log(`✅ Found item in ${brand}! Fetching details for ${highStockItem.no}...`);
-                    const detail = await axios.get(`https://api.basbug.com.tr/material/MalzemeAra?MalzemeNo=${encodeURIComponent(highStockItem.no)}&FirmaAdi=BASBUG`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    
-                    const d = detail.data;
-                    const total = (d.sMrk || 0) + (d.sIzm || 0) + (d.sAnk || 0) + (d.sAdn || 0) + (d.sErz || 0);
-                    
-                    if (total > 2 || d.sYol > 2) {
-                        console.log("📦 HIGH STOCK Data Preview:");
-                        console.log(JSON.stringify({
-                            no: d.no,
-                            ac: d.ac,
-                            sMrk: d.sMrk,
-                            sIzm: d.sIzm,
-                            sAnk: d.sAnk,
-                            sAdn: d.sAdn,
-                            sErz: d.sErz,
-                            sYol: d.sYol,
-                            TOTAL_LOCAL: total
-                        }, null, 2));
-                        foundHighStock = true;
-                    }
-                }
+        console.log("\n🔍 Checking for Group List endpoint...");
+        const metaEndpoints = ["ListeGruplari", "GruplariGetir", "MarkaListesi", "MarkaGetir"];
+        for (const ep of metaEndpoints) {
+            try {
+                const res = await axios.get(`${PROXY_URL}/material/${ep}?FirmaAdi=BASBUG`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                console.log(`✅ Endpoint ${ep} found! Data:`, JSON.stringify(res.data, null, 2).substring(0, 500));
+            } catch (e) {
+                console.log(`❌ Endpoint ${ep} not found.`);
             }
-
-            if (!foundHighStock) {
-                console.log("❌ Could not find an item with stock > 2 in tested brands.");
-            }
-        } catch (e) {
-            console.log("❌ High stock search failed:", e.message);
         }
 
     } catch (error) {

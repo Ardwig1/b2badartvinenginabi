@@ -1,0 +1,6 @@
+{
+  "KullaniciAdi": "MS8012",
+  "Parola": "6SCHUCEY1E6HB9MN",
+  "ClientSecret": "W2wOU8V6w3eSWfo6sxi2CThf1g9EYmZ3",
+  "ClientID": "materialApi"
+}

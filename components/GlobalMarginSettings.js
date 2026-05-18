@@ -255,25 +255,34 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
 
                     {/* 📜 Aktif Kurallar Listesi */}
                     <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
-                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>Aktif Marka Kuralları:</div>
-                        {Object.keys(rules).length > 0 ? (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                                {Object.entries(rules).map(([supplier, val]) => (
-                                    <div key={supplier} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 8, fontSize: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{supplier}:</span>
-                                        <span style={{ fontWeight: 800, color: 'var(--success)' }}>%{val}</span>
-                                        <button 
-                                            onClick={() => handleDeleteRule(supplier)}
-                                            style={{ marginLeft: 4, color: 'var(--danger)', border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
-                                        >
-                                            <TrashIcon style={{ width: 14 }} />
-                                        </button>
-                                    </div>
-                                ))}
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 12, letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span>Aktif Kâr Kuralları</span>
+                            <div style={{ flex: 1, height: '1px', background: 'var(--border)' }} />
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                            {/* 🌍 Sabit Genel Kâr Kartı */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, var(--primary), #1e40af)', color: '#fff', padding: '6px 12px', borderRadius: 10, fontSize: 13, boxShadow: '0 4px 12px rgba(37,99,235,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <span style={{ fontWeight: 600, opacity: 0.9 }}>Genel Kâr:</span>
+                                <span style={{ fontWeight: 900, fontSize: 15 }}>%{margin}</span>
                             </div>
-                        ) : (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Henüz özel bir marka kuralı tanımlanmamış.</div>
-                        )}
+
+                            {/* 🏷️ Marka Özel Kuralları */}
+                            {Object.entries(rules).map(([supplier, val]) => (
+                                <div key={supplier} style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '6px 12px', borderRadius: 10, fontSize: 13, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>{supplier}:</span>
+                                    <span style={{ fontWeight: 900, color: 'var(--success)' }}>%{val}</span>
+                                    <button 
+                                        onClick={() => handleDeleteRule(supplier)}
+                                        style={{ marginLeft: 4, color: 'var(--danger)', border: 'none', background: 'rgba(239,68,68,0.1)', cursor: 'pointer', padding: 4, borderRadius: 6, display: 'flex', transition: 'all 0.2s' }}
+                                        onMouseOver={e => e.currentTarget.style.background = 'rgba(239,68,68,0.2)'}
+                                        onMouseOut={e => e.currentTarget.style.background = 'rgba(239,68,68,0.1)'}
+                                    >
+                                        <TrashIcon style={{ width: 14 }} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

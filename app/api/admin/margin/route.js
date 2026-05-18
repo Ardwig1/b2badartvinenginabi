@@ -97,9 +97,14 @@ export async function POST(req) {
             newRules[targetValue] = marginValue;
         }
 
+        // 🧹 TÜMÜNE UYGULA denilirse eski özel kuralları sil (Eğer kısıtlama yoksa)
+        if (applyToAll && !isTargeted) {
+            newRules = {}; 
+        }
+
         if (existing) {
             await supabase.from('price_groups').update({ 
-                discount_percent: isTargeted ? existing.discount_percent : marginValue, 
+                discount_percent: (applyToAll && !isTargeted) || !isTargeted ? marginValue : existing.discount_percent, 
                 rules: newRules 
             }).eq('name', 'GLOBAL_PROFIT_MARGIN');
         } else {

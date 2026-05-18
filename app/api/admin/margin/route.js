@@ -12,20 +12,18 @@ const supabase = createClient(
 
 export async function GET() {
     try {
-        // Fetch the global margin setting, handle multiple results by taking the first one
         const { data, error } = await supabase
             .from('price_groups')
-            .select('discount_percent')
+            .select('*')
             .eq('name', 'GLOBAL_PROFIT_MARGIN')
             .limit(1);
 
         if (error || !data || data.length === 0) {
-            // If missing, create it with a default value of 36
-            await supabase.from('price_groups').insert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36 });
-            return NextResponse.json({ margin: 36 });
+            await supabase.from('price_groups').insert({ name: 'GLOBAL_PROFIT_MARGIN', discount_percent: 36, rules: {} });
+            return NextResponse.json({ margin: 36, rules: {} });
         }
 
-        return NextResponse.json({ margin: data[0].discount_percent });
+        return NextResponse.json({ margin: data[0].discount_percent, rules: data[0].rules || {} });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -36,15 +34,21 @@ export async function POST(req) {
         const user = await verifyAdmin();
         if (!user) return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
 
-        const { margin, applyToAll, isTargeted, targetField, targetValue } = await req.json();
+        const { margin, applyToAll, isTargeted, targetField, targetValue, action, deleteSupplier } = await req.json();
         const marginValue = Number(margin);
 
-        // 1. Update Global Margin Setting & Rules
         const { data: existing } = await supabase.from('price_groups').select('*').eq('name', 'GLOBAL_PROFIT_MARGIN').single();
-        
         let newRules = existing?.rules || {};
+
+        // 🗑️ Kural Silme Mantığı
+        if (action === 'deleteRule' && deleteSupplier) {
+            delete newRules[deleteSupplier];
+            await supabase.from('price_groups').update({ rules: newRules }).eq('name', 'GLOBAL_PROFIT_MARGIN');
+            return NextResponse.json({ success: true });
+        }
+
+        // 🆕 Kural Ekleme/Güncelleme Mantığı
         if (isTargeted && targetField === 'supplier_brand' && targetValue) {
-            // "Alındığı Firma" (supplier_brand) bazlı kural ekle/güncelle
             newRules[targetValue] = marginValue;
         }
 

@@ -1,9 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon } from '@heroicons/react/24/outline';
+import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 export default function GlobalMarginSettings({ onMarginUpdate }) {
     const [margin, setMargin] = useState('');
+    const [rules, setRules] = useState({});
     const [usdRate, setUsdRate] = useState('');
     const [isUsdActive, setIsUsdActive] = useState(false);
     const [eurRate, setEurRate] = useState('');
@@ -20,27 +21,29 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
 
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [marginRes, usdRes] = await Promise.all([
-                    fetch('/api/admin/margin'),
-                    fetch('/api/admin/usd-settings')
-                ]);
-                const marginData = await marginRes.json();
-                const usdData = await usdRes.json();
+    const fetchData = async () => {
+        try {
+            const [marginRes, usdRes] = await Promise.all([
+                fetch('/api/admin/margin'),
+                fetch('/api/admin/usd-settings')
+            ]);
+            const marginData = await marginRes.json();
+            const usdData = await usdRes.json();
 
-                if (marginData?.margin !== undefined) setMargin(marginData.margin);
-                if (usdData?.usd_rate !== undefined) setUsdRate(usdData.usd_rate);
-                if (usdData?.is_active !== undefined) setIsUsdActive(usdData.is_active);
-                if (usdData?.eur_rate !== undefined) setEurRate(usdData.eur_rate);
-                if (usdData?.eur_active !== undefined) setIsEurActive(usdData.eur_active);
-            } catch (error) {
-                console.error("Failed to load settings", error);
-            } finally {
-                setLoading(false);
-            }
-        };
+            if (marginData?.margin !== undefined) setMargin(marginData.margin);
+            if (marginData?.rules !== undefined) setRules(marginData.rules);
+            if (usdData?.usd_rate !== undefined) setUsdRate(usdData.usd_rate);
+            if (usdData?.is_active !== undefined) setIsUsdActive(usdData.is_active);
+            if (usdData?.eur_rate !== undefined) setEurRate(usdData.eur_rate);
+            if (usdData?.eur_active !== undefined) setIsEurActive(usdData.eur_active);
+        } catch (error) {
+            console.error("Failed to load settings", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchData();
     }, []);
 
@@ -49,37 +52,14 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
 
     // Targeted Update States
     const [isTargeted, setIsTargeted] = useState(false);
-    const [targetField, setTargetField] = useState('name');
+    const [targetField, setTargetField] = useState('supplier_brand');
     const [targetValue, setTargetValue] = useState('');
-
-    const targetFields = [
-        { label: "Stok Kodu", value: "code" },
-        { label: "OEM No", value: "oem_no" },
-        { label: "Ürün Adı", value: "name" },
-        { label: "Marka", value: "brand" },
-        { label: "Ürünün Alındığı Firma (GİZLİ)", value: "supplier_brand" },
-        { label: "Araç Markası", value: "car_brand" },
-        { label: "Araç Modeli", value: "car_model" },
-        { label: "Kategori", value: "category" },
-        { label: "Para Birimi", value: "currency" },
-        { label: "Geliş Fiyatı", value: "cost_price" },
-        { label: "Kâr Oranı (%)", value: "profit_margin" },
-        { label: "İskonto Oranı (%)", value: "discount_rate" },
-        { label: "Sepette İndirim (%)", value: "cart_discount_rate" },
-        { label: "Birim", value: "unit" },
-        { label: "Koli Adeti", value: "box_quantity" },
-        { label: "İstanbul Stok", value: "stock_merkez" },
-        { label: "Depo Stok", value: "stock_depo" },
-        { label: "SABİT FİYATLI ÜRÜN", value: "is_fixed_price" },
-        { label: "BU ÜRÜN KAMPANYALI ÜRÜNDÜR", value: "is_campaign" },
-        { label: "Açıklama", value: "description" }
-    ];
 
     const handleSaveMargin = async (applyToAll = false) => {
         try {
             if (applyToAll) {
                 const msg = isTargeted 
-                    ? `Seçilen özelliğe (${targetField}) ve değere (${targetValue}) uyan TÜM ürünlerin kâr marjı %${margin} olarak güncellenecektir. Emin misiniz?`
+                    ? `Seçilen firmaya (${targetValue}) uyan TÜM ürünlerin kâr marjı %${margin} olarak güncellenecektir. Emin misiniz?`
                     : "Tüm ürünlerin kâr marjı bu oranla güncellenecektir. Bu işlem geri alınamaz. Emin misiniz?";
                 if (!confirm(msg)) return;
                 setApplyingToAll(true);
@@ -116,12 +96,32 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
             }
             
             if (onMarginUpdate) onMarginUpdate(Number(margin === '' ? 0 : margin));
+            fetchData(); // Refresh rules
         } catch (error) {
             console.error("Margin save error:", error);
             alert("Kâr oranı kaydedilemedi: " + error.message);
         } finally {
             setSavingMargin(false);
             setApplyingToAll(false);
+        }
+    };
+
+    const handleDeleteRule = async (supplier) => {
+        if (!confirm(`${supplier} için özel kâr oranını silmek istediğinize emin misiniz?`)) return;
+        try {
+            const res = await fetch('/api/admin/margin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'deleteRule',
+                    deleteSupplier: supplier
+                })
+            });
+            if (res.ok) {
+                fetchData();
+            }
+        } catch (e) {
+            console.error(e);
         }
     };
 
@@ -183,19 +183,14 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
         }
     };
 
-    const toggleUsdActive = () => {
-        setIsUsdActive(prev => !prev);
-    };
-
-    const toggleEurActive = () => {
-        setIsEurActive(prev => !prev);
-    };
+    const toggleUsdActive = () => setIsUsdActive(prev => !prev);
+    const toggleEurActive = () => setIsEurActive(prev => !prev);
 
     if (loading) return null;
 
     return (
         <div style={{ marginBottom: 24, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            {/* Kâr Oranı */}
+            {/* Kâr Oranı ve Kurallar */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16, margin: 0, padding: 16 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ background: 'var(--primary)', color: 'white', padding: 10, borderRadius: 10 }}>
@@ -221,45 +216,63 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                     </button>
                 </div>
 
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <input 
-                            type="checkbox" 
-                            id="targeted-margin" 
-                            checked={isTargeted} 
-                            onChange={e => {
-                                setIsTargeted(e.target.checked);
-                                if (e.target.checked) setTargetField('supplier_brand');
-                            }} 
-                            style={{ width: 18, height: 18, cursor: 'pointer' }}
-                        />
-                        <label htmlFor="targeted-margin" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Markaya/Firmaya Özel Uygula:</label>
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input 
+                                type="checkbox" 
+                                id="targeted-margin" 
+                                checked={isTargeted} 
+                                onChange={e => setIsTargeted(e.target.checked)} 
+                                style={{ width: 18, height: 18, cursor: 'pointer' }}
+                            />
+                            <label htmlFor="targeted-margin" style={{ fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Markaya/Firmaya Özel Uygula:</label>
+                        </div>
+
+                        {isTargeted && (
+                            <>
+                                <input 
+                                    className="form-input" 
+                                    value={targetValue} 
+                                    onChange={e => setTargetValue(e.target.value.toUpperCase())}
+                                    placeholder="Örn: GKL veya OEM"
+                                    style={{ height: 32, fontSize: 12, width: 150, fontWeight: 700 }}
+                                />
+                            </>
+                        )}
+
+                        <div style={{ flex: 1 }} />
+                        
+                        <button 
+                            className={`btn ${successApply ? 'btn-success' : 'btn-warning'} btn-sm`} 
+                            onClick={() => handleSaveMargin(true)} 
+                            disabled={savingMargin || applyingToAll || (isTargeted && !targetValue)}
+                            style={{ fontWeight: 700 }}
+                        >
+                            {applyingToAll ? '...' : successApply ? '✓' : isTargeted ? 'Kaydet ve Uygula 🚀' : 'TÜMÜNE Uygula ⚠️'}
+                        </button>
                     </div>
 
-                    {isTargeted && (
-                        <>
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Alındığı Firma:</span>
-                            <input 
-                                className="form-input" 
-                                value={targetValue} 
-                                onChange={e => setTargetValue(e.target.value)}
-                                placeholder="Örn: GKL veya OEM"
-                                style={{ height: 32, fontSize: 12, width: 180, fontWeight: 700 }}
-                            />
-                            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>olanlar için kâr %{margin} olsun</span>
-                        </>
+                    {/* 📜 Aktif Kurallar Listesi */}
+                    {Object.keys(rules).length > 0 && (
+                        <div style={{ background: 'var(--bg-surface)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
+                            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>Aktif Marka Kuralları:</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                {Object.entries(rules).map(([supplier, val]) => (
+                                    <div key={supplier} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 8, fontSize: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                        <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{supplier}:</span>
+                                        <span style={{ fontWeight: 800, color: '#16a34a' }}>%{val}</span>
+                                        <button 
+                                            onClick={() => handleDeleteRule(supplier)}
+                                            style={{ marginLeft: 4, color: 'var(--danger)', border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
+                                        >
+                                            <TrashIcon style={{ width: 14 }} />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     )}
-
-                    <div style={{ flex: 1 }} />
-                    
-                    <button 
-                        className={`btn ${successApply ? 'btn-success' : 'btn-warning'} btn-sm`} 
-                        onClick={() => handleSaveMargin(true)} 
-                        disabled={savingMargin || applyingToAll || (isTargeted && !targetValue)}
-                        style={{ fontWeight: 700 }}
-                    >
-                        {applyingToAll ? 'Güncelleniyor...' : successApply ? '✓ Başarılı' : isTargeted ? 'Kuralı Kaydet ve Uygula 🚀' : 'TÜM Ürünlere Uygula ⚠️'}
-                    </button>
                 </div>
             </div>
 

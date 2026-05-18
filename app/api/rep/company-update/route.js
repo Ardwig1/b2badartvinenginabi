@@ -27,7 +27,7 @@ export async function PATCH(request) {
     if (!isRep) return NextResponse.json({ error: 'Sadece temsilciler bu endpoint\'i kullanabilir.' }, { status: 403 });
 
     const body = await request.json();
-    const { id, name, tax_number, tax_office, contact_person, phone, city, district, address, branch, is_prepayment_locked, risk_limit } = body;
+    const { id, name, tax_number, tax_office, contact_person, phone, city, district, address, branch, is_prepayment_locked, risk_limit, status, price_group_id } = body;
 
     if (!id) return NextResponse.json({ error: 'Firma ID gerekli.' }, { status: 400 });
 
@@ -51,6 +51,8 @@ export async function PATCH(request) {
     if (branch !== undefined) updates.branch = branch;
     if (is_prepayment_locked !== undefined) updates.is_prepayment_locked = is_prepayment_locked;
     if (risk_limit !== undefined) updates.risk_limit = risk_limit;
+    if (status !== undefined) updates.status = status;
+    if (price_group_id !== undefined) updates.price_group_id = price_group_id || null;
 
     if (Object.keys(updates).length === 0) return NextResponse.json({ success: true });
 

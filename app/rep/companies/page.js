@@ -16,6 +16,7 @@ const EMPTY_EDIT = {
 
 export default function RepCompaniesPage() {
     const [companies, setCompanies] = useState([]);
+    const [priceGroups, setPriceGroups] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
@@ -41,11 +42,33 @@ export default function RepCompaniesPage() {
 
     useEffect(() => { fetchCompanies(); }, [fetchCompanies]);
 
+    useEffect(() => {
+        fetch('/api/rep/price-groups').then(r => r.ok ? r.json() : []).then(setPriceGroups);
+    }, []);
+
     const requestSort = (key) => {
         setSortConfig(prev => ({
             key,
             direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
         }));
+    };
+
+    const updateStatus = async (id, status) => {
+        await fetch('/api/rep/company-update', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, status })
+        });
+        fetchCompanies();
+    };
+
+    const updatePriceGroup = async (id, price_group_id) => {
+        await fetch('/api/rep/company-update', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, price_group_id })
+        });
+        fetchCompanies();
     };
 
     const togglePrepaymentLock = async (id, currentValue) => {
@@ -223,15 +246,28 @@ export default function RepCompaniesPage() {
                                         <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
                                         <td>{c.contact_person || '-'}</td>
                                         <td style={{ color: 'var(--text-secondary)' }}>{c.email || '-'}</td>
-                                        <td style={{ color: 'var(--text-secondary)' }}>
-                                            {(() => {
-                                                const pg = Array.isArray(c.price_group) ? c.price_group[0] : c.price_group;
-                                                return pg?.name || '-';
-                                            })()}
+                                        <td>
+                                            <select
+                                                className="form-select"
+                                                style={{ padding: '5px 28px 5px 8px', fontSize: 13, width: 'auto' }}
+                                                value={c.price_group_id || ''}
+                                                onChange={e => updatePriceGroup(c.id, e.target.value)}
+                                            >
+                                                <option value="">-</option>
+                                                {priceGroups.map(pg => (
+                                                    <option key={pg.id} value={pg.id}>{pg.name}</option>
+                                                ))}
+                                            </select>
                                         </td>
                                         <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
                                         <td>
                                             <div style={{ display: 'flex', gap: 6 }}>
+                                                {c.status !== 'rejected' && (
+                                                    <button className="btn btn-danger btn-sm" onClick={() => updateStatus(c.id, 'rejected')}>X Uzaklaştır</button>
+                                                )}
+                                                {c.status === 'rejected' && (
+                                                    <button className="btn btn-success btn-sm" onClick={() => updateStatus(c.id, 'approved')}>✓ Geri Al</button>
+                                                )}
                                                 <button
                                                     className="btn btn-sm"
                                                     style={{

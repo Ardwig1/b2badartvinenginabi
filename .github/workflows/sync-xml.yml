@@ -1,18 +1,29 @@
-name: Daily XML Sync
+name: Gumuskale Nightly XML Sync
 
 on:
   schedule:
-    # Her gece 23:15 TR (20:15 UTC)
-    - cron: '15 20 * * *'
-  workflow_dispatch:
-    # Manuel tetikleme
+    - cron: '0 20 * * *'  # Her gece 23:00 Türkiye saati (UTC+3)
+  workflow_dispatch:       # Elle de çalıştırılabilir
 
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - name: Trigger XML Sync API
-        run: |
-          curl -X GET "https://enginb2b.vercel.app/api/cron/sync-xml" \
-          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-          -H "x-vercel-cron: 1"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm install --production
+
+      - name: Run Gumuskale XML Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node sync_gumuskale_local.js

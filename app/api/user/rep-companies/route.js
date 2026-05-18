@@ -19,7 +19,7 @@ export async function GET() {
         // 1. Fetch assigned companies
         const { data: assignments, error: assignError } = await adminSupabase
             .from('representative_assignments')
-            .select('company_id, companies(*)')
+            .select('company_id, companies(*, price_group:price_groups(name))')
             .eq('representative_id', user.id);
 
         if (assignError) throw assignError;

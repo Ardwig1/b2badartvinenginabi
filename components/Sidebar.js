@@ -40,8 +40,9 @@ const dealerNav = [
 ];
 
 const repNav = [
-    { label: 'Firmalarım', href: '/rep', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Firmalar', href: '/rep/companies', icon: <UserGroupIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Firmalar', href: '/rep/companies', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Siparişler', href: '/rep/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Cari Hareketler', href: '/rep/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
 ];
 
 export default function Sidebar({ isAdmin = false, isRep = false, companyName = '', userEmail = '', isImpersonated = false }) {

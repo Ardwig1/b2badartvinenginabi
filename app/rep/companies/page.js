@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
     BuildingOfficeIcon, MagnifyingGlassIcon, LockClosedIcon, LockOpenIcon,
     ExclamationCircleIcon, ArrowLeftStartOnRectangleIcon
@@ -16,7 +15,6 @@ const EMPTY_EDIT = {
 };
 
 export default function RepCompaniesPage() {
-    const router = useRouter();
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -141,6 +139,7 @@ export default function RepCompaniesPage() {
         const list = companies.filter(c =>
             c.name?.toLowerCase().includes(search.toLowerCase()) ||
             c.tax_number?.includes(search) ||
+            c.email?.toLowerCase().includes(search.toLowerCase()) ||
             c.city?.toLowerCase().includes(search.toLowerCase()) ||
             c.dealer_code?.toLowerCase().includes(search.toLowerCase())
         );
@@ -193,12 +192,14 @@ export default function RepCompaniesPage() {
                         <table>
                             <thead>
                                 <tr>
-                                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer' }}>Firma Adı{sortArrow('name')}</th>
-                                    <th onClick={() => requestSort('dealer_code')} style={{ cursor: 'pointer' }}>Bayi Kodu{sortArrow('dealer_code')}</th>
-                                    <th onClick={() => requestSort('city')} style={{ cursor: 'pointer' }}>Şehir{sortArrow('city')}</th>
-                                    <th onClick={() => requestSort('tax_number')} style={{ cursor: 'pointer' }}>Vergi No{sortArrow('tax_number')}</th>
-                                    <th onClick={() => requestSort('contact_person')} style={{ cursor: 'pointer' }}>Yetkili{sortArrow('contact_person')}</th>
-                                    <th onClick={() => requestSort('status')} style={{ cursor: 'pointer' }}>Durum{sortArrow('status')}</th>
+                                    <th onClick={() => requestSort('name')} style={{ cursor: 'pointer', userSelect: 'none' }}>Firma Adı{sortArrow('name')}</th>
+                                    <th onClick={() => requestSort('dealer_code')} style={{ cursor: 'pointer', userSelect: 'none' }}>Bayi Kodu{sortArrow('dealer_code')}</th>
+                                    <th onClick={() => requestSort('city')} style={{ cursor: 'pointer', userSelect: 'none' }}>Şehir{sortArrow('city')}</th>
+                                    <th onClick={() => requestSort('tax_number')} style={{ cursor: 'pointer', userSelect: 'none' }}>Vergi No{sortArrow('tax_number')}</th>
+                                    <th onClick={() => requestSort('contact_person')} style={{ cursor: 'pointer', userSelect: 'none' }}>Yetkili{sortArrow('contact_person')}</th>
+                                    <th onClick={() => requestSort('email')} style={{ cursor: 'pointer', userSelect: 'none' }}>E-posta{sortArrow('email')}</th>
+                                    <th>Fiyat Grubu</th>
+                                    <th onClick={() => requestSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>Durum{sortArrow('status')}</th>
                                     <th>İşlemler</th>
                                 </tr>
                             </thead>
@@ -217,10 +218,17 @@ export default function RepCompaniesPage() {
                                                 {c.name} <span style={{ fontSize: 16 }}>›</span>
                                             </Link>
                                         </td>
-                                        <td style={{ fontWeight: 700, color: 'var(--primary)' }}>{c.dealer_code || '-'}</td>
+                                        <td style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{c.dealer_code || '-'}</td>
                                         <td>{c.city || '-'}</td>
-                                        <td style={{ fontFamily: 'monospace', fontSize: 13 }}>{c.tax_number}</td>
+                                        <td style={{ color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{c.tax_number}</td>
                                         <td>{c.contact_person || '-'}</td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{c.email || '-'}</td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>
+                                            {(() => {
+                                                const pg = Array.isArray(c.price_group) ? c.price_group[0] : c.price_group;
+                                                return pg?.name || '-';
+                                            })()}
+                                        </td>
                                         <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
                                         <td>
                                             <div style={{ display: 'flex', gap: 6 }}>

@@ -1,0 +1,34 @@
+name: Basbug Nightly Diff Sync
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # Her gece 06:00 Türkiye saati (UTC+3)
+  workflow_dispatch:       # Elle de çalıştırılabilir
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Basbug Diff Sync
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          BASBUG_USER: ${{ secrets.BASBUG_USER }}
+          BASBUG_PASS: ${{ secrets.BASBUG_PASS }}
+          BASBUG_SECRET: ${{ secrets.BASBUG_SECRET }}
+          BASBUG_CLIENT_ID: ${{ secrets.BASBUG_CLIENT_ID }}
+        run: node sync_basbug_diff.js

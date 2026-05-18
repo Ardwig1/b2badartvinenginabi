@@ -44,7 +44,52 @@ export async function POST(req) {
         if (action === 'deleteRule' && deleteSupplier) {
             delete newRules[deleteSupplier];
             await supabase.from('price_groups').update({ rules: newRules }).eq('name', 'GLOBAL_PROFIT_MARGIN');
-            return NextResponse.json({ success: true });
+
+            // 🔄 Veritabanındaki ürünleri de sıfırla
+            console.log(`Resetting margins for supplier: ${deleteSupplier}...`);
+            
+            let allSupplierProducts = [];
+            let lastId = null;
+            let hasMore = true;
+
+            while (hasMore) {
+                let query = supabase
+                    .from('products')
+                    .select('id, cost_price, code, name')
+                    .eq('supplier_brand', deleteSupplier)
+                    .order('id', { ascending: true })
+                    .limit(1000);
+                
+                if (lastId) query = query.gt('id', lastId);
+
+                const { data, error } = await query;
+                if (error) break;
+
+                if (data && data.length > 0) {
+                    allSupplierProducts = [...allSupplierProducts, ...data];
+                    lastId = data[data.length - 1].id;
+                    if (data.length < 1000) hasMore = false;
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            if (allSupplierProducts.length > 0) {
+                const updates = allSupplierProducts.map(p => ({
+                    id: p.id,
+                    code: p.code,
+                    name: p.name,
+                    profit_margin: 0,
+                    list_price: Number(p.cost_price) || 0 // %0 kâr ile liste fiyatı = maliyet
+                }));
+
+                for (let i = 0; i < updates.length; i += 1000) {
+                    const chunk = updates.slice(i, i + 1000);
+                    await supabase.from('products').upsert(chunk);
+                }
+            }
+
+            return NextResponse.json({ success: true, resetCount: allSupplierProducts.length });
         }
 
         // 🆕 Kural Ekleme/Güncelleme Mantığı

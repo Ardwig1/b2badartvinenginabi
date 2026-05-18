@@ -569,7 +569,30 @@ export default function AdminProducts() {
                                     <input className="form-input" type="number" min="0" step="0.01" value={form.cost_price} onChange={up('cost_price')} required id="prod-cost-price" placeholder="Ürünün alış fiyatı" />
                                 </div>
                                 <div className="form-group"><label className="form-label">Kâr Oranı (%) *</label><input className="form-input" type="number" min="0" step="0.01" value={form.profit_margin} onChange={up('profit_margin')} required id="prod-profit-margin" placeholder="Örn: 30.55" /></div>
-                                <div className="form-group"><label className="form-label">İskonto Oranı (%)</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_rate} onChange={up('discount_rate')} id="prod-discount" /></div>
+                                <div className="form-group">
+                                    <label className="form-label">İskonto Oranı (%)</label>
+                                    <input 
+                                        className="form-input" 
+                                        type="number" 
+                                        min="0" 
+                                        max="100" 
+                                        step="0.1" 
+                                        value={form.discount_rate} 
+                                        onChange={up('discount_rate')} 
+                                        id="prod-discount" 
+                                        disabled={!form.is_campaign}
+                                        style={{ 
+                                            background: !form.is_campaign ? 'var(--bg-secondary)' : 'white',
+                                            cursor: !form.is_campaign ? 'not-allowed' : 'text',
+                                            opacity: !form.is_campaign ? 0.7 : 1
+                                        }}
+                                    />
+                                    {!form.is_campaign && (
+                                        <div style={{ fontSize: 10, color: 'var(--danger)', marginTop: 4, fontWeight: 600 }}>
+                                            İskonto oranı girmek için Kampanyalı ürün olarak işaretleyin
+                                        </div>
+                                    )}
+                                </div>
                                 <div className="form-group"><label className="form-label" style={{ color: '#16a34a', fontWeight: 700 }}>🛒 Sepette İndirim (%)</label><input className="form-input" style={{ borderColor: '#16a34a' }} type="number" min="0" max="100" step="0.1" value={form.cart_discount_rate} onChange={up('cart_discount_rate')} id="prod-cart-discount" placeholder="Sepette uygulanacak ekstra indirim" /></div>
                                 {Number(form.cost_price) > 0 && (() => {
                                     const cost = Number(form.cost_price) || 0;

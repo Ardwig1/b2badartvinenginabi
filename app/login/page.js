@@ -256,8 +256,8 @@ function LoginContent() {
                         gap: '60px', 
                         marginBottom: '2.5rem' 
                     }}>
-                        <Logo type="auto" color="#fff" />
-                        <Logo type="tech" color="#3b82f6" />
+                        <img src="/artpar-logo.png" alt="Artpar Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
+                        <img src="/bilisim.png" alt="Bilisim Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
                     </div>
 
                     {/* Contact Info Row */}
@@ -269,7 +269,6 @@ function LoginContent() {
                         marginBottom: '2.5rem',
                         padding: '0 20px'
                     }}>
-                        <p style={{ margin: 0, fontWeight: 700, color: '#f8fafc', fontSize: '14px' }}>Engin Alkan - Artpar</p>
                         <p style={{ margin: '4px 0' }}>Cumhuriyet Caddesi Şenocak sokak no:10/B YAKACIK/KARTAL İSTANBUL | Yakacık Yeni, Yanyol Cd. No:47, 34903 Kartal/İstanbul</p>
                         <div style={{ display: 'flex', gap: 20, justifyContent: 'center', marginTop: 10 }}>
                             <span>📞 +90 543 636 0436</span>

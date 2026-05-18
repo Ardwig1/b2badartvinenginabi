@@ -4,6 +4,7 @@ import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon, TrashIcon } from '@heroi
 
 export default function GlobalMarginSettings({ onMarginUpdate }) {
     const [margin, setMargin] = useState('');
+    const [savedMargin, setSavedMargin] = useState('');
     const [rules, setRules] = useState({});
     const [usdRate, setUsdRate] = useState('');
     const [isUsdActive, setIsUsdActive] = useState(false);
@@ -30,7 +31,10 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
             const marginData = await marginRes.json();
             const usdData = await usdRes.json();
 
-            if (marginData?.margin !== undefined) setMargin(marginData.margin);
+            if (marginData?.margin !== undefined) {
+                setMargin(marginData.margin);
+                setSavedMargin(marginData.margin);
+            }
             if (marginData?.rules !== undefined) setRules(marginData.rules);
             if (usdData?.usd_rate !== undefined) setUsdRate(usdData.usd_rate);
             if (usdData?.is_active !== undefined) setIsUsdActive(usdData.is_active);
@@ -96,7 +100,7 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
             }
             
             if (onMarginUpdate) onMarginUpdate(Number(margin === '' ? 0 : margin));
-            fetchData(); // Refresh rules
+            fetchData(); // Refresh rules and saved margin
         } catch (error) {
             console.error("Margin save error:", error);
             alert("Kâr oranı kaydedilemedi: " + error.message);
@@ -264,7 +268,7 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                             {/* 🌍 Sabit Genel Kâr Kartı */}
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(135deg, var(--primary), #1e40af)', color: '#fff', padding: '6px 12px', borderRadius: 10, fontSize: 13, boxShadow: '0 4px 12px rgba(37,99,235,0.2)', border: '1px solid rgba(255,255,255,0.1)' }}>
                                 <span style={{ fontWeight: 600, opacity: 0.9 }}>Genel Kâr:</span>
-                                <span style={{ fontWeight: 900, fontSize: 15 }}>%{margin}</span>
+                                <span style={{ fontWeight: 900, fontSize: 15 }}>%{savedMargin}</span>
                             </div>
 
                             {/* 🏷️ Marka Özel Kuralları */}

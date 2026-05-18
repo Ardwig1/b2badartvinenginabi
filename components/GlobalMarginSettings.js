@@ -254,14 +254,14 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                     </div>
 
                     {/* 📜 Aktif Kurallar Listesi */}
-                    {Object.keys(rules).length > 0 && (
-                        <div style={{ background: 'var(--bg-surface)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
-                            <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>Aktif Marka Kuralları:</div>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 12, border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.5px' }}>Aktif Marka Kuralları:</div>
+                        {Object.keys(rules).length > 0 ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                                 {Object.entries(rules).map(([supplier, val]) => (
-                                    <div key={supplier} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 8, fontSize: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                    <div key={supplier} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--bg-card)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 8, fontSize: 12, boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
                                         <span style={{ fontWeight: 700, color: 'var(--primary)' }}>{supplier}:</span>
-                                        <span style={{ fontWeight: 800, color: '#16a34a' }}>%{val}</span>
+                                        <span style={{ fontWeight: 800, color: 'var(--success)' }}>%{val}</span>
                                         <button 
                                             onClick={() => handleDeleteRule(supplier)}
                                             style={{ marginLeft: 4, color: 'var(--danger)', border: 'none', background: 'none', cursor: 'pointer', padding: 2, display: 'flex' }}
@@ -271,8 +271,10 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                                     </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
+                        ) : (
+                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic' }}>Henüz özel bir marka kuralı tanımlanmamış.</div>
+                        )}
+                    </div>
                 </div>
             </div>
 

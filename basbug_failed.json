@@ -1,0 +1,18 @@
+[
+  {
+    "code": "MANN PU 10 023/1 z KIT",
+    "reason": "Request failed with status code 601"
+  },
+  {
+    "code": "NTN 4T-HM801346X/HM801310",
+    "reason": "Request failed with status code 601"
+  },
+  {
+    "code": "NTN 4T-HM88547/HM88510",
+    "reason": "Request failed with status code 601"
+  },
+  {
+    "code": "NTN 4T-M802048/M802011",
+    "reason": "Request failed with status code 601"
+  }
+]

@@ -30,6 +30,8 @@ export default function DealerCatalog() {
     const [globalMargin, setGlobalMargin] = useState(0); // Default to 0 for dealers
     const [globalUsdRate, setGlobalUsdRate] = useState(0);
     const [globalUsdActive, setGlobalUsdActive] = useState(false);
+    const [globalEurRate, setGlobalEurRate] = useState(0);
+    const [globalEurActive, setGlobalEurActive] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [toast, setToast] = useState('');
     const { cartItems: cartQtys, setQty: ctxSetQty } = useCart();
@@ -66,7 +68,13 @@ export default function DealerCatalog() {
             if (metaRes.ok) { const data = await metaRes.json(); setBrands(data.brands || []); setCarBrands(data.carBrands || []); }
             const [ratesRes, usdRes] = await Promise.all([fetch('/api/rates'), fetch('/api/admin/usd-settings')]);
             if (ratesRes.ok) { const d = await ratesRes.json(); setRates({ USD: d.USD || 1, EUR: d.EUR || 1 }); }
-            if (usdRes.ok) { const d = await usdRes.json(); setGlobalUsdRate(d.usd_rate || 0); setGlobalUsdActive(d.is_active || false); }
+            if (usdRes.ok) { 
+                const d = await usdRes.json(); 
+                setGlobalUsdRate(d.usd_rate || 0); 
+                setGlobalUsdActive(d.is_active || false); 
+                setGlobalEurRate(d.eur_rate || 0);
+                setGlobalEurActive(d.eur_active || false);
+            }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }, []);
 
@@ -127,6 +135,7 @@ export default function DealerCatalog() {
         }
 
         if (globalUsdActive && globalUsdRate > 0 && p.currency === 'USD') price = price * globalUsdRate;
+        else if (globalEurActive && globalEurRate > 0 && p.currency === 'EUR') price = price * globalEurRate;
         else { 
             if (p.currency === 'USD') price = price * (rates.USD || 1); 
             else if (p.currency === 'EUR') price = price * (rates.EUR || 1); 

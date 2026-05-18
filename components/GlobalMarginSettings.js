@@ -1,17 +1,22 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CogIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline';
+import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon } from '@heroicons/react/24/outline';
 
 export default function GlobalMarginSettings({ onMarginUpdate }) {
     const [margin, setMargin] = useState('');
     const [usdRate, setUsdRate] = useState('');
     const [isUsdActive, setIsUsdActive] = useState(false);
+    const [eurRate, setEurRate] = useState('');
+    const [isEurActive, setIsEurActive] = useState(false);
 
     const [savingMargin, setSavingMargin] = useState(false);
     const [successMargin, setSuccessMargin] = useState(false);
 
     const [savingUsd, setSavingUsd] = useState(false);
     const [successUsd, setSuccessUsd] = useState(false);
+    
+    const [savingEur, setSavingEur] = useState(false);
+    const [successEur, setSuccessEur] = useState(false);
 
     const [loading, setLoading] = useState(true);
 
@@ -28,6 +33,8 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                 if (marginData?.margin !== undefined) setMargin(marginData.margin);
                 if (usdData?.usd_rate !== undefined) setUsdRate(usdData.usd_rate);
                 if (usdData?.is_active !== undefined) setIsUsdActive(usdData.is_active);
+                if (usdData?.eur_rate !== undefined) setEurRate(usdData.eur_rate);
+                if (usdData?.eur_active !== undefined) setIsEurActive(usdData.eur_active);
             } catch (error) {
                 console.error("Failed to load settings", error);
             } finally {
@@ -127,7 +134,8 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
                     usd_rate: usdRate === '' ? 0 : usdRate, 
-                    is_active: isUsdActive
+                    is_active: isUsdActive,
+                    currency: 'USD'
                 })
             });
 
@@ -146,8 +154,41 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
         }
     };
 
+    const handleSaveEur = async () => {
+        try {
+            setSavingEur(true);
+
+            const res = await fetch('/api/admin/usd-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    eur_rate: eurRate === '' ? 0 : eurRate, 
+                    eur_active: isEurActive,
+                    currency: 'EUR'
+                })
+            });
+
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Kaydetme hatası');
+            }
+
+            setSuccessEur(true);
+            setTimeout(() => setSuccessEur(false), 2500);
+        } catch (error) {
+            console.error("EUR settings save error:", error);
+            alert("Euro kuru ayarları kaydedilemedi: " + error.message);
+        } finally {
+            setSavingEur(false);
+        }
+    };
+
     const toggleUsdActive = () => {
         setIsUsdActive(prev => !prev);
+    };
+
+    const toggleEurActive = () => {
+        setIsEurActive(prev => !prev);
     };
 
     if (loading) return null;
@@ -222,34 +263,67 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                 </div>
             </div>
 
-            {/* Dolar Kuru Sabitleme */}
+            {/* Kur Sabitleme (USD & EUR) */}
             <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16, margin: 0, padding: 16 }}>
+                {/* USD Satırı */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                     <div style={{ background: 'var(--warning)', color: 'white', padding: 10, borderRadius: 10 }}>
                         <CurrencyDollarIcon style={{ width: 24, height: 24 }} />
                     </div>
                     <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                            <h2 className="card-title" style={{ fontSize: 16, margin: 0 }}>Dolar Kuru Sabitleme:</h2>
-                            <span onClick={toggleUsdActive} style={{ cursor: 'pointer', fontWeight: 700, fontSize: 15, color: isUsdActive ? 'var(--success)' : 'var(--danger)', userSelect: 'none' }}>
-                                {isUsdActive ? 'Açık' : 'Kapalı'}
+                            <h2 className="card-title" style={{ fontSize: 15, margin: 0 }}>Dolar (USD):</h2>
+                            <span onClick={toggleUsdActive} style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: isUsdActive ? 'var(--success)' : 'var(--danger)', userSelect: 'none' }}>
+                                {isUsdActive ? 'SABİT' : 'GÜNCEL'}
                             </span>
                         </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>USD ürünler için sabit kur ayarı</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>USD ürünler için kur</div>
                     </div>
                     <div style={{ flex: 1 }} />
                     <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                        <span style={{ position: 'absolute', right: 12, fontSize: 16, fontWeight: 600, color: 'var(--text-muted)' }}>TL</span>
+                        <span style={{ position: 'absolute', right: 10, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>TL</span>
                         <input
                             type="number"
                             className="form-input"
                             value={usdRate}
                             onChange={e => setUsdRate(e.target.value)}
-                            style={{ width: 100, fontSize: 16, fontWeight: 700, paddingRight: 36, paddingLeft: 10, textAlign: 'center' }}
+                            style={{ width: 85, fontSize: 15, fontWeight: 700, paddingRight: 30, paddingLeft: 8, textAlign: 'center', height: 36 }}
                         />
                     </div>
                     <button className={`btn ${successUsd ? 'btn-success' : 'btn-primary'} btn-sm`} onClick={() => handleSaveUsd()} disabled={savingUsd}>
                         {savingUsd ? '...' : successUsd ? '✓' : 'Kaydet'}
+                    </button>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-light)', margin: '0 -4px' }} />
+
+                {/* EUR Satırı */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ background: '#10b981', color: 'white', padding: 10, borderRadius: 10 }}>
+                        <CurrencyEuroIcon style={{ width: 24, height: 24 }} />
+                    </div>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                            <h2 className="card-title" style={{ fontSize: 15, margin: 0 }}>Euro (EUR):</h2>
+                            <span onClick={toggleEurActive} style={{ cursor: 'pointer', fontWeight: 700, fontSize: 14, color: isEurActive ? 'var(--success)' : 'var(--danger)', userSelect: 'none' }}>
+                                {isEurActive ? 'SABİT' : 'GÜNCEL'}
+                            </span>
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>EUR ürünler için kur</div>
+                    </div>
+                    <div style={{ flex: 1 }} />
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <span style={{ position: 'absolute', right: 10, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>TL</span>
+                        <input
+                            type="number"
+                            className="form-input"
+                            value={eurRate}
+                            onChange={e => setEurRate(e.target.value)}
+                            style={{ width: 85, fontSize: 15, fontWeight: 700, paddingRight: 30, paddingLeft: 8, textAlign: 'center', height: 36 }}
+                        />
+                    </div>
+                    <button className={`btn ${successEur ? 'btn-success' : 'btn-primary'} btn-sm`} onClick={() => handleSaveEur()} disabled={savingEur}>
+                        {savingEur ? '...' : successEur ? '✓' : 'Kaydet'}
                     </button>
                 </div>
 

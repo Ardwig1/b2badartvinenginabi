@@ -126,7 +126,7 @@ export async function POST(req) {
                 const productIds = items.map(i => i.product_id);
                 const { data: products } = await adminSupabase
                     .from('products')
-                    .select('id, name, code')
+                    .select('id, name, code, oem_no')
                     .in('id', productIds);
                 
                 const productMap = {};
@@ -136,40 +136,45 @@ export async function POST(req) {
                     const p = productMap[i.product_id];
                     return `
                         <tr>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee;">
-                                <strong>${p?.name || 'Bilinmeyen Ürün'}</strong><br/>
-                                <small style="color: #666;">Kod: ${p?.code || i.product_id}</small>
+                            <td style="padding: 10px 8px; border-bottom: 1px solid #eee;">
+                                <div style="font-weight: 700; color: #1e293b; font-size: 14px;">${p?.name || 'Bilinmeyen Ürün'}</div>
+                                <div style="font-size: 12px; color: #64748b; margin-top: 2px;">
+                                    Kod: ${p?.code || i.product_id} ${p?.oem_no ? `| OEM: ${p.oem_no}` : ''}
+                                </div>
                             </td>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${i.quantity}</td>
-                            <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">${Number(i.unit_price || i.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</td>
+                            <td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: center; color: #1e293b; font-weight: 600;">${i.quantity}</td>
+                            <td style="padding: 10px 8px; border-bottom: 1px solid #eee; text-align: right; color: #1e293b; font-weight: 600;">${Number(i.unit_price || i.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</td>
                         </tr>
                     `;
                 }).join('');
 
                 const result = await sendEmail({
                     to: settings.email,
-                    subject: `Yeni Sipariş: ${company?.name || 'Müşteri'} (#${data})`,
+                    subject: `📢 Yeni Sipariş: ${company?.name || 'Müşteri'}`,
                     html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-                            <h2 style="color: #1e3a8a; margin-top: 0;">Yeni Sipariş Alındı!</h2>
-                            <p style="font-size: 14px; color: #475569;">Sisteme yeni bir sipariş düştü. Detaylar aşağıdadır:</p>
+                        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff;">
+                            <div style="text-align: center; marginBottom: 20px;">
+                                <h2 style="color: #1e3a8a; margin-top: 0; font-size: 24px;">Yeni Sipariş Alındı!</h2>
+                                <div style="height: 4px; width: 60px; background: #2563eb; margin: 10px auto; border-radius: 2px;"></div>
+                            </div>
                             
-                            <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                                <table style="width: 100%; font-size: 14px;">
-                                    <tr><td><strong>Müşteri:</strong></td><td>${company?.name || 'Bilinmiyor'} (${company?.dealer_code || '-'})</td></tr>
-                                    <tr><td><strong>Sipariş No:</strong></td><td>#${data}</td></tr>
-                                    <tr><td><strong>Toplam Tutar:</strong></td><td style="color: #16a34a; font-weight: bold;">${Number(totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</td></tr>
-                                    <tr><td><strong>Adres:</strong></td><td>${shippingAddress || 'Seçilmedi'}</td></tr>
-                                    <tr><td><strong>Not:</strong></td><td>${note || '-'}</td></tr>
+                            <p style="font-size: 15px; color: #475569; line-height: 1.5; text-align: center;">Sisteme yeni bir sipariş düştü. Detaylar aşağıdadır:</p>
+                            
+                            <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 25px 0; border: 1px solid #f1f5f9;">
+                                <table style="width: 100%; font-size: 14px; border-spacing: 0 8px;">
+                                    <tr><td style="color: #64748b; width: 120px;"><strong>Müşteri:</strong></td><td style="color: #1e293b; font-weight: 600;">${company?.name || 'Bilinmiyor'} (${company?.dealer_code || '-'})</td></tr>
+                                    <tr><td style="color: #64748b;"><strong>Toplam Tutar:</strong></td><td style="color: #16a34a; font-weight: 800; font-size: 18px;">${Number(totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} TL</td></tr>
+                                    <tr><td style="color: #64748b; vertical-align: top;"><strong>Adres:</strong></td><td style="color: #1e293b;">${shippingAddress || 'Seçilmedi'}</td></tr>
+                                    <tr><td style="color: #64748b;"><strong>Not:</strong></td><td style="color: #1e293b; font-style: italic;">${note || '-'}</td></tr>
                                 </table>
                             </div>
 
                             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                                 <thead style="background: #f1f5f9;">
                                     <tr>
-                                        <th style="padding: 8px; text-align: left;">Ürün</th>
-                                        <th style="padding: 8px; text-align: center;">Adet</th>
-                                        <th style="padding: 8px; text-align: right;">Fiyat</th>
+                                        <th style="padding: 12px 8px; text-align: left; color: #475569; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">Ürün Detayı</th>
+                                        <th style="padding: 12px 8px; text-align: center; color: #475569;">Adet</th>
+                                        <th style="padding: 12px 8px; text-align: right; color: #475569; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">Fiyat</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -177,8 +182,12 @@ export async function POST(req) {
                                 </tbody>
                             </table>
 
-                            <div style="margin-top: 30px; text-align: center;">
-                                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/orders" style="display: inline-block; background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: 600;">Siparişi Panelde Görüntüle</a>
+                            <div style="margin-top: 40px; text-align: center;">
+                                <a href="${process.env.NEXT_PUBLIC_SITE_URL}/admin/orders" style="display: inline-block; background: #2563eb; color: white; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.2);">Siparişleri Yönet</a>
+                            </div>
+
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f1f5f9; text-align: center; color: #94a3b8; font-size: 12px;">
+                                Bu e-posta B2B sisteminiz tarafından otomatik olarak gönderilmiştir.
                             </div>
                         </div>
                     `

@@ -24,7 +24,7 @@ export async function POST(req) {
         if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        let { filterText } = body;
+        let { filterText, brand, carBrand, carModel, is_new, is_campaign } = body;
 
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -35,18 +35,39 @@ export async function POST(req) {
         let query = adminSupabase
             .from('products')
             .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
+            .eq('is_active', true);
 
-        // Arama varsa filtreleri ekle
+        // 🔍 1. Marka Filtresi (Eğer seçildiyse)
+        if (brand) {
+            query = query.eq('brand', brand);
+        }
+
+        // 🚗 2. Araç Markası Filtresi
+        if (carBrand) {
+            query = query.eq('car_brand', carBrand);
+        }
+
+        // 🚙 3. Araç Modeli Filtresi
+        if (carModel) {
+            query = query.eq('car_model', carModel);
+        }
+
+        // ✨ 4. Yeni/Kampanyalı Ürün Filtreleri
+        if (is_new) query = query.eq('is_new', true);
+        if (is_campaign) query = query.eq('is_campaign', true);
+
+        // ⌨️ 5. Metin Arama (Kümülatif olarak eklenir)
         if (searchWords.length > 0) {
             for (const word of searchWords) {
                 query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
             }
         }
 
-        // Sonuçları çek (Limit 1000 yeterlidir, daha fazlası frontend'i kasar)
-        const { data, error } = await query.limit(1000);
+        // Sonuçları çek (Sıralama ve Limit)
+        const { data, error } = await query
+            .order('created_at', { ascending: false })
+            .limit(1000);
+            
         if (error) throw error;
 
         return NextResponse.json(data || []);

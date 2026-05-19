@@ -257,7 +257,7 @@ function LoginContent() {
                         marginBottom: '2.5rem' 
                     }}>
                         <img src="/artpar-logo.png" alt="Artpar Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
-                        <img src="/bilisim.png" alt="Bilisim Logo" style={{ height: '75px', width: 'auto', objectFit: 'contain' }} />
+                        <img src="/bilisim.png" alt="Bilisim Logo" style={{ height: '100px', width: 'auto', objectFit: 'contain' }} />
                     </div>
 
                     {/* Contact Info Row */}

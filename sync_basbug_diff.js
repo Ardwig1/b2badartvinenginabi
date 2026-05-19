@@ -107,9 +107,10 @@ async function main() {
             });
         }
 
-        // Stok durumu değişmiş mi?
+        // Stok durumu değişmiş mi? Ya da stoklu ama sayı 100'den düşük mü?
         const currentlyActive = db.is_active && (db.stock_merkez || 0) > 0;
-        if (shouldBeActive !== currentlyActive) {
+        const stockBelowMax = shouldBeActive && (db.stock_merkez || 0) < 100;
+        if (shouldBeActive !== currentlyActive || stockBelowMax) {
             stockUpdates.push({
                 code,
                 is_active: shouldBeActive,

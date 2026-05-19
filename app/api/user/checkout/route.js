@@ -100,21 +100,28 @@ export async function POST(req) {
 
         // --- Send Admin Notification ---
         try {
-            const { data: notifSetting } = await adminSupabase
+            console.log("🔔 Starting Admin Notification process...");
+            const { data: notifSetting, error: settingErr } = await adminSupabase
                 .from('site_settings')
                 .select('setting_value')
                 .eq('setting_key', 'admin_notifications')
                 .maybeSingle();
             
+            if (settingErr) console.error("❌ Database Error (Notification Setting):", settingErr);
+            
             const settings = notifSetting?.setting_value;
+            console.log("🛠️ Notification Settings:", settings);
             
             if (settings?.enabled && settings?.email) {
+                console.log("📤 Preparing to send email to:", settings.email);
                 const { data: company } = await adminSupabase
                     .from('companies')
                     .select('name, dealer_code')
                     .eq('id', companyId)
                     .maybeSingle();
 
+                const { sendEmail } = await import('@/lib/mail');
+                
                 // Fetch product details for the email
                 const productIds = items.map(i => i.product_id);
                 const { data: products } = await adminSupabase
@@ -139,7 +146,7 @@ export async function POST(req) {
                     `;
                 }).join('');
 
-                await sendEmail({
+                const result = await sendEmail({
                     to: settings.email,
                     subject: `Yeni Sipariş: ${company?.name || 'Müşteri'} (#${data})`,
                     html: `
@@ -176,9 +183,13 @@ export async function POST(req) {
                         </div>
                     `
                 });
+                
+                console.log("📨 sendEmail Result:", result);
+            } else {
+                console.log("⏩ Notifications are disabled or email not set.");
             }
         } catch (mailErr) {
-            console.error("Error sending admin notification email:", mailErr);
+            console.error("❌ Fatal Error in Admin Notification process:", mailErr);
         }
 
         return NextResponse.json(data);

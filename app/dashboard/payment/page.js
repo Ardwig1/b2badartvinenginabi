@@ -239,13 +239,7 @@ export default function PaymentPage() {
 
             <div className="payment-layout" style={{ display: 'flex', gap: 24, maxWidth: 900, margin: '0 auto', alignItems: 'stretch' }}>
                 <div className="payment-main" style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-                    <div className="qnb-banner" style={{ padding: '16px 24px', background: '#e2e8f0', border: '1px solid #cbd5e1', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', color: '#002b5b' }}>
-                        <img src="/qnb-logo.png" alt="QNB Finansbank" style={{ height: 44, width: 'auto', objectFit: 'contain', mixBlendMode: 'multiply' }} />
-                        <div style={{ fontSize: '15px', fontWeight: 500 }}><strong>QNB FİNANSBANK</strong> altyapısı ile güvenli ödeme.</div>
-                        <div style={{ marginLeft: 'auto', background: '#10b981', color: 'white', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: 700, letterSpacing: '0.5px' }}>GÜVENLİ</div>
-                    </div>
-
-                    <div className="card payment-form-card" style={{ padding: 30 }}>
+<div className="card payment-form-card" style={{ padding: 30 }}>
                         <h2 style={{ marginBottom: 20, fontSize: 18, fontWeight: 700 }}>Ödeme Bilgileri</h2>
                         <form onSubmit={handlePayment}>
                             <div className="form-group"><label className="form-label">Ödenecek Tutar (₺)</label><input type="text" inputMode="decimal" className="form-input" style={{ fontSize: 24, fontWeight: 'bold', color: 'var(--primary)', background: 'var(--bg-input)' }} value={amount} onChange={e => handleAmountChange(e.target.value)} required /></div>
@@ -301,8 +295,7 @@ export default function PaymentPage() {
                 @media (max-width: 768px) {
                     .payment-layout { flex-direction: column !important; }
                     .payment-main { display: contents; }
-                    .qnb-banner { order: 1 !important; padding: 16px !important; gap: 12px !important; }
-                    .payment-side { order: 2 !important; flex: none !important; width: 100% !important; gap: 16px !important; }
+.payment-side { order: 2 !important; flex: none !important; width: 100% !important; gap: 16px !important; }
                     .payment-form-card { order: 3 !important; padding: 20px !important; }
                 }
             `}</style>

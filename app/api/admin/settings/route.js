@@ -21,11 +21,19 @@ export async function GET() {
         const { data, error } = await adminSupabase
             .from('site_settings')
             .select('*')
-            .eq('setting_key', 'maintenance_mode')
-            .maybeSingle();
+            .in('setting_key', ['maintenance_mode', 'admin_notifications']);
 
         if (error) throw error;
-        return NextResponse.json(data?.setting_value || {});
+
+        const settingsMap = {};
+        data?.forEach(s => {
+            settingsMap[s.setting_key] = s.setting_value;
+        });
+
+        return NextResponse.json({
+            maintenance_mode: settingsMap.maintenance_mode || {},
+            admin_notifications: settingsMap.admin_notifications || { email: '', enabled: false }
+        });
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
@@ -46,12 +54,15 @@ export async function POST(request) {
         if (!profile?.is_admin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
         const body = await request.json();
+        const { key, value } = body;
+
+        if (!key) return NextResponse.json({ error: 'Missing setting key' }, { status: 400 });
 
         const { error } = await adminSupabase
             .from('site_settings')
             .upsert({
-                setting_key: 'maintenance_mode',
-                setting_value: body,
+                setting_key: key,
+                setting_value: value,
                 updated_at: new Date().toISOString()
             });
 

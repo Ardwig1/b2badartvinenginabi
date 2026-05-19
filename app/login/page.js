@@ -234,6 +234,13 @@ function LoginContent() {
                         </button>
                     </form>
                 </div>
+
+                <div style={{ marginTop: '16px', padding: '14px 20px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', fontSize: '13px', color: '#94a3b8', lineHeight: '1.9' }}>
+                    <div style={{ fontWeight: 600, color: '#cbd5e1', marginBottom: '4px' }}>Banka sanal pos başvurusu için giriş bilgileri:</div>
+                    <div>Bayi kodu: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
+                    <div>Kullanıcı kodu: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
+                    <div>Şifre: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
+                </div>
             </div>
 
             {/* Redesigned Footer Section */}

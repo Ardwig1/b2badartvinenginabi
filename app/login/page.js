@@ -298,8 +298,8 @@ function LoginContent() {
                         <a href="/mesafeli-satis-sozlesmesi" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Mesafeli Satış Sözleşmesi</a>
                         <a href="/iptal-ve-iade-kosullari" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>İptal ve İade Koşulları</a>
                         <a href="/gizlilik-ve-guvenlik" target="_blank" style={{ color: '#60a5fa', textDecoration: 'none', fontWeight: 500 }}>Gizlilik ve Güvenlik</a>
-                        <span style={{ color: '#475569', marginLeft: 'auto' }}>© 2026 ARTPAR</span>
                     </div>
+                    <div style={{ textAlign: 'center', color: '#475569', fontSize: '12px', marginTop: '12px' }}>© 2026 ARTPAR</div>
                 </div>
             </div>
         </div>

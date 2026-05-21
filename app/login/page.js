@@ -119,7 +119,7 @@ function LoginContent() {
     };
 
     return (
-        <div style={{ minHeight: 'calc(100vh / 0.75)', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
+        <div style={{ minHeight: 'calc(100vh / 0.90)', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '420px' }}>
                 <div className={styles.authCard}>

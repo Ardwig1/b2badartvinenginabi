@@ -120,7 +120,7 @@ function LoginContent() {
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 24px 40px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '420px' }}>
                 <div className={styles.authCard}>
                     <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -247,7 +247,6 @@ function LoginContent() {
 
             {/* Redesigned Footer Section */}
             <div style={{
-                marginTop: 'auto',
                 width: '100%',
                 padding: '3rem 1.5rem 1.5rem',
                 backgroundColor: 'rgba(15, 23, 42, 0.98)',

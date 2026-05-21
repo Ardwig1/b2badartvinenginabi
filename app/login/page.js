@@ -120,7 +120,8 @@ function LoginContent() {
 
     return (
         <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'radial-gradient(ellipse at top left, #1e3a5f 0%, #0f172a 50%, #0a1628 100%)' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '60px 24px 40px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', width: '100%', maxWidth: '420px' }}>
                 <div className={styles.authCard}>
                     <div className={styles.authLogo} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
                         <img src="/artpar-logo_2.png" alt="Artpar Logo" style={{ width: '160px', height: 'auto', objectFit: 'contain' }} />
@@ -240,6 +241,7 @@ function LoginContent() {
                     <div>Bayi kodu: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
                     <div>Kullanıcı kodu: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
                     <div>Şifre: <span style={{ color: '#e2e8f0', fontWeight: 600 }}>BANKA1</span></div>
+                </div>
                 </div>
             </div>
 

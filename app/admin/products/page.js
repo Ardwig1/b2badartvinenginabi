@@ -297,6 +297,88 @@ export default function AdminProducts() {
         setExcelLoading(false);
     };
 
+    const downloadTemplate = async () => {
+        try {
+            const res = await fetch('/api/admin/products/template');
+            if (!res.ok) throw new Error('Şablon alınamadı');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Urun_Yukleme_Sablonu.xlsx';
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('Şablon indirilemedi: ' + e.message);
+        }
+    };
+
+    // --- Import state ---
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importStep, setImportStep] = useState('idle'); // idle | loading | preview | confirming | done
+    const [importFile, setImportFile] = useState(null);
+    const [importPreview, setImportPreview] = useState(null); // { summary, newProducts, ownProducts, conflicts }
+    const [importDecisions, setImportDecisions] = useState({}); // { [code]: 'excel' | 'keep' }
+    const [importResult, setImportResult] = useState(null); // { imported }
+
+    const openImportModal = () => {
+        setImportStep('idle');
+        setImportFile(null);
+        setImportPreview(null);
+        setImportDecisions({});
+        setImportResult(null);
+        setShowImportModal(true);
+    };
+
+    const handleImportFileChange = (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        setImportFile(f);
+        setImportStep('idle');
+        setImportPreview(null);
+    };
+
+    const runPreview = async () => {
+        if (!importFile) return;
+        setImportStep('loading');
+        try {
+            const fd = new FormData();
+            fd.append('file', importFile);
+            fd.append('action', 'preview');
+            const res = await fetch('/api/admin/products/import', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Hata');
+            setImportPreview(data);
+            // Default decisions: all conflicts → 'keep'
+            const defaultDec = {};
+            (data.conflicts || []).forEach(c => { defaultDec[c.code] = 'keep'; });
+            setImportDecisions(defaultDec);
+            setImportStep('preview');
+        } catch (e) {
+            alert('Önizleme hatası: ' + e.message);
+            setImportStep('idle');
+        }
+    };
+
+    const runConfirm = async () => {
+        setImportStep('confirming');
+        try {
+            const fd = new FormData();
+            fd.append('file', importFile);
+            fd.append('action', 'confirm');
+            fd.append('decisions', JSON.stringify(importDecisions));
+            const res = await fetch('/api/admin/products/import', { method: 'POST', body: fd });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.error || 'Hata');
+            setImportResult(data);
+            setImportStep('done');
+            fetchProducts();
+        } catch (e) {
+            alert('İçe aktarma hatası: ' + e.message);
+            setImportStep('preview');
+        }
+    };
+
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkFilters, setBulkFilters] = useState({ search: '', brand: '', car_brand: '', supplier_brand: '', currency: '' });
     const [bulkUpdates, setBulkUpdates] = useState({ profit_margin: '' });
@@ -339,9 +421,15 @@ export default function AdminProducts() {
                     <h1 className="page-title">Ürünler & Stok</h1>
                     <p className="page-subtitle">{totalCount} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button className="btn btn-ghost" onClick={downloadExcel} disabled={excelLoading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {excelLoading ? '⏳ Hazırlanıyor...' : '📥 Excel Formatında İndir'}
+                    </button>
+                    <button className="btn btn-ghost" onClick={downloadTemplate} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        📋 Boş Şablon İndir
+                    </button>
+                    <button className="btn btn-ghost" onClick={openImportModal} style={{ display: 'flex', alignItems: 'center', gap: 6, borderColor: '#10b981', color: '#059669' }}>
+                        📤 Excel&apos;den İçe Aktar
                     </button>
                     <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
                 </div>
@@ -820,6 +908,208 @@ export default function AdminProducts() {
                     </div>
                 </div>
             )}
+            {/* Import Modal */}
+            {showImportModal && (
+                <div className="modal-overlay" onClick={() => { if (importStep !== 'loading' && importStep !== 'confirming') setShowImportModal(false); }}>
+                    <div className="modal" style={{ maxWidth: 640 }} onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3 className="modal-title">📤 Excel&apos;den Ürün İçe Aktar</h3>
+                            {importStep !== 'loading' && importStep !== 'confirming' && (
+                                <button className="modal-close" onClick={() => setShowImportModal(false)}>✕</button>
+                            )}
+                        </div>
+
+                        {/* STEP: idle / file selection */}
+                        {(importStep === 'idle' || importStep === 'loading') && (
+                            <div>
+                                <div style={{ background: 'rgba(16,185,129,0.06)', border: '1px solid #10b98133', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13, color: '#065f46', lineHeight: 1.6 }}>
+                                    <strong>💡 Nasıl kullanılır?</strong><br />
+                                    1. &quot;Boş Şablon İndir&quot; butonuyla şablonu indirin.<br />
+                                    2. Şablonu doldurun ve kaydedin.<br />
+                                    3. Aşağıdan dosyayı seçin ve &quot;Önizle&quot; butonuna tıklayın.<br />
+                                    4. Çakışmalar için karar verin, ardından içe aktarın.<br />
+                                    <span style={{ color: '#7c3aed', fontWeight: 600 }}>Geliş Fiyatı, Kâr Oranı veya Liste Fiyatı kolonlarından herhangi ikisini doldurmanız yeterlidir.</span>
+                                </div>
+                                <div style={{ marginBottom: 16 }}>
+                                    <label className="form-label">Excel Dosyası Seçin (.xlsx / .xls)</label>
+                                    <input
+                                        type="file"
+                                        accept=".xlsx,.xls"
+                                        className="form-input"
+                                        onChange={handleImportFileChange}
+                                        disabled={importStep === 'loading'}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                    {importFile && (
+                                        <div style={{ marginTop: 6, fontSize: 13, color: 'var(--text-secondary)' }}>
+                                            Seçili: <strong>{importFile.name}</strong> ({(importFile.size / 1024).toFixed(1)} KB)
+                                        </div>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                                    <button className="btn btn-ghost" onClick={downloadTemplate} style={{ fontSize: 13 }}>
+                                        📋 Şablon İndir
+                                    </button>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={runPreview}
+                                        disabled={!importFile || importStep === 'loading'}
+                                        style={{ background: '#10b981', borderColor: '#059669', minWidth: 120 }}
+                                    >
+                                        {importStep === 'loading' ? (
+                                            <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                <span className="loading-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                                                Analiz ediliyor...
+                                            </span>
+                                        ) : 'Önizle →'}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP: preview */}
+                        {importStep === 'preview' && importPreview && (
+                            <div>
+                                {/* Summary cards */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
+                                    <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: 26, fontWeight: 800, color: '#16a34a' }}>{importPreview.summary.new}</div>
+                                        <div style={{ fontSize: 12, color: '#15803d', fontWeight: 600 }}>Yeni Ürün</div>
+                                    </div>
+                                    <div style={{ background: '#eff6ff', border: '1px solid #93c5fd', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: 26, fontWeight: 800, color: '#2563eb' }}>{importPreview.summary.own}</div>
+                                        <div style={{ fontSize: 12, color: '#1d4ed8', fontWeight: 600 }}>Kendi Ürünün (Güncelleme)</div>
+                                    </div>
+                                    <div style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: 10, padding: '12px 14px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: 26, fontWeight: 800, color: '#ea580c' }}>{importPreview.summary.conflicts}</div>
+                                        <div style={{ fontSize: 12, color: '#c2410c', fontWeight: 600 }}>Çakışan (XML Ürünü)</div>
+                                    </div>
+                                </div>
+
+                                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                                    Toplam <strong>{importPreview.summary.total}</strong> geçerli satır işlenecek.
+                                    {importPreview.summary.own > 0 && <span style={{ color: '#2563eb' }}> Kendi ürünleriniz otomatik güncellenecek.</span>}
+                                </div>
+
+                                {/* Conflicts — need decisions */}
+                                {importPreview.conflicts && importPreview.conflicts.length > 0 && (
+                                    <div style={{ marginBottom: 16 }}>
+                                        <div style={{ fontWeight: 700, fontSize: 13, color: '#ea580c', marginBottom: 8 }}>
+                                            ⚠️ Çakışan Ürünler — Her biri için karar verin:
+                                        </div>
+                                        <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                                            {importPreview.conflicts.map((c, idx) => (
+                                                <div key={c.code} style={{ padding: '10px 14px', borderBottom: idx < importPreview.conflicts.length - 1 ? '1px solid var(--border-light)' : 'none', background: idx % 2 === 0 ? 'var(--bg-primary)' : 'var(--bg-surface)' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontFamily: 'monospace', fontWeight: 700, color: 'var(--primary)', fontSize: 12 }}>{c.code}</div>
+                                                            <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                                                                <span style={{ color: '#16a34a' }}>Excel:</span> {c.name}
+                                                            </div>
+                                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                                                                <span style={{ color: '#ea580c' }}>DB ({c.dbSupplier}):</span> {c.dbName}
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`dec-${c.code}`}
+                                                                    value="excel"
+                                                                    checked={importDecisions[c.code] === 'excel'}
+                                                                    onChange={() => setImportDecisions(prev => ({ ...prev, [c.code]: 'excel' }))}
+                                                                />
+                                                                <span style={{ fontWeight: 600, color: '#16a34a' }}>Excel&apos;dekini kullan</span>
+                                                            </label>
+                                                            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`dec-${c.code}`}
+                                                                    value="keep"
+                                                                    checked={importDecisions[c.code] === 'keep'}
+                                                                    onChange={() => setImportDecisions(prev => ({ ...prev, [c.code]: 'keep' }))}
+                                                                />
+                                                                <span style={{ fontWeight: 600, color: '#ea580c' }}>Mevcutu koru</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {importPreview.conflicts.length > 1 && (
+                                            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                                                <button
+                                                    className="btn btn-ghost"
+                                                    style={{ fontSize: 12, padding: '4px 10px', color: '#16a34a', borderColor: '#16a34a' }}
+                                                    onClick={() => {
+                                                        const all = {};
+                                                        importPreview.conflicts.forEach(c => { all[c.code] = 'excel'; });
+                                                        setImportDecisions(all);
+                                                    }}
+                                                >
+                                                    Tümü: Excel&apos;dekini kullan
+                                                </button>
+                                                <button
+                                                    className="btn btn-ghost"
+                                                    style={{ fontSize: 12, padding: '4px 10px', color: '#ea580c', borderColor: '#ea580c' }}
+                                                    onClick={() => {
+                                                        const all = {};
+                                                        importPreview.conflicts.forEach(c => { all[c.code] = 'keep'; });
+                                                        setImportDecisions(all);
+                                                    }}
+                                                >
+                                                    Tümü: Mevcutu koru
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 16 }}>
+                                    <button className="btn btn-ghost" onClick={() => setImportStep('idle')}>← Geri</button>
+                                    <button
+                                        className="btn btn-primary"
+                                        onClick={runConfirm}
+                                        style={{ background: '#10b981', borderColor: '#059669', minWidth: 160 }}
+                                    >
+                                        İçe Aktar ({importPreview.summary.new + importPreview.summary.own + Object.values(importDecisions).filter(v => v === 'excel').length} ürün)
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* STEP: confirming */}
+                        {importStep === 'confirming' && (
+                            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+                                <div className="loading-spinner" style={{ width: 40, height: 40, borderWidth: 3, margin: '0 auto 16px' }} />
+                                <div style={{ fontWeight: 600, color: 'var(--primary)' }}>Ürünler içe aktarılıyor...</div>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>Bu işlem birkaç saniye sürebilir.</div>
+                            </div>
+                        )}
+
+                        {/* STEP: done */}
+                        {importStep === 'done' && importResult && (
+                            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+                                <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+                                <div style={{ fontSize: 20, fontWeight: 800, color: '#16a34a', marginBottom: 8 }}>
+                                    {importResult.imported} ürün başarıyla içe aktarıldı!
+                                </div>
+                                <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 24 }}>
+                                    Ürünler veritabanına kaydedildi ve XML senkronizasyonundan korunacak.
+                                </div>
+                                <button
+                                    className="btn btn-primary"
+                                    onClick={() => setShowImportModal(false)}
+                                    style={{ background: '#10b981', borderColor: '#059669' }}
+                                >
+                                    Kapat
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Bulk Update Modal */}
             {showBulkModal && (
                 <div className="modal-overlay" onClick={() => setShowBulkModal(false)}>

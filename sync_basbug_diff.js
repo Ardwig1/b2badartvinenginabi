@@ -77,10 +77,10 @@ async function main() {
     while (true) {
         const { data: page, error } = await supabase
             .from('products')
-            .select('code, cost_price, is_active, stock_merkez')
+            .select('code, cost_price, is_active, stock_merkez, is_manual')
             .range(pageFrom, pageFrom + 999);
         if (error || !page || page.length === 0) break;
-        page.forEach(p => { dbProducts[p.code] = { cost_price: p.cost_price, is_active: p.is_active, stock_merkez: p.stock_merkez }; });
+        page.forEach(p => { dbProducts[p.code] = { cost_price: p.cost_price, is_active: p.is_active, stock_merkez: p.stock_merkez, is_manual: p.is_manual }; });
         if (page.length < 1000) break;
         pageFrom += 1000;
     }
@@ -93,6 +93,7 @@ async function main() {
     for (const code of Object.keys(priceMap)) {
         const db = dbProducts[code];
         if (!db) continue; // DB'de yok, atla (yeni ürün eklenmeyecek)
+        if (db.is_manual) continue; // Manuel eklenen ürün, XML'den güncelleme yapma
 
         const newNf = priceMap[code];
         const shouldBeActive = stockedSet.has(code);

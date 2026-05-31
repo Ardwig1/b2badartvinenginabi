@@ -282,7 +282,6 @@ export default function DealerCart() {
 
     return (
         <div className="page-wrapper">
-            <div className="stock-warning" style={{ marginBottom: 20 }}>⚠️ DEPO İSTANBUL DIŞINDADIR - DEPO’DA OLAN ÜRÜNLER KARGO İLE GÖNDERİLMEKTEDİR ⚠️</div>
             <div className="page-header">
                 <div><h1 className="page-title">Sepetim & Sipariş Ver</h1><p className="page-subtitle">{cartItems.length} ürün çeşidi</p></div>
                 <a href="/dashboard/catalog" className="btn btn-ghost desktop-only">← Kataloğa Dön</a>

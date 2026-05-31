@@ -244,10 +244,6 @@ export default function DealerCatalog() {
 
     return (
         <div className="page-wrapper catalog-page">
-            <div className="shipping-banner">📦 SAAT 16:00’A KADAR VERİLEN SİPARİŞLER AYNI GÜN KARGO’DA 🚚</div>
-            <div className="stock-warning" style={{ marginBottom: 8 }}>🚨 ÖDEME ÖNCESİ STOK TEYİTİ İÇİN İLETİŞİME GEÇEBİLİRSİNİZ 🚨</div>
-            <div className="stock-warning">⚠️ DEPO İSTANBUL DIŞINDADIR - DEPO’DA OLAN ÜRÜNLER KARGO İLE GÖNDERİLMEKTEDİR ⚠️</div>
-
             <div className="page-header">
                 <div><h1 className="page-title">Ürün Arama</h1><p className="page-subtitle">{hasSearched ? `${filtered.length} ürün bulundu` : 'Ürün aramak için filtreleri kullanın'} • %{discountPercent} iskonto</p></div>
                 <a href="/dashboard/cart" className="btn btn-primary cart-link">

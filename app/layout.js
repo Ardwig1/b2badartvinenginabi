@@ -24,11 +24,11 @@ export default function RootLayout({ children }) {
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Artpar B2B" />
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png" />
-        <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512.png" />
-        <link rel="apple-touch-icon" sizes="192x192" href="/pwa-icon-192.png" />
-        <link rel="apple-touch-icon" sizes="512x512" href="/pwa-icon-512.png" />
+        <link rel="icon" href="/favicon.ico?v=5" sizes="any" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/pwa-icon-192.png?v=5" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/pwa-icon-512.png?v=5" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/pwa-icon-192.png?v=5" />
+        <link rel="apple-touch-icon" sizes="512x512" href="/pwa-icon-512.png?v=5" />
       </head>
       <body className={outfit.variable}>
         <ThemeProvider>

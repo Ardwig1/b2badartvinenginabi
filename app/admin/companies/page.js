@@ -35,6 +35,7 @@ const EMPTY_FORM = {
   taxNumber: '',
   taxOffice: '',
   contactPerson: '',
+  referralPerson: '',
   email: '',
   phone: '',
   city: '',
@@ -269,6 +270,7 @@ export default function CompaniesPage() {
       taxNumber: c.tax_number || '',
       taxOffice: c.tax_office || '',
       contactPerson: c.contact_person || '',
+      referralPerson: c.referral_person || '',
       email: c.email || '',
       phone: c.phone || '',
       city: c.city || '',
@@ -304,6 +306,7 @@ export default function CompaniesPage() {
           tax_number: editFormData.taxNumber,
           tax_office: editFormData.taxOffice,
           contact_person: editFormData.contactPerson,
+          referral_person: editFormData.referralPerson,
           email: editFormData.email,
           phone: editFormData.phone,
           city: editFormData.city,
@@ -473,6 +476,9 @@ export default function CompaniesPage() {
                       E-posta {sortConfig.key === 'email' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
                     <th>Fiyat Grubu</th>
+                    <th onClick={() => requestSort('referral_person')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                      Referans {sortConfig.key === 'referral_person' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                    </th>
                     <th onClick={() => requestSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>
                       Durum {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                     </th>
@@ -503,8 +509,8 @@ export default function CompaniesPage() {
                       <td>{c.contact_person || '-'}</td>
                       <td style={{ color: 'var(--text-secondary)' }}>{c.email}</td>
                       <td>
-                        <select 
-                          className="form-select" 
+                        <select
+                          className="form-select"
                           style={{ padding: '5px 28px 5px 8px', fontSize: 13, width: 'auto' }}
                           value={c.price_group_id || ''}
                           onChange={e => updatePriceGroup(c.id, e.target.value)}
@@ -515,6 +521,9 @@ export default function CompaniesPage() {
                             <option key={pg.id} value={pg.id}>{pg.name}</option>
                           ))}
                         </select>
+                      </td>
+                      <td style={{ color: c.referral_person ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: c.referral_person ? 600 : 400 }}>
+                        {c.referral_person || '-'}
                       </td>
                       <td><span className={`badge ${statusBadge[c.status]}`}>{statusMap[c.status]}</span></td>
                       <td>
@@ -602,6 +611,7 @@ export default function CompaniesPage() {
                 <div><label className="form-label">Vergi No *</label><input className="form-input" required value={formData.taxNumber} onChange={update('taxNumber')} /></div>
                 <div><label className="form-label">Vergi Dairesi</label><input className="form-input" value={formData.taxOffice} onChange={update('taxOffice')} /></div>
                 <div><label className="form-label">Yetkili Kişi *</label><input className="form-input" required value={formData.contactPerson} onChange={update('contactPerson')} /></div>
+                <div><label className="form-label">Referans Kişi</label><input className="form-input" value={formData.referralPerson} onChange={update('referralPerson')} placeholder="Bu müşteriyi kim yönlendirdi?" /></div>
                 <div><label className="form-label">E-posta (Arka Plan İçin) *</label><input className="form-input" type="email" required value={formData.email} onChange={update('email')} /></div>
                 <div><label className="form-label">Telefon</label><input className="form-input" value={formData.phone} onChange={update('phone')} /></div>
                 <div><label className="form-label">İl</label><input className="form-input" value={formData.city} onChange={update('city')} onBlur={(e) => autoFillDealerCode(e.target.value)} /></div>
@@ -635,6 +645,7 @@ export default function CompaniesPage() {
                 <div className="form-group"><label className="form-label">Vergi Numarası</label><input className="form-input" value={editFormData.taxNumber} onChange={e => setEditFormData({...editFormData, taxNumber: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">Vergi Dairesi</label><input className="form-input" value={editFormData.taxOffice} onChange={e => setEditFormData({...editFormData, taxOffice: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">Yetkili Kişi</label><input className="form-input" value={editFormData.contactPerson} onChange={e => setEditFormData({...editFormData, contactPerson: e.target.value})} /></div>
+                <div className="form-group"><label className="form-label">Referans Kişi</label><input className="form-input" value={editFormData.referralPerson} onChange={e => setEditFormData({...editFormData, referralPerson: e.target.value})} placeholder="Bu müşteriyi kim yönlendirdi?" /></div>
                 <div className="form-group"><label className="form-label">E-posta (Arka Plan İçin)</label><input className="form-input" type="email" value={editFormData.email} onChange={e => setEditFormData({...editFormData, email: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">Telefon</label><input className="form-input" value={editFormData.phone} onChange={e => setEditFormData({...editFormData, phone: e.target.value})} /></div>
                 <div className="form-group"><label className="form-label">İl</label><input className="form-input" value={editFormData.city} onChange={e => setEditFormData({...editFormData, city: e.target.value})} /></div>

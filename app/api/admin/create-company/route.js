@@ -99,7 +99,7 @@ export async function POST(request) {
 
     const body = await request.json();
     const {
-        companyName, taxNumber, contactPerson, phone, address, email, password,
+        companyName, taxNumber, contactPerson, referralPerson, phone, address, email, password,
         taxOffice, city, district, branch, dealerCode, userCode
     } = body;
 
@@ -121,9 +121,10 @@ export async function POST(request) {
         .from('companies')
         .insert({
             name: companyName, tax_number: taxNumber, contact_person: contactPerson,
+            referral_person: (referralPerson || '').trim() || null,
             phone, address, email: finalEmail, status: 'approved',
-            tax_office: taxOffice, city, district, branch, 
-            dealer_code: (dealerCode || '').trim().toUpperCase(), 
+            tax_office: taxOffice, city, district, branch,
+            dealer_code: (dealerCode || '').trim().toUpperCase(),
             user_code: (userCode || '').trim().toUpperCase()
         })
         .select().single();
@@ -151,10 +152,10 @@ export async function PATCH(request) {
     if (!auth?.isAdmin) return NextResponse.json({ error: 'Yetkisiz.' }, { status: 401 });
 
     const body = await request.json();
-    const { 
-        id, status, price_group_id, password, user_code, dealer_code, 
+    const {
+        id, status, price_group_id, password, user_code, dealer_code,
         is_prepayment_locked, risk_limit,
-        name, tax_number, tax_office, contact_person, phone, address, 
+        name, tax_number, tax_office, contact_person, referral_person, phone, address,
         city, district, branch, email
     } = body;
 
@@ -172,6 +173,7 @@ export async function PATCH(request) {
     if (tax_number !== undefined) updates.tax_number = tax_number;
     if (tax_office !== undefined) updates.tax_office = tax_office;
     if (contact_person !== undefined) updates.contact_person = contact_person;
+    if (referral_person !== undefined) updates.referral_person = referral_person || null;
     if (phone !== undefined) updates.phone = phone;
     if (address !== undefined) updates.address = address;
     if (city !== undefined) updates.city = city;

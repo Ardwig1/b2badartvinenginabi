@@ -257,16 +257,8 @@ function LoginContent() {
                 <div style={{ maxWidth: 1200, margin: '0 auto' }}>
                     
                     {/* Logos Row */}
-                    <div style={{ 
-                        display: 'flex', 
-                        flexWrap: 'wrap', 
-                        justifyContent: 'center', 
-                        alignItems: 'center', 
-                        gap: '60px', 
-                        marginBottom: '2.5rem' 
-                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '2.5rem' }}>
                         <img src="/artpar-logo.png" alt="Artpar Logo" style={{ height: '50px', width: 'auto', objectFit: 'contain' }} />
-                        <img src="/bilisim.png" alt="Bilisim Logo" style={{ height: '100px', width: 'auto', objectFit: 'contain' }} />
                     </div>
 
                     {/* Contact Info Row */}

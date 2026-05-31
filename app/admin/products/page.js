@@ -276,6 +276,62 @@ export default function AdminProducts() {
 
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
+    const [excelLoading, setExcelLoading] = useState(false);
+
+    const downloadExcel = async () => {
+        setExcelLoading(true);
+        try {
+            const res = await fetch('/api/admin/products/list?page=1&search=&isCampaignOnly=false&limit=99999');
+            const data = await res.json();
+            const all = data.products || [];
+
+            const cols = [
+                { label: 'Stok Kodu', key: 'code' },
+                { label: 'OEM No', key: 'oem_no' },
+                { label: 'Ürün Adı', key: 'name' },
+                { label: 'Marka', key: 'brand' },
+                { label: 'Ürünün Alındığı Firma (GİZLİ)', key: 'supplier_brand' },
+                { label: 'Araç Markası', key: 'car_brand' },
+                { label: 'Araç Modeli', key: 'car_model' },
+                { label: 'Kategori', key: 'category' },
+                { label: 'Para Birimi', key: 'currency' },
+                { label: 'Geliş Fiyatı', key: 'cost_price' },
+                { label: 'Kâr Oranı (%)', key: 'profit_margin' },
+                { label: 'Liste Fiyatı', key: 'list_price' },
+                { label: 'İskonto Oranı (%)', key: 'discount_rate' },
+                { label: 'Sepette İndirim (%)', key: 'cart_discount_rate' },
+                { label: 'Birim', key: 'unit' },
+                { label: 'Koli Adeti', key: 'box_quantity' },
+                { label: 'İstanbul Stok', key: 'stock_merkez' },
+                { label: 'Depo Stok', key: 'stock_depo' },
+                { label: 'Kampanyalı mı', key: 'is_campaign', fmt: v => v ? 'Evet' : 'Hayır' },
+                { label: 'Sabit Fiyatlı mı', key: 'is_fixed_price', fmt: v => v ? 'Evet' : 'Hayır' },
+                { label: 'Sabit Fiyat Değeri', key: 'fixed_price_value' },
+                { label: 'Sabit Fiyat Dövizi', key: 'fixed_price_currency' },
+                { label: 'Durum', key: 'is_active', fmt: v => v ? 'Aktif' : 'Pasif' },
+                { label: 'Açıklama', key: 'description' },
+                { label: 'Görsel URL', key: 'image_url' },
+            ];
+
+            const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const headerRow = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+            const bodyRows = all.map(p =>
+                `<tr>${cols.map(c => `<td>${esc(c.fmt ? c.fmt(p[c.key]) : p[c.key])}</td>`).join('')}</tr>`
+            ).join('');
+
+            const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>table{border-collapse:collapse}th{background:#e2e8f0;font-weight:bold;border:1px solid #cbd5e1;padding:6px 10px}td{border:1px solid #e2e8f0;padding:5px 10px}</style></head><body><table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
+            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Urunler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.xls`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        } catch (e) {
+            alert('Excel indirilemedi: ' + e.message);
+        }
+        setExcelLoading(false);
+    };
+
     const [showBulkModal, setShowBulkModal] = useState(false);
     const [bulkFilters, setBulkFilters] = useState({ search: '', brand: '', car_brand: '', supplier_brand: '', currency: '' });
     const [bulkUpdates, setBulkUpdates] = useState({ profit_margin: '' });
@@ -318,7 +374,12 @@ export default function AdminProducts() {
                     <h1 className="page-title">Ürünler & Stok</h1>
                     <p className="page-subtitle">{totalCount} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
-                <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-ghost" onClick={downloadExcel} disabled={excelLoading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {excelLoading ? '⏳ İndiriliyor...' : '📥 Excel Formatında İndir'}
+                    </button>
+                    <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
+                </div>
             </div>
 
             <GlobalMarginSettings onMarginUpdate={setGlobalMargin} />

@@ -276,8 +276,25 @@ export default function AdminProducts() {
 
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
-    const downloadExcel = () => {
-        window.location.href = '/api/admin/products/export';
+    const [excelLoading, setExcelLoading] = useState(false);
+
+    const downloadExcel = async () => {
+        setExcelLoading(true);
+        try {
+            const res = await fetch('/api/admin/products/export');
+            if (!res.ok) throw new Error('Sunucu hatası');
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const dateStr = new Date().toLocaleDateString('tr-TR').replace(/\./g, '-');
+            a.download = `Urunler_${dateStr}.xlsx`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (e) {
+            alert('İndirme başarısız: ' + e.message);
+        }
+        setExcelLoading(false);
     };
 
     const [showBulkModal, setShowBulkModal] = useState(false);
@@ -323,8 +340,8 @@ export default function AdminProducts() {
                     <p className="page-subtitle">{totalCount} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={downloadExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        📥 Excel Formatında İndir
+                    <button className="btn btn-ghost" onClick={downloadExcel} disabled={excelLoading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        {excelLoading ? '⏳ Hazırlanıyor...' : '📥 Excel Formatında İndir'}
                     </button>
                     <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
                 </div>

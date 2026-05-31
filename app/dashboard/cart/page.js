@@ -73,6 +73,7 @@ export default function DealerCart() {
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
     const [manualPrices, setManualPrices] = useState({});
+    const [inputQtys, setInputQtys] = useState({});
 
     const fetchUser = useCallback(async () => {
         try {
@@ -397,7 +398,23 @@ export default function DealerCart() {
                                                             `₺${unitPriceIncVat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                                                         )}
                                                     </td>
-                                                    <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty - 1)}>−</button><span style={{ minWidth: 24, textAlign: 'center', fontWeight: 600 }}>{qty}</span><button className="btn btn-ghost btn-sm" onClick={() => handleSetQty(p.id, p, qty + 1)}>+</button></div></td>
+                                                    <td><div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                                                        <button className="btn btn-ghost btn-sm" onClick={() => { handleSetQty(p.id, p, qty - 1); setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; }); }}>−</button>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={inputQtys[p.id] ?? qty}
+                                                            onChange={e => setInputQtys(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                                            onBlur={e => {
+                                                                const val = Math.max(0, parseInt(e.target.value) || 0);
+                                                                handleSetQty(p.id, p, val);
+                                                                setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; });
+                                                            }}
+                                                            onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                                                            style={{ width: 52, textAlign: 'center', fontWeight: 700, fontSize: 14, padding: '4px 4px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-surface)', color: 'var(--text-primary)', outline: 'none' }}
+                                                        />
+                                                        <button className="btn btn-ghost btn-sm" onClick={() => { handleSetQty(p.id, p, qty + 1); setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; }); }}>+</button>
+                                                    </div></td>
                                                     <td style={{ textAlign: 'right', fontWeight: 700 }}>₺{(unitPriceIncVat * qty).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                     <td style={{ textAlign: 'center' }}><input type="checkbox" checked={itemSelected} onChange={() => handleSetQty(p.id, p, qty, itemSelected)} style={{ width: 18, height: 18 }} /></td>
                                                     <td style={{ textAlign: 'center' }}><button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => handleSetQty(p.id, p, 0)}>✕</button></td>
@@ -434,9 +451,21 @@ export default function DealerCart() {
                                             </div>
                                             <div className="cart-card-bottom">
                                                 <div className="cart-qty-picker">
-                                                    <button onClick={() => handleSetQty(p.id, p, qty - 1)}><MinusIcon style={{ width: 16 }} /></button>
-                                                    <span>{qty}</span>
-                                                    <button onClick={() => handleSetQty(p.id, p, qty + 1)}><PlusIcon style={{ width: 16 }} /></button>
+                                                    <button onClick={() => { handleSetQty(p.id, p, qty - 1); setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; }); }}><MinusIcon style={{ width: 16 }} /></button>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        value={inputQtys[p.id] ?? qty}
+                                                        onChange={e => setInputQtys(prev => ({ ...prev, [p.id]: e.target.value }))}
+                                                        onBlur={e => {
+                                                            const val = Math.max(0, parseInt(e.target.value) || 0);
+                                                            handleSetQty(p.id, p, val);
+                                                            setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; });
+                                                        }}
+                                                        onKeyDown={e => { if (e.key === 'Enter') e.target.blur(); }}
+                                                        style={{ width: 44, textAlign: 'center', fontWeight: 700, fontSize: 14, border: 'none', background: 'transparent', color: 'var(--text-primary)', outline: 'none', MozAppearance: 'textfield' }}
+                                                    />
+                                                    <button onClick={() => { handleSetQty(p.id, p, qty + 1); setInputQtys(prev => { const n = {...prev}; delete n[p.id]; return n; }); }}><PlusIcon style={{ width: 16 }} /></button>
                                                 </div>
                                                 <div className="cart-card-price">
                                                     <div className="unit" style={{ fontSize: 10, color: 'var(--text-muted)' }}>KDVsiz: ₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>

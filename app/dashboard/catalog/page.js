@@ -82,47 +82,40 @@ export default function DealerCatalog() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
-    const searchProducts = async (e) => {
-        if (e && e.key && e.key !== 'Enter') return;
-        if (!filterText.trim() && !filterBrand && !filterCarBrand && !filterCarModel && !checkIn && !checkLow && !checkNew && !checkCampaign) {
-            alert('Lütfen arama yapmak için en az bir filtre seçin.');
-            return;
-        }
+    const doSearch = useCallback(async (text, brand, carBrand, carModel, isNew, isCampaign) => {
         isSearchingRef.current = true;
         setLoading(true); setHasSearched(true); setCurrentPage(1);
         try {
-            const response = await fetch('/api/products/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ filterText: filterText.trim(), brand: filterBrand, carBrand: filterCarBrand, carModel: filterCarModel, is_new: checkNew, is_campaign: checkCampaign }) });
+            const response = await fetch('/api/products/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filterText: text.trim(), brand, carBrand, carModel, is_new: isNew, is_campaign: isCampaign })
+            });
             const data = await response.json();
             setProducts(data || []);
-
-            // LOG ACTIVITY: SEARCH (Including all filter states)
             fetch('/api/log-activity', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action_type: 'search',
-                    details: { 
-                        text: filterText.trim(), 
-                        brand: filterBrand, 
-                        carBrand: filterCarBrand, 
-                        carModel: filterCarModel,
-                        is_campaign: checkCampaign,
-                        is_new: checkNew,
-                        in_stock: checkIn,
-                        low_stock: checkLow
-                    }
-                })
-            }).catch(e => console.error('Log search error:', e));
-        } catch (err) { console.error(err); } finally { 
-            setLoading(false); 
+                body: JSON.stringify({ action_type: 'search', details: { text: text.trim(), brand, carBrand, carModel, is_campaign: isCampaign, is_new: isNew, in_stock: checkIn, low_stock: checkLow } })
+            }).catch(() => {});
+        } catch (err) { console.error(err); } finally {
+            setLoading(false);
         }
-    };
+    }, [checkIn, checkLow]);
 
+    // Otomatik arama: herhangi bir sunucu-taraflı filtre değişince 400ms debounce ile ara
+    // (checkIn / checkLow sadece client-side filtreleme yapar, API çağrısı gerekmez)
     useEffect(() => {
-        setProducts([]);
-        setHasSearched(false);
-        setCurrentPage(1);
-    }, [filterBrand, filterCarBrand, filterCarModel, filterText, checkIn, checkLow, checkNew, checkCampaign]);
+        const hasFilters = filterText.trim() || filterBrand || filterCarBrand || filterCarModel || checkNew || checkCampaign;
+        if (!hasFilters) {
+            setProducts([]); setHasSearched(false); setCurrentPage(1);
+            return;
+        }
+        const timer = setTimeout(() => {
+            doSearch(filterText, filterBrand, filterCarBrand, filterCarModel, checkNew, checkCampaign);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [filterText, filterBrand, filterCarBrand, filterCarModel, checkNew, checkCampaign, doSearch]);
 
     useEffect(() => {
         if (!filterCarBrand) { setCarModels([]); setFilterCarModel(''); return; }
@@ -266,7 +259,7 @@ export default function DealerCatalog() {
                         ))}
                         <div className="filter-row search-row">
                             <div className="filter-label">Genel Arama</div>
-                            <div className="filter-control search-input"><input placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın" value={filterText} onChange={e => setFilterText(e.target.value.toUpperCase())} onKeyDown={searchProducts} /></div>
+                            <div className="filter-control search-input"><input placeholder="Arama yapmak için 'far' veya '2K8941006B' gibi bir oem kodu yazın" value={filterText} onChange={e => setFilterText(e.target.value.toUpperCase())} onKeyDown={e => e.key === 'Enter' && doSearch(filterText, filterBrand, filterCarBrand, filterCarModel, checkNew, checkCampaign)} /></div>
                         </div>
                     </div>
                     <div className="filter-checks">
@@ -281,7 +274,7 @@ export default function DealerCatalog() {
                     </div>
                 </div>
                 <div className="filter-actions">
-                    <button className="btn btn-primary" onClick={() => searchProducts()}>Ara</button>
+                    <button className="btn btn-primary" onClick={() => { const h = filterText.trim() || filterBrand || filterCarBrand || filterCarModel || checkNew || checkCampaign; if (h) doSearch(filterText, filterBrand, filterCarBrand, filterCarModel, checkNew, checkCampaign); }}>Ara</button>
                     <button className="btn btn-danger" onClick={() => { setFilterBrand(''); setFilterCarBrand(''); setFilterCarModel(''); setFilterText(''); setProducts([]); setHasSearched(false); setCheckIn(false); setCheckLow(false); setCheckNew(false); setCheckCampaign(false); }}>Temizle</button>
                     <button className="btn btn-ghost dark-btn" onClick={() => setViewMode(v => v === 'catalog' ? 'list' : 'catalog')}>{viewMode === 'catalog' ? '🖼️ Liste' : '📊 Katalog'}</button>
                     <div className="status-indicator"><div className="status-dot" /></div>

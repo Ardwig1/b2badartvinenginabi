@@ -56,10 +56,10 @@ export async function POST(req) {
         if (is_new) query = query.eq('is_new', true);
         if (is_campaign) query = query.eq('is_campaign', true);
 
-        // ⌨️ 5. Metin Arama (Kümülatif olarak eklenir)
+        // ⌨️ 5. Metin Arama — tüm ilgili alanlarda ara
         if (searchWords.length > 0) {
             for (const word of searchWords) {
-                query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%`);
+                query = query.or(`name.ilike.%${word}%,code.ilike.%${word}%,oem_no.ilike.%${word}%,brand.ilike.%${word}%,car_brand.ilike.%${word}%,car_model.ilike.%${word}%,category.ilike.%${word}%`);
             }
         }
 

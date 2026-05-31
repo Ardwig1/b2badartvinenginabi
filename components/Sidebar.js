@@ -74,6 +74,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
     };
 
     return (
+        <>
         <aside className={`${styles.sidebar} ${!isOpen ? styles.collapsed : ''}`}>
             {/* Logo */}
             <div className={styles.logo}>
@@ -185,6 +186,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                 {tooltip.label}
             </div>
         )}
+        </>
     );
 }
 

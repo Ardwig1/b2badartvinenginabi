@@ -125,34 +125,6 @@
     flex-shrink: 0;
 }
 
-.tooltip {
-    display: none;
-}
-
-.collapsed .navItem .tooltip {
-    display: block;
-    position: absolute;
-    left: calc(100% + 10px);
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--bg-card);
-    color: var(--text-primary);
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    border: 1px solid var(--border);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
-    z-index: 999;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-}
-
-.collapsed .navItem:hover .tooltip {
-    opacity: 1;
-}
 
 .userSection {
     padding: 16px 12px;

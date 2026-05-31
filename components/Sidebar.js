@@ -52,6 +52,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
     const isShowroom = pathname.includes('/admin/showroom') || pathname.includes('/rep/showroom');
     const impersonated = isImpersonated || isShowroom;
     const [isOpen, setIsOpen] = useState(false); // Kapalı başla
+    const [tooltip, setTooltip] = useState(null); // { label, y }
     
     // Determine which menu to show
     // If in showroom mode, ALWAYS show dealer navigation regardless of who the user is
@@ -108,10 +109,14 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                             key={item.href}
                             href={finalHref}
                             className={`${styles.navItem} ${isActive ? styles.active : ''}`}
+                            onMouseEnter={!isOpen ? (e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setTooltip({ label: item.label, y: rect.top + rect.height / 2 });
+                            } : undefined}
+                            onMouseLeave={!isOpen ? () => setTooltip(null) : undefined}
                         >
                             <span className={styles.navIcon}>{item.icon}</span>
                             {isOpen && <span>{item.label}</span>}
-                            {!isOpen && <span className={styles.tooltip}>{item.label}</span>}
                         </Link>
                     );
                 })}
@@ -157,6 +162,29 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                 )}
             </div>
         </aside>
+
+        {/* Collapsed sidebar tooltip — fixed positioned, hiç clip yemiyor */}
+        {!isOpen && tooltip && (
+            <div style={{
+                position: 'fixed',
+                left: 90,
+                top: tooltip.y,
+                transform: 'translateY(-50%)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-primary)',
+                padding: '7px 14px',
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                border: '1px solid var(--border)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+                zIndex: 9999,
+                pointerEvents: 'none',
+            }}>
+                {tooltip.label}
+            </div>
+        )}
     );
 }
 

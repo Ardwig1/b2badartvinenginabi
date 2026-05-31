@@ -527,13 +527,13 @@ export default function DealerCart() {
                                     <div style={{ marginTop: 16, padding: '14px 16px', background: 'var(--bg-surface)', borderRadius: 14, border: '1px solid var(--border)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                                             {totals.isShippingFree ? (
-                                                <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>🎉 Kargo Ücretsiz!</span>
+                                                <span style={{ color: '#16a34a', fontWeight: 800, fontSize: 18 }}>🎉 Kargo Ücretsiz!</span>
                                             ) : (
-                                                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
-                                                    Ücretsiz kargoya <strong style={{ color: 'var(--primary)' }}>₺{totals.remainingForFreeShipping.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> kaldı
+                                                <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)' }}>
+                                                    Ücretsiz kargoya <strong style={{ color: 'var(--primary)', fontSize: 17 }}>₺{totals.remainingForFreeShipping.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> kaldı
                                                 </span>
                                             )}
-                                            <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                                            <span style={{ color: '#dc2626', fontSize: 15, fontWeight: 800 }}>
                                                 ₺{freeShippingThreshold.toLocaleString('tr-TR')} üzeri
                                             </span>
                                         </div>

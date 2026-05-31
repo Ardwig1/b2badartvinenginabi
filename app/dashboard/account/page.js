@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DocumentTextIcon } from '@heroicons/react/24/outline';
 
+const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+
 const START_YEAR = 2026;
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - START_YEAR + 1 }, (_, i) => START_YEAR + i);
@@ -192,7 +194,7 @@ export default function DealerAccountLedger() {
                                                             loadingDetails[tx.id] ? <div>Yükleniyor...</div> : (
                                                                 <div className="table-wrapper"><table style={{ background: 'transparent' }}>
                                                                     <thead><tr><th>Kod</th><th>Ürün</th><th style={{ textAlign: 'right' }}>Adet</th><th style={{ textAlign: 'right' }}>Fiyat</th><th style={{ textAlign: 'right' }}>Tutar</th></tr></thead>
-                                                                    <tbody>{(orderDetails[tx.id] || []).map(item => (<tr key={item.id}><td data-label="Kod">{item.product?.code}</td><td data-label="Ürün">{item.product?.name}</td><td data-label="Adet" style={{ textAlign: 'right' }}>{item.quantity}</td><td data-label="Fiyat" style={{ textAlign: 'right' }}>{fmtMoney(item.unit_price)}</td><td data-label="Tutar" style={{ textAlign: 'right' }}>{fmtMoney(item.total_price)}</td></tr>))}</tbody>
+                                                                    <tbody>{(orderDetails[tx.id] || []).map(item => (<tr key={item.id}><td data-label="Kod">{showCode(item.product?.code) || '-'}</td><td data-label="Ürün">{item.product?.name}</td><td data-label="Adet" style={{ textAlign: 'right' }}>{item.quantity}</td><td data-label="Fiyat" style={{ textAlign: 'right' }}>{fmtMoney(item.unit_price)}</td><td data-label="Tutar" style={{ textAlign: 'right' }}>{fmtMoney(item.total_price)}</td></tr>))}</tbody>
                                                                 </table></div>
                                                             )
                                                         ) : (<div><strong>Açıklama:</strong> {tx.description || '-'}</div>)}

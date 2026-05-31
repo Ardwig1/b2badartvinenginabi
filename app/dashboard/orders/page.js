@@ -5,6 +5,8 @@ import { createClient } from '@/lib/supabase/client';
 import { ShoppingCartIcon, DocumentTextIcon, CheckCircleIcon, ClockIcon, TruckIcon, XCircleIcon, BeakerIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 
+const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+
 function OrdersContent() {
     const searchParams = useSearchParams();
     const [orders, setOrders] = useState([]);
@@ -144,7 +146,7 @@ function OrdersContent() {
                                     return (
                                         <tr key={item.id + idx}>
                                             <td data-label="Ürün Adı" style={{ fontWeight: 700 }}>{item.product?.name}</td>
-                                            <td data-label="Ürün Kodu">{item.product?.code}</td>
+                                            <td data-label="Ürün Kodu">{showCode(item.product?.code) || '-'}</td>
                                             <td data-label="Sipariş Tarihi">{new Date(item.orders?.created_at).toLocaleDateString('tr-TR')}</td>
                                             <td data-label="Miktar" style={{ textAlign: 'center', fontWeight: 600 }}>{item.quantity} {item.product?.unit || 'AD'}</td>
                                             <td data-label="Birim Fiyat" style={{ textAlign: 'right', fontWeight: 800, color: 'var(--success)' }}>₺{netUnitPrice.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>

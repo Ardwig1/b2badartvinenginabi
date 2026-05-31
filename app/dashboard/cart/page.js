@@ -4,6 +4,8 @@ import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon, TrashIcon, Plus
 import { useCart } from '@/components/CartProvider';
 import { createClient } from '@/lib/supabase/client';
 
+const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+
 const getCircleStyle = (qty, size = 12) => {
     let bg, border, boxShadow;
     if (qty > 15) { bg = 'linear-gradient(135deg, #22c55e, #15803d)'; border = '1px solid #14532d'; boxShadow = `0 0 ${size / 2}px rgba(34, 197, 94, 0.8), inset 0 2px 4px rgba(255,255,255,0.4)`; }
@@ -314,7 +316,7 @@ export default function DealerCart() {
                                         setProductSearch(''); 
                                         setSearchProducts([]); 
                                     }}>
-                                        <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div><div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div></div>
+                                        <div><div style={{ fontWeight: 500, fontSize: 14 }}>{p.name}</div>{showCode(p.code) && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code}</div>}</div>
                                         <div style={{ color: 'var(--primary)', fontWeight: 600 }}>₺{getDiscountedPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                                     </div>
                                 ))}
@@ -348,7 +350,7 @@ export default function DealerCart() {
                                                 <tr key={p.id} style={{ opacity: itemSelected ? 1 : 0.5 }}>
                                                     <td>
                                                         <div style={{ fontWeight: 600 }}>{p.name}</div>
-                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{p.code} {extra && !manualVal && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}</div>
+                                                        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{showCode(p.code)} {extra && !manualVal && <span className="extra-badge-sm">EK İSKONTO %{extra.discount_rate}</span>}</div>
                                                     </td>
                                                     <td style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{p.brand || '-'}</td>
                                                     <td style={{ textAlign: 'center' }}><div style={getCircleStyle(p.stock_merkez, 12)} /></td>
@@ -397,7 +399,7 @@ export default function DealerCart() {
                                                 <input type="checkbox" checked={selected} onChange={() => handleSetQty(p.id, p, qty, selected)} />
                                                 <div className="cart-card-info">
                                                     <div className="cart-card-name">{p.name}</div>
-                                                    <div className="cart-card-sub">{p.code} {p.brand && `| ${p.brand}`}</div>
+                                                    <div className="cart-card-sub">{showCode(p.code)}{showCode(p.code) && p.brand ? ' | ' : ''}{p.brand || ''}</div>
                                                     <div style={{ display: 'flex', gap: 12, marginTop: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_merkez, 10)} /> İstanbul</span>
                                                         <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><div style={getCircleStyle(p.stock_depo, 10)} /> Depo</span>

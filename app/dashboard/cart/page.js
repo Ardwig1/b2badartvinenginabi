@@ -537,22 +537,22 @@ export default function DealerCart() {
                                                 ₺{freeShippingThreshold.toLocaleString('tr-TR')} üzeri
                                             </span>
                                         </div>
-                                        <div style={{ height: 20, background: 'var(--bg-card)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                                        <div style={{ height: 80, background: 'var(--bg-card)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
                                             <div style={{
                                                 height: '100%',
                                                 width: `${totals.shippingProgress}%`,
                                                 background: totals.isShippingFree
                                                     ? 'linear-gradient(90deg, #16a34a, #22c55e)'
                                                     : 'linear-gradient(90deg, var(--primary), #60a5fa)',
-                                                borderRadius: 999,
+                                                borderRadius: 16,
                                                 transition: 'width 0.5s ease, background 0.3s ease',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'flex-end',
-                                                paddingRight: totals.shippingProgress > 15 ? 8 : 0
+                                                paddingRight: totals.shippingProgress > 15 ? 14 : 0
                                             }}>
                                                 {totals.shippingProgress > 15 && (
-                                                    <span style={{ fontSize: 10, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>
+                                                    <span style={{ fontSize: 16, fontWeight: 800, color: 'white', whiteSpace: 'nowrap' }}>
                                                         %{Math.round(totals.shippingProgress)}
                                                     </span>
                                                 )}

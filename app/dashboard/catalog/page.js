@@ -54,8 +54,16 @@ export default function DealerCatalog() {
     const [checkLow, setCheckLow] = useState(false);
     const [checkNew, setCheckNew] = useState(false);
     const [checkCampaign, setCheckCampaign] = useState(false);
+    const [sortCol, setSortCol] = useState(null);
+    const [sortDir, setSortDir] = useState(null); // 'asc' | 'desc' | null
 
     const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 2500); };
+
+    const handleSort = (col) => {
+        if (sortCol !== col) { setSortCol(col); setSortDir('asc'); }
+        else if (sortDir === 'asc') { setSortDir('desc'); }
+        else { setSortCol(null); setSortDir(null); }
+    };
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -183,7 +191,31 @@ export default function DealerCatalog() {
         });
     }, [products, checkIn, checkLow, checkCampaign]);
 
-    const perPageItems = useMemo(() => filtered.slice((currentPage - 1) * perPage, currentPage * perPage), [filtered, currentPage, perPage]);
+    const perPageItems = useMemo(() => {
+        let items = [...filtered];
+        if (sortCol && sortDir) {
+            items.sort((a, b) => {
+                let va, vb;
+                if (sortCol === 'brand')         { va = (a.brand||'').toLowerCase();          vb = (b.brand||'').toLowerCase(); }
+                else if (sortCol === 'code')     { va = (showCode(a.code)||'').toLowerCase(); vb = (showCode(b.code)||'').toLowerCase(); }
+                else if (sortCol === 'oem_no')   { va = (a.oem_no||'').toLowerCase();         vb = (b.oem_no||'').toLowerCase(); }
+                else if (sortCol === 'name')     { va = (a.name||'').toLowerCase();            vb = (b.name||'').toLowerCase(); }
+                else if (sortCol === 'unit')     { va = (a.unit||'').toLowerCase();            vb = (b.unit||'').toLowerCase(); }
+                else if (sortCol === 'discount') { va = getEffectiveGroupDiscountValue(a);     vb = getEffectiveGroupDiscountValue(b); }
+                else if (sortCol === 'campaign') { va = Number(a.discount_rate)||0;            vb = Number(b.discount_rate)||0; }
+                else if (sortCol === 'cart_disc'){ va = Number(a.cart_discount_rate)||0;       vb = Number(b.cart_discount_rate)||0; }
+                else if (sortCol === 'price')    { va = getKdvPrice(a);                        vb = getKdvPrice(b); }
+                else if (sortCol === 'merkez')   { va = Number(a.stock_merkez)||0;             vb = Number(b.stock_merkez)||0; }
+                else if (sortCol === 'depo')     { va = Number(a.stock_depo)||0;               vb = Number(b.stock_depo)||0; }
+                else { va = 0; vb = 0; }
+                if (va < vb) return sortDir === 'asc' ? -1 : 1;
+                if (va > vb) return sortDir === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return items.slice((currentPage - 1) * perPage, currentPage * perPage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filtered, currentPage, perPage, sortCol, sortDir]);
 
     useEffect(() => {
         const urls = perPageItems.map(p => p.image_url).filter(Boolean);
@@ -318,7 +350,35 @@ export default function DealerCatalog() {
             ) : (
                 <div className="table-wrapper">
                     <table>
-                        <thead><tr><th className="text-left">MARKA</th><th className="text-left">STOK KODU</th><th className="text-left">OEM NO</th><th className="text-left">ÜRÜN ADI</th><th className="text-center" style={{ width: 40 }}><PhotoIcon className="w-5 mx-auto" /></th><th className="text-left">BİRİM</th><th className="text-center">BAYİ İSK.</th><th className="text-center">KAMPANYA</th><th className="text-center">SEPETTE %</th><th className="text-right">FİYAT (KDV DAHİL)</th><th className="text-center">İSTANBUL</th><th className="text-center">DEPO</th><th className="text-center">KOLİ AD.</th><th className="text-left">SİP.MİK.</th><th className="text-left">SEPETE AT</th></tr></thead>
+                        <thead><tr>
+                            {[
+                                ['brand',     'MARKA',            'left'],
+                                ['code',      'STOK KODU',        'left'],
+                                ['oem_no',    'OEM NO',           'left'],
+                                ['name',      'ÜRÜN ADI',         'left'],
+                            ].map(([col, label, align]) => (
+                                <th key={col} className={`text-${align}`} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                                    {label} <span style={{ fontSize: 10, opacity: sortCol === col ? 1 : 0.25 }}>{sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}</span>
+                                </th>
+                            ))}
+                            <th className="text-center" style={{ width: 40 }}><PhotoIcon style={{ width: 18, height: 18, margin: '0 auto', display: 'block' }} /></th>
+                            {[
+                                ['unit',      'BİRİM',            'left'],
+                                ['discount',  'BAYİ İSK.',        'center'],
+                                ['campaign',  'KAMPANYA',         'center'],
+                                ['cart_disc', 'SEPETTE %',        'center'],
+                                ['price',     'FİYAT (KDV DAHİL)','right'],
+                                ['merkez',    'İSTANBUL',         'center'],
+                                ['depo',      'DEPO',             'center'],
+                            ].map(([col, label, align]) => (
+                                <th key={col} className={`text-${align}`} onClick={() => handleSort(col)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+                                    {label} <span style={{ fontSize: 10, opacity: sortCol === col ? 1 : 0.25 }}>{sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}</span>
+                                </th>
+                            ))}
+                            <th className="text-center">KOLİ AD.</th>
+                            <th className="text-left">SİP.MİK.</th>
+                            <th className="text-left">SEPETE AT</th>
+                        </tr></thead>
                         <tbody>
                             {perPageItems.map(p => (
                                 <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>

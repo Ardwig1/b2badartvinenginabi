@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { CogIcon, CurrencyDollarIcon, CurrencyEuroIcon, TrashIcon, TruckIcon } from '@heroicons/react/24/outline';
 
 export default function GlobalMarginSettings({ onMarginUpdate }) {
     const [margin, setMargin] = useState('');
@@ -19,6 +19,11 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
     
     const [savingEur, setSavingEur] = useState(false);
     const [successEur, setSuccessEur] = useState(false);
+
+    const [freeShippingThreshold, setFreeShippingThreshold] = useState('');
+    const [shippingCost, setShippingCost] = useState('');
+    const [savingShipping, setSavingShipping] = useState(false);
+    const [successShipping, setSuccessShipping] = useState(false);
 
     const [loading, setLoading] = useState(true);
 
@@ -40,6 +45,8 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
             if (usdData?.is_active !== undefined) setIsUsdActive(usdData.is_active);
             if (usdData?.eur_rate !== undefined) setEurRate(usdData.eur_rate);
             if (usdData?.eur_active !== undefined) setIsEurActive(usdData.eur_active);
+            if (usdData?.free_shipping_threshold !== undefined) setFreeShippingThreshold(usdData.free_shipping_threshold);
+            if (usdData?.shipping_cost !== undefined) setShippingCost(usdData.shipping_cost);
         } catch (error) {
             console.error("Failed to load settings", error);
         } finally {
@@ -184,6 +191,32 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
             alert("Euro kuru ayarları kaydedilemedi: " + error.message);
         } finally {
             setSavingEur(false);
+        }
+    };
+
+    const handleSaveShipping = async () => {
+        try {
+            setSavingShipping(true);
+            const res = await fetch('/api/admin/usd-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    free_shipping_threshold: freeShippingThreshold === '' ? 0 : freeShippingThreshold,
+                    shipping_cost: shippingCost === '' ? 0 : shippingCost,
+                    currency: 'SHIPPING'
+                })
+            });
+            if (!res.ok) {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Kaydetme hatası');
+            }
+            setSuccessShipping(true);
+            setTimeout(() => setSuccessShipping(false), 2500);
+        } catch (error) {
+            console.error("Shipping settings save error:", error);
+            alert("Kargo ayarları kaydedilemedi: " + error.message);
+        } finally {
+            setSavingShipping(false);
         }
     };
 
@@ -353,6 +386,62 @@ export default function GlobalMarginSettings({ onMarginUpdate }) {
                     <button className={`btn ${successEur ? 'btn-success' : 'btn-primary'} btn-sm`} onClick={() => handleSaveEur()} disabled={savingEur}>
                         {savingEur ? '...' : successEur ? '✓' : 'Kaydet'}
                     </button>
+                </div>
+
+                <div style={{ borderTop: '1px solid var(--border-light)', margin: '0 -4px' }} />
+
+                {/* Kargo Ücretleri */}
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 14 }}>
+                        <div style={{ background: '#7c3aed', color: 'white', padding: 10, borderRadius: 10 }}>
+                            <TruckIcon style={{ width: 24, height: 24 }} />
+                        </div>
+                        <div>
+                            <h2 className="card-title" style={{ fontSize: 15, margin: 0 }}>Kargo Ücretleri</h2>
+                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Ücretsiz kargo eşiği ve kargo bedeli</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 10, alignItems: 'flex-end' }}>
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Ücretsiz Kargo Eşiği (TL)</label>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ position: 'absolute', right: 10, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>TL</span>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={freeShippingThreshold}
+                                    onChange={e => setFreeShippingThreshold(e.target.value)}
+                                    placeholder="örn: 3000"
+                                    style={{ width: '100%', fontSize: 14, fontWeight: 700, paddingRight: 30, textAlign: 'center', height: 36 }}
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4, color: 'var(--text-secondary)' }}>Kargo Ücreti (TL)</label>
+                            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                <span style={{ position: 'absolute', right: 10, fontSize: 13, fontWeight: 600, color: 'var(--text-muted)' }}>TL</span>
+                                <input
+                                    type="number"
+                                    className="form-input"
+                                    value={shippingCost}
+                                    onChange={e => setShippingCost(e.target.value)}
+                                    placeholder="örn: 500"
+                                    style={{ width: '100%', fontSize: 14, fontWeight: 700, paddingRight: 30, textAlign: 'center', height: 36 }}
+                                />
+                            </div>
+                        </div>
+                        <button
+                            className={`btn ${successShipping ? 'btn-success' : 'btn-primary'} btn-sm`}
+                            onClick={handleSaveShipping}
+                            disabled={savingShipping}
+                            style={{ height: 36, alignSelf: 'flex-end' }}
+                        >
+                            {savingShipping ? '...' : successShipping ? '✓' : 'Kaydet'}
+                        </button>
+                    </div>
+                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>
+                        💡 Sepet toplamı eşiği aşarsa kargo ücretsiz olur; geçmezse kargo ücreti toplama eklenir.
+                    </p>
                 </div>
 
             </div>

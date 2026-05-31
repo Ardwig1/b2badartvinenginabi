@@ -18,7 +18,7 @@ export default function AdminPriceGroups() {
         setLoading(true);
         const res = await fetchPriceGroups();
         if (res.success && res.data) {
-            const systemNames = ['USD_FIXED_RATE', 'USD_FIXED_RATE_ACTIVE', 'GLOBAL_PROFIT_MARGIN'];
+            const systemNames = ['USD_FIXED_RATE', 'USD_FIXED_RATE_ACTIVE', 'GLOBAL_PROFIT_MARGIN', 'EUR_FIXED_RATE', 'EUR_FIXED_RATE_ACTIVE', 'SHIPPING_FREE_THRESHOLD', 'SHIPPING_COST'];
             setGroups(res.data.filter(g => !systemNames.includes(g.name)));
         } else {
             setGroups([]);

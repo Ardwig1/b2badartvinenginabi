@@ -16,14 +16,19 @@ export async function GET() {
         const { data: usdActiveData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'USD_FIXED_RATE_ACTIVE').limit(1);
         const { data: eurRateData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'EUR_FIXED_RATE').limit(1);
         const { data: eurActiveData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'EUR_FIXED_RATE_ACTIVE').limit(1);
+        const { data: shippingThreshData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'SHIPPING_FREE_THRESHOLD').limit(1);
+        const { data: shippingCostData } = await supabase.from('price_groups').select('discount_percent').eq('name', 'SHIPPING_COST').limit(1);
 
         let usd_rate = (usdRateData && usdRateData.length > 0) ? usdRateData[0].discount_percent : 0;
         let is_active = (usdActiveData && usdActiveData.length > 0) ? usdActiveData[0].discount_percent === 1 : false;
-        
+
         let eur_rate = (eurRateData && eurRateData.length > 0) ? eurRateData[0].discount_percent : 0;
         let eur_active = (eurActiveData && eurActiveData.length > 0) ? eurActiveData[0].discount_percent === 1 : false;
 
-        return NextResponse.json({ usd_rate, is_active, eur_rate, eur_active });
+        let free_shipping_threshold = (shippingThreshData && shippingThreshData.length > 0) ? shippingThreshData[0].discount_percent : 0;
+        let shipping_cost = (shippingCostData && shippingCostData.length > 0) ? shippingCostData[0].discount_percent : 0;
+
+        return NextResponse.json({ usd_rate, is_active, eur_rate, eur_active, free_shipping_threshold, shipping_cost });
     } catch (e) {
         return NextResponse.json({ error: e.message }, { status: 500 });
     }
@@ -34,7 +39,7 @@ export async function POST(req) {
         const user = await verifyAdmin();
         if (!user) return NextResponse.json({ error: 'Yetkisiz erişim' }, { status: 401 });
 
-        const { usd_rate, is_active, eur_rate, eur_active, currency = 'USD' } = await req.json();
+        const { usd_rate, is_active, eur_rate, eur_active, free_shipping_threshold, shipping_cost, currency = 'USD' } = await req.json();
 
         // 1. Update USD Settings
         if (currency === 'USD') {
@@ -80,6 +85,26 @@ export async function POST(req) {
                     } else {
                         await supabase.from('price_groups').insert({ name: 'EUR_FIXED_RATE_ACTIVE', discount_percent: 1 });
                     }
+                }
+            }
+        }
+
+        // 3. Update Shipping Settings
+        if (currency === 'SHIPPING') {
+            if (free_shipping_threshold !== undefined) {
+                const { data } = await supabase.from('price_groups').select('id').eq('name', 'SHIPPING_FREE_THRESHOLD').limit(1);
+                if (data && data.length > 0) {
+                    await supabase.from('price_groups').update({ discount_percent: Number(free_shipping_threshold) }).eq('name', 'SHIPPING_FREE_THRESHOLD');
+                } else {
+                    await supabase.from('price_groups').insert({ name: 'SHIPPING_FREE_THRESHOLD', discount_percent: Number(free_shipping_threshold) });
+                }
+            }
+            if (shipping_cost !== undefined) {
+                const { data } = await supabase.from('price_groups').select('id').eq('name', 'SHIPPING_COST').limit(1);
+                if (data && data.length > 0) {
+                    await supabase.from('price_groups').update({ discount_percent: Number(shipping_cost) }).eq('name', 'SHIPPING_COST');
+                } else {
+                    await supabase.from('price_groups').insert({ name: 'SHIPPING_COST', discount_percent: Number(shipping_cost) });
                 }
             }
         }

@@ -66,6 +66,8 @@ export default function DealerCart() {
     const [isShowroom, setIsShowroom] = useState(false);
     const [bypassPrepayment, setBypassPrepayment] = useState(false);
     const [bypassRiskLimit, setBypassRiskLimit] = useState(false);
+    const [freeShippingThreshold, setFreeShippingThreshold] = useState(0);
+    const [shippingCost, setShippingCost] = useState(0);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
@@ -89,7 +91,7 @@ export default function DealerCart() {
                 fetch('/api/rates'), fetch('/api/admin/usd-settings')
             ]);
             if (ratesRes.ok) { const data = await ratesRes.json(); setRates({ USD: data.USD || 1, EUR: data.EUR || 1 }); }
-            if (usdRes.ok) { const usdData = await usdRes.json(); setGlobalUsdRate(usdData.usd_rate || 0); setGlobalUsdActive(usdData.is_active || false); }
+            if (usdRes.ok) { const usdData = await usdRes.json(); setGlobalUsdRate(usdData.usd_rate || 0); setGlobalUsdActive(usdData.is_active || false); setFreeShippingThreshold(Number(usdData.free_shipping_threshold) || 0); setShippingCost(Number(usdData.shipping_cost) || 0); }
         } catch (e) { console.error(e); } finally { setLoading(false); }
     }, []);
 
@@ -159,10 +161,26 @@ export default function DealerCart() {
             }
         });
         const disc = sub - afterDisc, v = afterDisc * 0.20, grand = afterDisc + v;
-        const liability = grand - companyBalance;
+
+        // Shipping
+        const hasShippingSettings = freeShippingThreshold > 0 && shippingCost > 0;
+        const shippingFee = (hasShippingSettings && selected.length > 0 && grand < freeShippingThreshold) ? shippingCost : 0;
+        const isShippingFree = hasShippingSettings && selected.length > 0 && grand >= freeShippingThreshold;
+        const finalTotal = grand + shippingFee;
+        const shippingProgress = hasShippingSettings ? Math.min((grand / freeShippingThreshold) * 100, 100) : 100;
+        const remainingForFreeShipping = hasShippingSettings ? Math.max(freeShippingThreshold - grand, 0) : 0;
+
+        const liability = finalTotal - companyBalance;
         const riskExc = companyRiskLimit > 0 && liability > companyRiskLimit;
-        return { subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand, isRiskExceeded: riskExc, exceededAmount: riskExc ? (liability - companyRiskLimit) : 0, needsPrepayment: (isPrepaymentLocked && companyBalance < grand) || riskExc, selectedCount: selected.length };
-    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked, isShowroom, manualPrices]);
+        return {
+            subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand,
+            shippingFee, isShippingFree, hasShippingSettings, finalTotal, shippingProgress, remainingForFreeShipping,
+            isRiskExceeded: riskExc,
+            exceededAmount: riskExc ? (liability - companyRiskLimit) : 0,
+            needsPrepayment: (isPrepaymentLocked && companyBalance < finalTotal) || riskExc,
+            selectedCount: selected.length
+        };
+    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked, isShowroom, manualPrices, freeShippingThreshold, shippingCost]);
 
     const handleSetQty = (pid, p, q, unselected) => {
         ctxSetQty(pid, p, q, unselected);
@@ -214,7 +232,7 @@ export default function DealerCart() {
             const shouldRedirectToPayment = totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit);
             
             if (shouldRedirectToPayment) {
-                const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.grandTotal;
+                const paymentAmount = totals.isRiskExceeded ? totals.exceededAmount : totals.finalTotal;
                 window.location.href = `/dashboard/payment?amount=${paymentAmount.toFixed(2)}&context=cart`;
                 return;
             }
@@ -237,7 +255,7 @@ export default function DealerCart() {
                     companyId, 
                     shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', 
                     note: `[${shippingMethod}] ${note}`, 
-                    totalAmount: totals.grandTotal, 
+                    totalAmount: totals.finalTotal,
                     items: p_items,
                     bypassPrepayment: bypassPrepayment,
                     bypassRiskLimit: bypassRiskLimit
@@ -286,6 +304,35 @@ export default function DealerCart() {
                 <div><h1 className="page-title">Sepetim & Sipariş Ver</h1><p className="page-subtitle">{cartItems.length} ürün çeşidi</p></div>
                 <a href="/dashboard/catalog" className="btn btn-ghost desktop-only">← Kataloğa Dön</a>
             </div>
+
+            {/* Kargo İlerleme Çubuğu */}
+            {totals.hasShippingSettings && (
+                <div style={{ marginBottom: 20, padding: '14px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        {totals.isShippingFree ? (
+                            <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 14 }}>🎉 Kargo Ücretsiz!</span>
+                        ) : (
+                            <span style={{ fontSize: 13, fontWeight: 500 }}>
+                                Ücretsiz kargoya <strong style={{ color: 'var(--primary)' }}>₺{totals.remainingForFreeShipping.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> kaldı
+                            </span>
+                        )}
+                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                            ₺{freeShippingThreshold.toLocaleString('tr-TR')} üzeri ücretsiz kargo
+                        </span>
+                    </div>
+                    <div style={{ height: 10, background: 'var(--bg-surface)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                        <div style={{
+                            height: '100%',
+                            width: `${totals.shippingProgress}%`,
+                            background: totals.isShippingFree
+                                ? 'linear-gradient(90deg, #16a34a, #22c55e)'
+                                : 'linear-gradient(90deg, var(--primary), #60a5fa)',
+                            borderRadius: 999,
+                            transition: 'width 0.5s ease, background 0.3s ease'
+                        }} />
+                    </div>
+                </div>
+            )}
 
             <div className="cart-grid-container">
                 <div className="cart-left-col">
@@ -449,8 +496,39 @@ export default function DealerCart() {
                                 <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                {totals.hasShippingSettings && (
+                                    <div className="summary-row" style={{ alignItems: 'center' }}>
+                                        <span>Kargo Ücreti</span>
+                                        <span>
+                                            {totals.isShippingFree ? (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}>
+                                                    <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)', fontSize: 12 }}>
+                                                        ₺{shippingCost.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </span>
+                                                    <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 11, background: '#dcfce7', padding: '2px 8px', borderRadius: 6 }}>ÜCRETSİZ</span>
+                                                </span>
+                                            ) : (
+                                                `₺${totals.shippingFee.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                            )}
+                                        </span>
+                                    </div>
+                                )}
                                 <hr className="divider" />
-                                <div className="summary-row grand"><span>Toplam</span><span>₺{totals.grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                <div className="summary-row grand">
+                                    <span>Toplam</span>
+                                    {totals.isShippingFree && shippingCost > 0 ? (
+                                        <div style={{ textAlign: 'right' }}>
+                                            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-muted)', textDecoration: 'line-through' }}>
+                                                ₺{(totals.grandTotal + shippingCost).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                            <div style={{ fontSize: 28, fontWeight: 800, color: '#16a34a' }}>
+                                                ₺{totals.finalTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <span>₺{totals.finalTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    )}
+                                </div>
                             </div>
                             
                             <div className="summary-actions-form">
@@ -470,7 +548,7 @@ export default function DealerCart() {
                                 <div className="form-group"><label className="form-label">Gönderim Metodu</label><select className="form-input" value={shippingMethod} onChange={e => setShippingMethod(e.target.value)}><option value="Kargo">Kargo</option><option value="Kurye">Kurye</option><option value="Elden">Elden</option></select></div>
                                 <div className="form-group"><textarea className="form-textarea" placeholder="Sipariş notu ekleyin..." value={note} onChange={e => setNote(e.target.value)} style={{ height: 80 }} /></div>
                                 <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? 'var(--danger)' : undefined }}>
-                                    {submitting ? '...' : (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? 'ÖDEME YAP' : `${totals.selectedCount} Ürünü Sipariş Et`}
+                                    {submitting ? '...' : (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? `ÖDEME YAP ₺${totals.finalTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : `${totals.selectedCount} Ürünü Sipariş Et`}
                                 </button>
                             </div>
                         </div>

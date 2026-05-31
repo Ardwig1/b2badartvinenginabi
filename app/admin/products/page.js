@@ -281,9 +281,22 @@ export default function AdminProducts() {
     const downloadExcel = async () => {
         setExcelLoading(true);
         try {
-            const res = await fetch('/api/admin/products/list?page=1&search=&isCampaignOnly=false&limit=99999');
-            const data = await res.json();
-            const all = data.products || [];
+            const PAGE_SIZE = 1000;
+            let all = [];
+            let page = 1;
+            let totalCount = null;
+
+            // Supabase caps at 1000 rows per request — paginate until all fetched
+            while (true) {
+                const res = await fetch(`/api/admin/products/list?page=${page}&search=&isCampaignOnly=false&limit=${PAGE_SIZE}`);
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                if (totalCount === null) totalCount = data.totalCount || 0;
+                const batch = data.products || [];
+                all = all.concat(batch);
+                if (all.length >= totalCount || batch.length < PAGE_SIZE) break;
+                page++;
+            }
 
             const cols = [
                 { label: 'Stok Kodu', key: 'code' },
@@ -313,21 +326,26 @@ export default function AdminProducts() {
                 { label: 'Görsel URL', key: 'image_url' },
             ];
 
-            const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const headerRow = cols.map(c => `<th>${esc(c.label)}</th>`).join('');
+            // Generate proper CSV (no Excel warning)
+            const csvEsc = (v) => {
+                const s = String(v ?? '');
+                return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
+            };
+            const headerRow = cols.map(c => csvEsc(c.label)).join(',');
             const bodyRows = all.map(p =>
-                `<tr>${cols.map(c => `<td>${esc(c.fmt ? c.fmt(p[c.key]) : p[c.key])}</td>`).join('')}</tr>`
-            ).join('');
+                cols.map(c => csvEsc(c.fmt ? c.fmt(p[c.key]) : p[c.key])).join(',')
+            ).join('\n');
 
-            const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><style>table{border-collapse:collapse}th{background:#e2e8f0;font-weight:bold;border:1px solid #cbd5e1;padding:6px 10px}td{border:1px solid #e2e8f0;padding:5px 10px}</style></head><body><table><thead><tr>${headerRow}</tr></thead><tbody>${bodyRows}</tbody></table></body></html>`;
-            const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+            // UTF-8 BOM so Turkish characters show correctly in Excel
+            const csv = '﻿' + headerRow + '\n' + bodyRows;
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Urunler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.xls`;
+            a.download = `Urunler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.csv`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
         } catch (e) {
-            alert('Excel indirilemedi: ' + e.message);
+            alert('Dosya indirilemedi: ' + e.message);
         }
         setExcelLoading(false);
     };

@@ -305,35 +305,6 @@ export default function DealerCart() {
                 <a href="/dashboard/catalog" className="btn btn-ghost desktop-only">← Kataloğa Dön</a>
             </div>
 
-            {/* Kargo İlerleme Çubuğu */}
-            {totals.hasShippingSettings && (
-                <div style={{ marginBottom: 20, padding: '14px 20px', background: 'var(--bg-card)', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                        {totals.isShippingFree ? (
-                            <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 14 }}>🎉 Kargo Ücretsiz!</span>
-                        ) : (
-                            <span style={{ fontSize: 13, fontWeight: 500 }}>
-                                Ücretsiz kargoya <strong style={{ color: 'var(--primary)' }}>₺{totals.remainingForFreeShipping.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> kaldı
-                            </span>
-                        )}
-                        <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>
-                            ₺{freeShippingThreshold.toLocaleString('tr-TR')} üzeri ücretsiz kargo
-                        </span>
-                    </div>
-                    <div style={{ height: 10, background: 'var(--bg-surface)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
-                        <div style={{
-                            height: '100%',
-                            width: `${totals.shippingProgress}%`,
-                            background: totals.isShippingFree
-                                ? 'linear-gradient(90deg, #16a34a, #22c55e)'
-                                : 'linear-gradient(90deg, var(--primary), #60a5fa)',
-                            borderRadius: 999,
-                            transition: 'width 0.5s ease, background 0.3s ease'
-                        }} />
-                    </div>
-                </div>
-            )}
-
             <div className="cart-grid-container">
                 <div className="cart-left-col">
                     <div className="card" style={{ marginBottom: 20, position: 'relative' }}>
@@ -550,6 +521,45 @@ export default function DealerCart() {
                                 <button className="btn btn-primary btn-lg checkout-btn" disabled={totals.selectedCount === 0 || submitting} onClick={placeOrder} style={{ backgroundColor: (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? 'var(--danger)' : undefined }}>
                                     {submitting ? '...' : (totals.needsPrepayment && !(bypassPrepayment || bypassRiskLimit)) ? `ÖDEME YAP ₺${totals.finalTotal.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : `${totals.selectedCount} Ürünü Sipariş Et`}
                                 </button>
+
+                                {/* Kargo İlerleme Çubuğu */}
+                                {totals.hasShippingSettings && (
+                                    <div style={{ marginTop: 16, padding: '14px 16px', background: 'var(--bg-surface)', borderRadius: 14, border: '1px solid var(--border)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                                            {totals.isShippingFree ? (
+                                                <span style={{ color: '#16a34a', fontWeight: 700, fontSize: 13 }}>🎉 Kargo Ücretsiz!</span>
+                                            ) : (
+                                                <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)' }}>
+                                                    Ücretsiz kargoya <strong style={{ color: 'var(--primary)' }}>₺{totals.remainingForFreeShipping.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}</strong> kaldı
+                                                </span>
+                                            )}
+                                            <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>
+                                                ₺{freeShippingThreshold.toLocaleString('tr-TR')} üzeri
+                                            </span>
+                                        </div>
+                                        <div style={{ height: 20, background: 'var(--bg-card)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border-light)' }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: `${totals.shippingProgress}%`,
+                                                background: totals.isShippingFree
+                                                    ? 'linear-gradient(90deg, #16a34a, #22c55e)'
+                                                    : 'linear-gradient(90deg, var(--primary), #60a5fa)',
+                                                borderRadius: 999,
+                                                transition: 'width 0.5s ease, background 0.3s ease',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'flex-end',
+                                                paddingRight: totals.shippingProgress > 15 ? 8 : 0
+                                            }}>
+                                                {totals.shippingProgress > 15 && (
+                                                    <span style={{ fontSize: 10, fontWeight: 700, color: 'white', whiteSpace: 'nowrap' }}>
+                                                        %{Math.round(totals.shippingProgress)}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

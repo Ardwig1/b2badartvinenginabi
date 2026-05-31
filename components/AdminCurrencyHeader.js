@@ -34,11 +34,11 @@ export default function AdminCurrencyHeader() {
             zIndex: 900,
             display: 'flex',
             gap: 12,
-            background: 'rgba(15, 23, 42, 0.8)',
+            background: 'var(--bg-card)',
             padding: '6px 16px',
             borderRadius: '999px',
             border: '1px solid var(--border)',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
             backdropFilter: 'blur(12px)',
             pointerEvents: 'none'
         }}>

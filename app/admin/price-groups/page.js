@@ -39,10 +39,11 @@ export default function AdminPriceGroups() {
     const openEdit = (g) => { setEditing(g); setForm({ name: g.name, discount_percent: g.discount_percent, rules: g.rules || {} }); setShowModal(true); };
 
     const addRule = () => {
-        if (!newRule.supplier || newRule.discount === '') return;
+        if (!newRule.supplier || newRule.discount.trim() === '') return;
+        const val = newRule.discount.trim() === '-' ? '-' : Number(newRule.discount);
         setForm(prev => ({
             ...prev,
-            rules: { ...prev.rules, [newRule.supplier]: Number(newRule.discount) }
+            rules: { ...prev.rules, [newRule.supplier]: val }
         }));
         setNewRule({ supplier: '', discount: '' });
     };
@@ -147,8 +148,8 @@ export default function AdminPriceGroups() {
                                                 </select>
                                             </div>
                                             <div>
-                                                <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>İsk.%</label>
-                                                <input type="number" className="form-input" style={{ height: 32, fontSize: 12, padding: '0 8px' }} value={newRule.discount} onChange={e => setNewRule(prev => ({ ...prev, discount: e.target.value }))} placeholder="10" />
+                                                <label style={{ fontSize: 11, fontWeight: 600, display: 'block', marginBottom: 4 }}>İsk.% <span style={{ color: '#dc2626' }}>(- = gizle)</span></label>
+                                                <input type="text" className="form-input" style={{ height: 32, fontSize: 12, padding: '0 8px' }} value={newRule.discount} onChange={e => setNewRule(prev => ({ ...prev, discount: e.target.value }))} placeholder="10 veya -" />
                                             </div>
                                             <button type="button" className="btn btn-primary" style={{ height: 32, padding: '0 12px', fontSize: 12 }} onClick={addRule}>Ekle</button>
                                         </div>
@@ -170,7 +171,12 @@ export default function AdminPriceGroups() {
                                                     {Object.entries(form.rules).map(([s, d]) => (
                                                         <tr key={s} style={{ borderBottom: '1px dashed var(--border)' }}>
                                                             <td style={{ padding: '6px 0', fontWeight: 600 }}>{s}</td>
-                                                            <td style={{ textAlign: 'center' }}>%{d}</td>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                {d === '-'
+                                                                    ? <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 11, background: '#fee2e2', padding: '2px 6px', borderRadius: 4 }}>🚫 GİZLİ</span>
+                                                                    : `%${d}`
+                                                                }
+                                                            </td>
                                                             <td style={{ textAlign: 'right' }}>
                                                                 <button type="button" onClick={() => removeRule(s)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}>✕</button>
                                                             </td>

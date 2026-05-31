@@ -28,14 +28,41 @@ export async function POST(req) {
 
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+        // 🚫 Fiyat grubundaki "-" kuralı olan tedarikçileri bul → bu ürünleri gizle
+        const hiddenSuppliers = [];
+        try {
+            const { data: company } = await adminSupabase
+                .from('companies')
+                .select('price_group_id')
+                .eq('id', companyId)
+                .maybeSingle();
+            if (company?.price_group_id) {
+                const { data: pg } = await adminSupabase
+                    .from('price_groups')
+                    .select('rules')
+                    .eq('id', company.price_group_id)
+                    .maybeSingle();
+                if (pg?.rules) {
+                    Object.entries(pg.rules).forEach(([supplier, val]) => {
+                        if (val === '-') hiddenSuppliers.push(supplier);
+                    });
+                }
+            }
+        } catch (_) { /* price group fetch hatası aramanın önüne geçmesin */ }
+
         const searchTerm = filterText ? filterText.trim() : '';
         const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
-        
+
         // Veritabanı seviyesinde akıllı filtreleme
         let query = adminSupabase
             .from('products')
             .select('id, code, oem_no, name, brand, car_brand, car_model, category, list_price, currency, stock_merkez, stock_depo, stock_quantity, unit, description, image_url, discount_rate, box_quantity, is_campaign, created_at, profit_margin, cost_price, is_fixed_price, fixed_price_value, fixed_price_currency, cart_discount_rate, fixed_usd_rate, supplier_brand')
             .eq('is_active', true);
+
+        // Gizli tedarikçi filtresi
+        for (const s of hiddenSuppliers) {
+            query = query.neq('supplier_brand', s);
+        }
 
         // 🔍 1. Marka Filtresi (Eğer seçildiyse)
         if (brand) {

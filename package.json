@@ -29,7 +29,8 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "sharp": "^0.34.5",
-    "undici": "^7.22.0"
+    "undici": "^7.22.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "eslint": "^9",

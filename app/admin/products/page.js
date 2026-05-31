@@ -276,78 +276,8 @@ export default function AdminProducts() {
 
     const up = (f) => (e) => setForm(prev => ({ ...prev, [f]: e.target.value }));
 
-    const [excelLoading, setExcelLoading] = useState(false);
-
-    const downloadExcel = async () => {
-        setExcelLoading(true);
-        try {
-            const PAGE_SIZE = 1000;
-            let all = [];
-            let page = 1;
-            let totalCount = null;
-
-            // Supabase caps at 1000 rows per request — paginate until all fetched
-            while (true) {
-                const res = await fetch(`/api/admin/products/list?page=${page}&search=&isCampaignOnly=false&limit=${PAGE_SIZE}`);
-                const data = await res.json();
-                if (data.error) throw new Error(data.error);
-                if (totalCount === null) totalCount = data.totalCount || 0;
-                const batch = data.products || [];
-                all = all.concat(batch);
-                if (all.length >= totalCount || batch.length < PAGE_SIZE) break;
-                page++;
-            }
-
-            const cols = [
-                { label: 'Stok Kodu', key: 'code' },
-                { label: 'OEM No', key: 'oem_no' },
-                { label: 'Ürün Adı', key: 'name' },
-                { label: 'Marka', key: 'brand' },
-                { label: 'Ürünün Alındığı Firma (GİZLİ)', key: 'supplier_brand' },
-                { label: 'Araç Markası', key: 'car_brand' },
-                { label: 'Araç Modeli', key: 'car_model' },
-                { label: 'Kategori', key: 'category' },
-                { label: 'Para Birimi', key: 'currency' },
-                { label: 'Geliş Fiyatı', key: 'cost_price' },
-                { label: 'Kâr Oranı (%)', key: 'profit_margin' },
-                { label: 'Liste Fiyatı', key: 'list_price' },
-                { label: 'İskonto Oranı (%)', key: 'discount_rate' },
-                { label: 'Sepette İndirim (%)', key: 'cart_discount_rate' },
-                { label: 'Birim', key: 'unit' },
-                { label: 'Koli Adeti', key: 'box_quantity' },
-                { label: 'İstanbul Stok', key: 'stock_merkez' },
-                { label: 'Depo Stok', key: 'stock_depo' },
-                { label: 'Kampanyalı mı', key: 'is_campaign', fmt: v => v ? 'Evet' : 'Hayır' },
-                { label: 'Sabit Fiyatlı mı', key: 'is_fixed_price', fmt: v => v ? 'Evet' : 'Hayır' },
-                { label: 'Sabit Fiyat Değeri', key: 'fixed_price_value' },
-                { label: 'Sabit Fiyat Dövizi', key: 'fixed_price_currency' },
-                { label: 'Durum', key: 'is_active', fmt: v => v ? 'Aktif' : 'Pasif' },
-                { label: 'Açıklama', key: 'description' },
-                { label: 'Görsel URL', key: 'image_url' },
-            ];
-
-            // Generate proper CSV (no Excel warning)
-            const csvEsc = (v) => {
-                const s = String(v ?? '');
-                return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s;
-            };
-            const headerRow = cols.map(c => csvEsc(c.label)).join(',');
-            const bodyRows = all.map(p =>
-                cols.map(c => csvEsc(c.fmt ? c.fmt(p[c.key]) : p[c.key])).join(',')
-            ).join('\n');
-
-            // UTF-8 BOM so Turkish characters show correctly in Excel
-            const csv = '﻿' + headerRow + '\n' + bodyRows;
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `Urunler_${new Date().toLocaleDateString('tr-TR').replace(/\./g, '-')}.csv`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        } catch (e) {
-            alert('Dosya indirilemedi: ' + e.message);
-        }
-        setExcelLoading(false);
+    const downloadExcel = () => {
+        window.location.href = '/api/admin/products/export';
     };
 
     const [showBulkModal, setShowBulkModal] = useState(false);
@@ -393,8 +323,8 @@ export default function AdminProducts() {
                     <p className="page-subtitle">{totalCount} ürün {search.trim() ? `("${search.trim()}" araması)` : '(toplam)'}</p>
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-ghost" onClick={downloadExcel} disabled={excelLoading} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {excelLoading ? '⏳ İndiriliyor...' : '📥 Excel Formatında İndir'}
+                    <button className="btn btn-ghost" onClick={downloadExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        📥 Excel Formatında İndir
                     </button>
                     <button className="btn btn-primary" onClick={openNew} id="add-product-btn">+ Yeni Ürün</button>
                 </div>

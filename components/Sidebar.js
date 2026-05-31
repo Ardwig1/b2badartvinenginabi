@@ -51,7 +51,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
     const router = useRouter();
     const isShowroom = pathname.includes('/admin/showroom') || pathname.includes('/rep/showroom');
     const impersonated = isImpersonated || isShowroom;
-    const [isOpen, setIsOpen] = useState(true); // Default to open for better UX, regardless of impersonation
+    const [isOpen, setIsOpen] = useState(false); // Kapalı başla
     
     // Determine which menu to show
     // If in showroom mode, ALWAYS show dealer navigation regardless of who the user is
@@ -111,6 +111,7 @@ export default function Sidebar({ isAdmin = false, isRep = false, companyName = 
                         >
                             <span className={styles.navIcon}>{item.icon}</span>
                             {isOpen && <span>{item.label}</span>}
+                            {!isOpen && <span className={styles.tooltip}>{item.label}</span>}
                         </Link>
                     );
                 })}

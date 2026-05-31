@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { DocumentTextIcon } from '@heroicons/react/24/outline';
 
-const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+const showCode = (code) => { if (!code) return null; const s = code.replace(/[a-zA-Z]/g, ''); return s || null; };
 
 const START_YEAR = 2026;
 const currentYear = new Date().getFullYear();

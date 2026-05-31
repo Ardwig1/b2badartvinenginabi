@@ -4,7 +4,7 @@ import { ShoppingCartIcon, CheckCircleIcon, MagnifyingGlassIcon, TrashIcon, Plus
 import { useCart } from '@/components/CartProvider';
 import { createClient } from '@/lib/supabase/client';
 
-const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+const showCode = (code) => { if (!code) return null; const s = code.replace(/[a-zA-Z]/g, ''); return s || null; };
 
 const getCircleStyle = (qty, size = 12) => {
     let bg, border, boxShadow;

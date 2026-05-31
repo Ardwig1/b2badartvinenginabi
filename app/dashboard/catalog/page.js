@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { ShoppingCartIcon, PhotoIcon, CubeIcon, MagnifyingGlassIcon, XMarkIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/outline';
 import { useCart } from '@/components/CartProvider';
 
-const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+const showCode = (code) => { if (!code) return null; const s = code.replace(/[a-zA-Z]/g, ''); return s || null; };
 
 const getCircleStyle = (qty, size = 16) => {
     let bg, border, boxShadow, color = '#fff';

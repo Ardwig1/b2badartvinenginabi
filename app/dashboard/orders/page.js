@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/client';
 import { ShoppingCartIcon, DocumentTextIcon, CheckCircleIcon, ClockIcon, TruckIcon, XCircleIcon, BeakerIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import OrderDetailsModal from '@/components/OrderDetailsModal';
 
-const showCode = (code) => (code && /[a-zA-Z]/.test(code)) ? null : code;
+const showCode = (code) => { if (!code) return null; const s = code.replace(/[a-zA-Z]/g, ''); return s || null; };
 
 function OrdersContent() {
     const searchParams = useSearchParams();

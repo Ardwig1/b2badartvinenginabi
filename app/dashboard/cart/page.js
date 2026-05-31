@@ -68,6 +68,7 @@ export default function DealerCart() {
     const [bypassRiskLimit, setBypassRiskLimit] = useState(false);
     const [freeShippingThreshold, setFreeShippingThreshold] = useState(0);
     const [shippingCost, setShippingCost] = useState(0);
+    const [isHavale, setIsHavale] = useState(false);
     const [rates, setRates] = useState({ USD: 1, EUR: 1 });
     const [searchProducts, setSearchProducts] = useState([]);
     const [productSearch, setProductSearch] = useState('');
@@ -162,25 +163,30 @@ export default function DealerCart() {
         });
         const disc = sub - afterDisc, v = afterDisc * 0.20, grand = afterDisc + v;
 
-        // Shipping
+        // Havale iskontosu (%3)
+        const havaleDiscountAmount = isHavale ? grand * 0.03 : 0;
+        const grandAfterHavale = grand - havaleDiscountAmount;
+
+        // Shipping (havale sonrası tutara göre hesapla)
         const hasShippingSettings = freeShippingThreshold > 0 && shippingCost > 0;
-        const shippingFee = (hasShippingSettings && selected.length > 0 && grand < freeShippingThreshold) ? shippingCost : 0;
-        const isShippingFree = hasShippingSettings && selected.length > 0 && grand >= freeShippingThreshold;
-        const finalTotal = grand + shippingFee;
-        const shippingProgress = hasShippingSettings ? Math.min((grand / freeShippingThreshold) * 100, 100) : 100;
-        const remainingForFreeShipping = hasShippingSettings ? Math.max(freeShippingThreshold - grand, 0) : 0;
+        const shippingFee = (hasShippingSettings && selected.length > 0 && grandAfterHavale < freeShippingThreshold) ? shippingCost : 0;
+        const isShippingFree = hasShippingSettings && selected.length > 0 && grandAfterHavale >= freeShippingThreshold;
+        const finalTotal = grandAfterHavale + shippingFee;
+        const shippingProgress = hasShippingSettings ? Math.min((grandAfterHavale / freeShippingThreshold) * 100, 100) : 100;
+        const remainingForFreeShipping = hasShippingSettings ? Math.max(freeShippingThreshold - grandAfterHavale, 0) : 0;
 
         const liability = finalTotal - companyBalance;
         const riskExc = companyRiskLimit > 0 && liability > companyRiskLimit;
         return {
             subtotal: sub, totalAfterDiscount: afterDisc, totalDiscount: disc, vat: v, grandTotal: grand,
+            havaleDiscountAmount,
             shippingFee, isShippingFree, hasShippingSettings, finalTotal, shippingProgress, remainingForFreeShipping,
             isRiskExceeded: riskExc,
             exceededAmount: riskExc ? (liability - companyRiskLimit) : 0,
             needsPrepayment: (isPrepaymentLocked && companyBalance < finalTotal) || riskExc,
             selectedCount: selected.length
         };
-    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked, isShowroom, manualPrices, freeShippingThreshold, shippingCost]);
+    }, [cartItems, contextCartItems, getBaseTryPrice, getDiscountedPrice, extraDiscounts, companyBalance, companyRiskLimit, isPrepaymentLocked, isShowroom, manualPrices, freeShippingThreshold, shippingCost, isHavale]);
 
     const handleSetQty = (pid, p, q, unselected) => {
         ctxSetQty(pid, p, q, unselected);
@@ -251,10 +257,11 @@ export default function DealerCart() {
             const response = await fetch('/api/user/checkout', { 
                 method: 'POST', 
                 headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify({ 
-                    companyId, 
-                    shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi', 
-                    note: `[${shippingMethod}] ${note}`, 
+                body: JSON.stringify({
+                    companyId,
+                    shippingAddress: isDifferentAddress ? shipping : 'Sistem Kayıtlı Firma Adresi',
+                    note: `[${shippingMethod}] ${note}`,
+                    paymentType: isHavale ? 'havale satış' : 'kart satış',
                     totalAmount: totals.finalTotal,
                     items: p_items,
                     bypassPrepayment: bypassPrepayment,
@@ -467,6 +474,9 @@ export default function DealerCart() {
                                 <div className="summary-row"><span>Ara Toplam</span><span>₺{totals.subtotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <div className="summary-row discount"><span>Toplam İskonto</span><span>-₺{totals.totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
                                 <div className="summary-row"><span>KDV (%20)</span><span>₺{totals.vat.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                {isHavale && totals.havaleDiscountAmount > 0 && (
+                                    <div className="summary-row discount"><span>Havale İskontosu (%3)</span><span>-₺{totals.havaleDiscountAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+                                )}
                                 {totals.hasShippingSettings && (
                                     <div className="summary-row" style={{ alignItems: 'center' }}>
                                         <span>Kargo Ücreti</span>
@@ -500,8 +510,24 @@ export default function DealerCart() {
                                         <span>₺{totals.finalTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     )}
                                 </div>
+                                {/* Havale promosyon banner + checkbox */}
+                                <div style={{ marginTop: 20, padding: '14px 16px', background: 'linear-gradient(135deg, #fefce8, #fef9c3)', borderRadius: 14, border: '1px solid #fde047' }}>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: '#854d0e', marginBottom: 12, lineHeight: 1.4 }}>
+                                        💳 Havale ile ödeme yaparsanız<br />
+                                        <span style={{ fontSize: 18, color: '#16a34a' }}>%3 iskonto kazanırsınız!</span>
+                                    </div>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={isHavale}
+                                            onChange={e => setIsHavale(e.target.checked)}
+                                            style={{ width: 20, height: 20, accentColor: '#16a34a', cursor: 'pointer', flexShrink: 0 }}
+                                        />
+                                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Havale ile ödeme yapacağım</span>
+                                    </label>
+                                </div>
                             </div>
-                            
+
                             <div className="summary-actions-form">
                                 {isShowroom && (
                                     <div style={{ marginBottom: 15, padding: 12, background: 'rgba(37, 99, 235, 0.05)', borderRadius: 10, border: '1px solid rgba(37, 99, 235, 0.2)' }}>

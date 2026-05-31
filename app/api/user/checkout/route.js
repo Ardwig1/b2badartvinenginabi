@@ -66,7 +66,7 @@ export async function POST(req) {
         if (!companyId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const body = await req.json();
-        const { shippingAddress, note, totalAmount, items, bypassPrepayment, bypassRiskLimit } = body;
+        const { shippingAddress, note, totalAmount, items, bypassPrepayment, bypassRiskLimit, paymentType } = body;
 
         const { data, error } = await adminSupabase.rpc('place_b2b_order', {
             p_company_id: companyId,
@@ -79,6 +79,30 @@ export async function POST(req) {
         });
 
         if (error) throw error;
+
+        // --- Payment Type kaydet ---
+        try {
+            const effectivePaymentType = paymentType || 'kart satış';
+            // RPC'nin döndürdüğü order_id varsa direkt kullan, yoksa en son siparişi güncelle
+            const orderId = data?.order_id || data?.id;
+            if (orderId) {
+                await adminSupabase.from('orders').update({ payment_type: effectivePaymentType }).eq('id', orderId);
+            } else {
+                // Fallback: şirketin en son siparişini güncelle
+                const { data: latestOrder } = await adminSupabase
+                    .from('orders')
+                    .select('id')
+                    .eq('company_id', companyId)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+                if (latestOrder?.id) {
+                    await adminSupabase.from('orders').update({ payment_type: effectivePaymentType }).eq('id', latestOrder.id);
+                }
+            }
+        } catch (ptErr) {
+            console.error("Payment type kaydetme hatası (non-fatal):", ptErr);
+        }
 
         // --- Mark Extra Discounts as USED ---
         try {

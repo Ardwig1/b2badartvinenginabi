@@ -180,6 +180,31 @@ export default function PaymentPage() {
         return null;
     };
 
+    const [qnbpayLoading, setQnbpayLoading] = useState(false);
+
+    const handleQnbpayPayment = async () => {
+        const numericAmount = parseFloat(amount);
+        if (isNaN(numericAmount) || numericAmount <= 0) { alert('Lütfen geçerli bir tutar girin.'); return; }
+        setQnbpayLoading(true);
+        try {
+            const res = await fetch('/api/payment/qnbpay/init', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ amount: numericAmount.toFixed(2), companyId: buyerInfo.companyId })
+            });
+            const data = await res.json();
+            if (data.success && data.link) {
+                window.location.href = data.link;
+            } else {
+                alert('QNBpay hatası: ' + (data.error || 'Bilinmeyen hata'));
+            }
+        } catch (err) {
+            alert('Bağlantı hatası: ' + err.message);
+        } finally {
+            setQnbpayLoading(false);
+        }
+    };
+
     const handlePayment = async (e) => {
         e.preventDefault();
         const error = validateCard();
@@ -252,6 +277,45 @@ export default function PaymentPage() {
                             </div>
                             <button type="submit" className="btn btn-primary btn-lg" style={{ width: '100%', justifyContent: 'center' }} disabled={loading || !amount || amount === '0.00'}>{loading ? 'İşleniyor...' : 'Güvenli Ödeme Yap'}</button>
                         </form>
+
+                        {/* QNBpay ile Ödeme */}
+                        <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 600 }}>VEYA</span>
+                                <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleQnbpayPayment}
+                                disabled={qnbpayLoading || !amount || amount === '0.00'}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px 20px',
+                                    background: qnbpayLoading ? 'var(--bg-surface)' : 'linear-gradient(135deg, #7c3aed, #5b21b6)',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: 10,
+                                    fontSize: 15,
+                                    fontWeight: 700,
+                                    cursor: qnbpayLoading ? 'not-allowed' : 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 10,
+                                    opacity: (qnbpayLoading || !amount || amount === '0.00') ? 0.6 : 1
+                                }}
+                            >
+                                {qnbpayLoading ? (
+                                    <><span className="loading-spinner" style={{ width: 18, height: 18, borderWidth: 2 }} /> QNBpay'e Yönlendiriliyorsunuz...</>
+                                ) : (
+                                    <><span style={{ fontSize: 18 }}>🔒</span> QNBpay ile Güvenli Öde</>
+                                )}
+                            </button>
+                            <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
+                                QNBpay güvenli ödeme sayfasına yönlendirileceksiniz. Kart bilgilerinizi orada gireceksiniz.
+                            </p>
+                        </div>
 
                         <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
                             <div style={{ display: 'flex', gap: 16, opacity: 1, alignItems: 'center' }}>

@@ -152,7 +152,7 @@ export default function DealerCatalog() {
             const cur = p.fixed_price_currency || 'TRY';
             if (cur === 'USD' && rates?.USD) price *= rates.USD;
             else if (cur === 'EUR' && rates?.EUR) price *= rates.EUR;
-            return price;
+            return price / 1.20;
         }
         const base = getBaseTryPrice(p);
         let effectiveGroupDiscount = discountPercent;

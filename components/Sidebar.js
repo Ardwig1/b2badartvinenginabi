@@ -9,7 +9,7 @@ import {
     ClipboardDocumentListIcon, DocumentTextIcon, HomeIcon, MagnifyingGlassIcon,
     ChatBubbleLeftEllipsisIcon, CreditCardIcon, FolderOpenIcon, BuildingLibraryIcon,
     EnvelopeIcon, PhoneIcon, SunIcon, MoonIcon, ArrowRightOnRectangleIcon, ChevronDoubleLeftIcon, ChevronDoubleRightIcon,
-    Cog6ToothIcon, UserGroupIcon
+    Cog6ToothIcon, UserGroupIcon, TagIcon
 } from '@heroicons/react/24/outline';
 import styles from './Sidebar.module.css';
 
@@ -18,7 +18,7 @@ const adminNav = [
     { label: 'Firmalar', href: '/admin/companies', icon: <BuildingOfficeIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Müşteri Temsilcileri', href: '/admin/representatives', icon: <UserGroupIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Ürünler & Stok', href: '/admin/products', icon: <CubeIcon style={{ width: 20, height: 20 }} /> },
-    { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
+    { label: 'Fiyat Grupları', href: '/admin/price-groups', icon: <TagIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Siparişler', href: '/admin/orders', icon: <ShoppingCartIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Cari Hareketler', href: '/admin/account', icon: <CurrencyDollarIcon style={{ width: 20, height: 20 }} /> },
     { label: 'Faturalar', href: '/admin/invoices', icon: <DocumentTextIcon style={{ width: 20, height: 20 }} /> },

@@ -417,42 +417,42 @@ export default function AdminAccountLedger() {
                                         {isExpanded && (
                                             <tr>
                                                 <td colSpan="10" style={{ padding: '8px 24px 20px 80px', background: 'transparent' }}>
-                                                    <div style={{ background: 'rgba(15, 23, 42, 0.4)', padding: 20, borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)', marginTop: 4 }}>
-                                                        <h4 style={{ fontSize: 12, textTransform: 'uppercase', color: '#94a3b8', marginBottom: 12, fontWeight: 800, letterSpacing: '1px' }}>
+                                                    <div style={{ background: 'var(--bg-surface)', padding: 20, borderRadius: '16px', border: '1px solid var(--border)', marginTop: 4 }}>
+                                                        <h4 style={{ fontSize: 12, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 12, fontWeight: 800, letterSpacing: '1px' }}>
                                                             {isOrder ? `İşlem İçeriği — ${tx.document_no?.slice(0, 8).toUpperCase()}` : 'İşlem Detayı'}
                                                         </h4>
                                                         {isOrder ? (
                                                             loadingDetails[tx.id] ? (
-                                                                <div style={{ fontSize: 13, color: '#cbd5e1' }}>Yükleniyor...</div>
+                                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Yükleniyor...</div>
                                                             ) : (orderDetails[tx.id] || []).length === 0 ? (
-                                                                <div style={{ fontSize: 13, color: '#cbd5e1' }}>İçerik bulunamadı.</div>
+                                                                <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>İçerik bulunamadı.</div>
                                                             ) : (
                                                                 <table style={{ margin: 0, fontSize: 13, background: 'transparent' }}>
                                                                     <thead style={{ background: 'transparent' }}>
                                                                         <tr>
-                                                                            <th style={{ padding: '8px 4px', color: '#94a3b8', fontWeight: 700 }}>Ürün Kodu</th>
-                                                                            <th style={{ padding: '8px 4px', color: '#94a3b8', fontWeight: 700 }}>Ürün Adı</th>
-                                                                            <th style={{ padding: '8px 4px', color: '#94a3b8', fontWeight: 700, textAlign: 'right' }}>Miktar</th>
-                                                                            <th style={{ padding: '8px 4px', color: '#94a3b8', fontWeight: 700, textAlign: 'right' }}>Birim Fiyat</th>
-                                                                            <th style={{ padding: '8px 4px', color: '#94a3b8', fontWeight: 700, textAlign: 'right' }}>Tutar</th>
+                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-muted)', fontWeight: 700 }}>Ürün Kodu</th>
+                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-muted)', fontWeight: 700 }}>Ürün Adı</th>
+                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>Miktar</th>
+                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>Birim Fiyat</th>
+                                                                            <th style={{ padding: '8px 4px', color: 'var(--text-muted)', fontWeight: 700, textAlign: 'right' }}>Tutar</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
                                                                         {orderDetails[tx.id].map(item => (
-                                                                            <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                                                                                <td style={{ padding: '10px 4px', fontFamily: 'monospace', color: '#cbd5e1' }}>{item.product?.code || '-'}</td>
-                                                                                <td style={{ padding: '10px 4px', fontWeight: 600, color: '#f8fafc' }}>{item.product?.name}</td>
-                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', color: '#cbd5e1', fontWeight: 700 }}>{item.quantity}</td>
-                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', color: '#cbd5e1' }}>{fmtMoney(item.unit_price * 1.20)}</td>
-                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 800, color: '#f8fafc' }}>{fmtMoney(item.total_price * 1.20)}</td>
+                                                                            <tr key={item.id} style={{ borderBottom: '1px solid var(--border-light)' }}>
+                                                                                <td style={{ padding: '10px 4px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{item.product?.code || '-'}</td>
+                                                                                <td style={{ padding: '10px 4px', fontWeight: 600, color: 'var(--text-primary)' }}>{item.product?.name}</td>
+                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', color: 'var(--text-secondary)', fontWeight: 700 }}>{item.quantity}</td>
+                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', color: 'var(--text-secondary)' }}>{fmtMoney(item.unit_price * 1.20)}</td>
+                                                                                <td style={{ padding: '10px 4px', textAlign: 'right', fontWeight: 800, color: 'var(--text-primary)' }}>{fmtMoney(item.total_price * 1.20)}</td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
                                                                 </table>
                                                             )
                                                         ) : (
-                                                            <div style={{ fontSize: 14, color: '#cbd5e1', fontWeight: 500, lineHeight: 1.6 }}>
-                                                                <strong style={{ color: '#94a3b8', marginRight: 8 }}>Açıklama:</strong> {tx.description || '-'}
+                                                            <div style={{ fontSize: 14, color: 'var(--text-secondary)', fontWeight: 500, lineHeight: 1.6 }}>
+                                                                <strong style={{ color: 'var(--text-muted)', marginRight: 8 }}>Açıklama:</strong> {tx.description || '-'}
                                                             </div>
                                                         )}
                                                     </div>

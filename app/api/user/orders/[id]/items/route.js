@@ -86,13 +86,31 @@ export async function GET(req, { params }) {
         // Treat this API as highly privileged for User/Admin/Rep context
         const adminSupabase = createAdminClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-        // Fetch items directly using service role
-        const { data, error } = await adminSupabase
+        // Önce direkt order_id ile dene
+        let { data, error } = await adminSupabase
             .from('order_items')
             .select('*, product:products(name, code, oem_no)')
-            .or(`order_id.eq.${id},order_id.in.(select id from orders where document_no.eq.${id})`);
+            .eq('order_id', id);
 
         if (error) throw error;
+
+        // Bulunamazsa document_no üzerinden order UUID'sini bul
+        if (!data || data.length === 0) {
+            const { data: order } = await adminSupabase
+                .from('orders')
+                .select('id')
+                .eq('document_no', id)
+                .maybeSingle();
+            if (order?.id) {
+                const { data: items, error: itemsErr } = await adminSupabase
+                    .from('order_items')
+                    .select('*, product:products(name, code, oem_no)')
+                    .eq('order_id', order.id);
+                if (itemsErr) throw itemsErr;
+                data = items || [];
+            }
+        }
+
         return NextResponse.json(data || []);
     } catch (err) {
         return NextResponse.json({ error: err.message }, { status: 500 });

@@ -84,6 +84,13 @@ export async function POST(req) {
             return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
         }
 
+        // cid ve tutarı callback için kaydet (QNBpay custom params'ı geri göndermez)
+        await adminSupabase.from('payment_sessions').insert({
+            id: invoiceId,
+            company_id: cid,
+            amount: parseFloat(formattedAmount)
+        });
+
         return NextResponse.json({ success: true, link: result.link, orderId: result.order_id });
 
     } catch (error) {

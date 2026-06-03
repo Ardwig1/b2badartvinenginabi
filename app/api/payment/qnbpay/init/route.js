@@ -79,11 +79,9 @@ export async function POST(req) {
         });
 
         if (!result?.link) {
-            console.error('QNBpay link error:', result);
-            return NextResponse.json({
-                success: false,
-                error: result?.message || result?.status_description || 'Ödeme linki alınamadı'
-            }, { status: 500 });
+            console.error('QNBpay link error:', JSON.stringify(result));
+            const errMsg = result?.status_description || result?.message || result?.error || JSON.stringify(result) || 'Ödeme linki alınamadı';
+            return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, link: result.link, orderId: result.order_id });

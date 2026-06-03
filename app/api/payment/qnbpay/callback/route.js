@@ -6,8 +6,13 @@ export async function GET(req) {
     try {
         const { searchParams } = new URL(req.url);
 
-        const qnbpay_status = searchParams.get('qnbpay_status');
-        const order_no      = searchParams.get('order_no');
+        // Tüm gelen parametreleri logla
+        const allParams = Object.fromEntries(searchParams.entries());
+        console.log('QNBpay callback - TÜM PARAMS:', JSON.stringify(allParams));
+
+        // QNBpay farklı parametre adları kullanabilir
+        const qnbpay_status = searchParams.get('qnbpay_status') || searchParams.get('status');
+        const order_no      = searchParams.get('order_no') || searchParams.get('order_id');
         const invoice_id    = searchParams.get('invoice_id') || searchParams.get('invoice');
         const hash_key      = searchParams.get('hash_key');
         const cid           = searchParams.get('cid');
@@ -15,7 +20,7 @@ export async function GET(req) {
         const SITE_URL   = process.env.NEXT_PUBLIC_SITE_URL || 'https://b2b.adartvin.com';
         const APP_SECRET = process.env.QNBPAY_APP_SECRET;
 
-        console.log('QNBpay callback:', { qnbpay_status, order_no, invoice_id, cid });
+        console.log('QNBpay callback parsed:', { qnbpay_status, order_no, invoice_id, cid });
 
         // Ödeme başarısız ya da iptal
         if (qnbpay_status !== '1') {

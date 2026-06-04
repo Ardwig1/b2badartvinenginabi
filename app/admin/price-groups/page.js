@@ -140,10 +140,9 @@ export default function AdminPriceGroups() {
                                                 <div style={{ fontWeight: 700, fontSize: 13 }}>Havale ile Ödeme Seçeneği</div>
                                                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Bu gruptaki müşteriler sepette %3 havale iskontosunu görebilsin mi?</div>
                                             </div>
-                                            <div style={{ position: 'relative', flexShrink: 0 }}>
-                                                <input type="checkbox" checked={form.show_bank_transfer} onChange={e => setForm(prev => ({ ...prev, show_bank_transfer: e.target.checked }))} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
-                                                <div onClick={() => setForm(prev => ({ ...prev, show_bank_transfer: !prev.show_bank_transfer }))}
-                                                    style={{ width: 44, height: 24, borderRadius: 12, background: form.show_bank_transfer ? 'var(--primary)' : 'var(--border)', cursor: 'pointer', transition: 'background 0.2s', position: 'relative' }}>
+                                            <div style={{ position: 'relative', flexShrink: 0 }}
+                                                onClick={e => { e.preventDefault(); e.stopPropagation(); setForm(prev => ({ ...prev, show_bank_transfer: !prev.show_bank_transfer })); }}>
+                                                <div style={{ width: 44, height: 24, borderRadius: 12, background: form.show_bank_transfer ? 'var(--primary)' : 'var(--border)', cursor: 'pointer', transition: 'background 0.2s', position: 'relative' }}>
                                                     <div style={{ position: 'absolute', top: 2, left: form.show_bank_transfer ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
                                                 </div>
                                             </div>

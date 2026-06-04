@@ -8,7 +8,7 @@ export default function AdminPriceGroups() {
     const [loading, setLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editing, setEditing] = useState(null);
-    const [form, setForm] = useState({ name: '', discount_percent: '', rules: {} });
+    const [form, setForm] = useState({ name: '', discount_percent: '', rules: {}, show_bank_transfer: true });
     const [suppliers, setSuppliers] = useState([]);
     const [newRule, setNewRule] = useState({ supplier: '', discount: '' });
     const [saving, setSaving] = useState(false);
@@ -35,8 +35,8 @@ export default function AdminPriceGroups() {
 
     useEffect(() => { fetch(); }, [fetch]);
 
-    const openNew = () => { setEditing(null); setForm({ name: '', discount_percent: '', rules: {} }); setShowModal(true); };
-    const openEdit = (g) => { setEditing(g); setForm({ name: g.name, discount_percent: g.discount_percent, rules: g.rules || {} }); setShowModal(true); };
+    const openNew = () => { setEditing(null); setForm({ name: '', discount_percent: '', rules: {}, show_bank_transfer: true }); setShowModal(true); };
+    const openEdit = (g) => { setEditing(g); setForm({ name: g.name, discount_percent: g.discount_percent, rules: g.rules || {}, show_bank_transfer: g.show_bank_transfer !== false }); setShowModal(true); };
 
     const addRule = () => {
         if (!newRule.supplier || newRule.discount.trim() === '') return;
@@ -57,10 +57,11 @@ export default function AdminPriceGroups() {
     const save = async (e) => {
         e.preventDefault();
         setSaving(true);
-        const payload = { 
-            name: form.name, 
+        const payload = {
+            name: form.name,
             discount_percent: Number(form.discount_percent),
-            rules: form.rules 
+            rules: form.rules,
+            show_bank_transfer: form.show_bank_transfer 
         };
 
         const res = await savePriceGroup(payload, editing?.id);
@@ -133,6 +134,21 @@ export default function AdminPriceGroups() {
                                     <div className="form-group"><label className="form-label">Grup Adı *</label><input className="form-input" value={form.name} onChange={up('name')} placeholder="örn. A Grubu" required id="pg-name" /></div>
                                     <div className="form-group"><label className="form-label">Genel İskonto Oranı (%) *</label><input className="form-input" type="number" min="0" max="100" step="0.1" value={form.discount_percent} onChange={up('discount_percent')} required id="pg-discount" /></div>
                                     <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 8 }}>💡 Özel bir kural tanımlanmamış tüm ürünlerde bu oran geçerli olur.</p>
+                                    <div style={{ marginTop: 16, padding: '12px 14px', background: 'var(--bg-surface)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', gap: 12 }}>
+                                            <div>
+                                                <div style={{ fontWeight: 700, fontSize: 13 }}>Havale ile Ödeme Seçeneği</div>
+                                                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Bu gruptaki müşteriler sepette %3 havale iskontosunu görebilsin mi?</div>
+                                            </div>
+                                            <div style={{ position: 'relative', flexShrink: 0 }}>
+                                                <input type="checkbox" checked={form.show_bank_transfer} onChange={e => setForm(prev => ({ ...prev, show_bank_transfer: e.target.checked }))} style={{ opacity: 0, position: 'absolute', width: 0, height: 0 }} />
+                                                <div onClick={() => setForm(prev => ({ ...prev, show_bank_transfer: !prev.show_bank_transfer }))}
+                                                    style={{ width: 44, height: 24, borderRadius: 12, background: form.show_bank_transfer ? 'var(--primary)' : 'var(--border)', cursor: 'pointer', transition: 'background 0.2s', position: 'relative' }}>
+                                                    <div style={{ position: 'absolute', top: 2, left: form.show_bank_transfer ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: '#fff', transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                                                </div>
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <div>

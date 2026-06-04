@@ -58,6 +58,7 @@ export default function DealerCart() {
     const [isDifferentAddress, setIsDifferentAddress] = useState(false);
     const [note, setNote] = useState('');
     const [isPrepaymentLocked, setIsPrepaymentLocked] = useState(false);
+    const [showBankTransfer, setShowBankTransfer] = useState(true);
     const [companyBalance, setCompanyBalance] = useState(0);
     const [companyRiskLimit, setCompanyRiskLimit] = useState(0);
     const [submitting, setSubmitting] = useState(false);
@@ -86,6 +87,7 @@ export default function DealerCart() {
                 setPriceGroup(infoData.priceGroup || null);
                 setExtraDiscounts(infoData.extraDiscounts || []);
                 setIsPrepaymentLocked(infoData.isPrepaymentLocked || false);
+                setShowBankTransfer(infoData.showBankTransfer !== false); // default true
                 setCompanyRiskLimit(Number(infoData.riskLimit) || 0);
                 setIsShowroom(!!infoData.isImpersonating);
             }
@@ -539,8 +541,8 @@ export default function DealerCart() {
                                         <span>₺{totals.finalTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                     )}
                                 </div>
-                                {/* Havale promosyon banner + checkbox */}
-                                <div style={{ marginTop: 20, padding: '14px 16px', background: 'linear-gradient(135deg, #fefce8, #fef9c3)', borderRadius: 14, border: '1px solid #fde047' }}>
+                                {/* Havale promosyon banner + checkbox — fiyat grubuna göre göster/gizle */}
+                                {showBankTransfer && <div style={{ marginTop: 20, padding: '14px 16px', background: 'linear-gradient(135deg, #fefce8, #fef9c3)', borderRadius: 14, border: '1px solid #fde047' }}>
                                     <div style={{ fontSize: 14, fontWeight: 800, color: '#854d0e', marginBottom: 12, lineHeight: 1.4 }}>
                                         💳 Havale ile ödeme yaparsanız<br />
                                         <span style={{ fontSize: 18, color: '#16a34a' }}>%3 iskonto kazanırsınız!</span>
@@ -554,7 +556,7 @@ export default function DealerCart() {
                                         />
                                         <span style={{ fontSize: 14, fontWeight: 700, color: '#1e293b' }}>Havale ile ödeme yapacağım</span>
                                     </label>
-                                </div>
+                                </div>}
                             </div>
 
                             <div className="summary-actions-form">

@@ -4,7 +4,7 @@ const { createClient } = require('@supabase/supabase-js');
 const BASBUG_API = 'https://api.basbug.com.tr';
 const FIRMA_ADI = 'BASBUG';
 const DEPO = 'MRK';
-const BRAND_GROUPS = ['FORD', 'PSA', 'OPEL', 'VW', 'RENAULT', 'FIAT', 'JAPON'];
+const BRAND_GROUPS = ['FORD', 'PSA', 'OPEL', 'VW', 'RENAULT', 'FIAT', 'JAPON', 'BMW'];
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://xpziispstwarngpsmstd.supabase.co',

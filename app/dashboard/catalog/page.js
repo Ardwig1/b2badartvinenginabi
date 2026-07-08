@@ -381,7 +381,7 @@ export default function DealerCatalog() {
                             {perPageItems.map(p => (
                                 <tr key={p.id} className={p.is_campaign ? 'campaign-row' : ''}>
                                     <td data-label="Marka">{p.brand}</td>
-                                    <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{showCode(p.code) || '-'}</td>
+                                    <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{p.code || '-'}</td>
                                     <td data-label="OEM No" style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.oem_no || '-'}</td>
                                     <td data-label="Ürün Adı" className="font-bold" style={{ minWidth: 200 }}>{p.name}</td>
                                     <td data-label="Resim" className="text-center">{p.image_url ? (<div style={{ cursor: 'zoom-in', display: 'flex', justifyContent: 'center' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredImage({ url: p.image_url, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredImage(null)} onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}><PhotoIcon style={{ width: 20, color: p.is_campaign ? '#1e40af' : '#2563eb' }} /></div>) : '-'}</td>

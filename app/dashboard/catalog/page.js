@@ -366,7 +366,6 @@ export default function DealerCatalog() {
                                 ['unit',      'BİRİM',            'left'],
                                 ['discount',  'BAYİ İSK.',        'center'],
                                 ['campaign',  'KAMPANYA',         'center'],
-                                ['cart_disc', 'SEPETTE %',        'center'],
                                 ['price',     'FİYAT (KDV DAHİL)','right'],
                                 ['merkez',    'İSTANBUL',         'center'],
                                 ['depo',      'DEPO',             'center'],
@@ -375,7 +374,6 @@ export default function DealerCatalog() {
                                     {label} <span style={{ fontSize: 10, opacity: sortCol === col ? 1 : 0.25 }}>{sortCol === col ? (sortDir === 'asc' ? '▲' : '▼') : '▲'}</span>
                                 </th>
                             ))}
-                            <th className="text-center">KOLİ AD.</th>
                             <th className="text-left">SİP.MİK.</th>
                             <th className="text-left">SEPETE AT</th>
                         </tr></thead>
@@ -385,16 +383,14 @@ export default function DealerCatalog() {
                                     <td data-label="Marka">{p.brand}</td>
                                     <td data-label="Stok Kodu" className="font-mono" style={{ color: p.is_campaign ? '#1e40af' : '#2563eb', fontWeight: 600 }}>{showCode(p.code) || '-'}</td>
                                     <td data-label="OEM No" style={{ fontFamily: 'monospace', fontSize: 12 }}>{p.oem_no || '-'}</td>
-                                    <td data-label="Ürün Adı" className="font-bold">{p.name}</td>
+                                    <td data-label="Ürün Adı" className="font-bold" style={{ minWidth: 200 }}>{p.name}</td>
                                     <td data-label="Resim" className="text-center">{p.image_url ? (<div style={{ cursor: 'zoom-in', display: 'flex', justifyContent: 'center' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredImage({ url: p.image_url, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredImage(null)} onClick={() => setSelectedImage({ url: p.image_url, name: p.name })}><PhotoIcon style={{ width: 20, color: p.is_campaign ? '#1e40af' : '#2563eb' }} /></div>) : '-'}</td>
                                     <td data-label="Birim">{p.unit || 'AD'}</td>
                                     <td data-label="Bayi İsk." className="text-center" style={{ fontWeight: 800, color: '#2563eb' }}>{getEffectiveDiscount(p)}</td>
                                     <td data-label="Kampanya" className="text-center" style={{ fontWeight: 800, color: '#dc2626' }}>{Number(p.discount_rate) > 0 ? `%${p.discount_rate}` : '-'}</td>
-                                    <td data-label="Sepette %" className="text-center" style={{ fontWeight: 800, color: '#16a34a' }}>{Number(p.cart_discount_rate) > 0 ? `%${p.cart_discount_rate}` : '-'}</td>
                                     <td data-label="Fiyat" className="text-right font-bold" style={{ fontWeight: 800, cursor: 'help', color: '#2563eb' }} onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoveredPriceTooltip({ product: p, x: r.left, y: r.top }); }} onMouseLeave={() => setHoveredPriceTooltip(null)}>₺{getKdvPrice(p).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td data-label="İstanbul"><div style={getCircleStyle(p.stock_merkez, 14)}>{p.stock_merkez > 0 && p.stock_merkez <= 5 ? p.stock_merkez : ''}</div></td>
                                     <td data-label="Depo"><div style={getCircleStyle(p.stock_depo, 14)}>{p.stock_depo > 0 && p.stock_depo <= 5 ? p.stock_depo : ''}</div></td>
-                                    <td data-label="Koli Ad." className="text-center">{p.box_quantity || 1}</td>
                                     <td data-label="Sip.Mik."><div style={{ display: 'inline-flex', alignItems: 'center', background: '#fff', border: '2px solid #000', borderRadius: 8, overflow: 'hidden', height: 32 }}><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderRight: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: Math.max(1, (parseInt(prev[p.id] || '1', 10) - 1)) }))}>−</button><input value={pendingQtys[p.id] ?? '1'} onChange={e => setPendingQtys(prev => ({ ...prev, [p.id]: e.target.value }))} style={{ width: 35, textAlign: 'center', border: 'none', fontWeight: 800, fontSize: 13, background: 'transparent', outline: 'none', color: '#000' }} /><button className="btn btn-ghost btn-sm" style={{ padding: '0 8px', height: '100%', borderRadius: 0, borderLeft: '2px solid #000', fontSize: 16, color: '#000', fontWeight: 800 }} onClick={() => setPendingQtys(prev => ({ ...prev, [p.id]: (parseInt(prev[p.id] || '1', 10) + 1) }))}>+</button></div></td>
                                     <td data-label="Sepete At">
                                         <div style={{ display: 'flex', gap: 4 }}>

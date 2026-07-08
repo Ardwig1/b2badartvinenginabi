@@ -50,7 +50,7 @@ export async function POST(req) {
             }
         } catch (_) { /* price group fetch hatası aramanın önüne geçmesin */ }
 
-        const searchTerm = filterText ? filterText.trim() : '';
+        const searchTerm = filterText ? filterText.trim().replace(/[()]/g, '') : '';
         const searchWords = searchTerm.split(/\s+/).filter(w => w.length > 0);
 
         // Veritabanı seviyesinde akıllı filtreleme
